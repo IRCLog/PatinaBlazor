@@ -1,0 +1,4 @@
+/mnt/c/Users/adams/source/repos/PatinaBlazor/obj/Debug/net8.0/CreateUser.GeneratedMSBuildEditorConfig.editorconfig
+/mnt/c/Users/adams/source/repos/PatinaBlazor/obj/Debug/net8.0/CreateUser.AssemblyInfoInputs.cache
+/mnt/c/Users/adams/source/repos/PatinaBlazor/obj/Debug/net8.0/CreateUser.AssemblyInfo.cs
+/mnt/c/Users/adams/source/repos/PatinaBlazor/obj/Debug/net8.0/CreateUser.csproj.CoreCompileInputs.cache

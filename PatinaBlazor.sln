@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35122.118
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PatinaBlazor", "PatinaBlazor\PatinaBlazor\PatinaBlazor.csproj", "{29B6CD96-E452-4481-B885-7E9BF8B02517}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PatinaBlazor.Client", "PatinaBlazor\PatinaBlazor.Client\PatinaBlazor.Client.csproj", "{840E1B89-32D3-4D68-A859-CD1834215749}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{29B6CD96-E452-4481-B885-7E9BF8B02517}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29B6CD96-E452-4481-B885-7E9BF8B02517}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29B6CD96-E452-4481-B885-7E9BF8B02517}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29B6CD96-E452-4481-B885-7E9BF8B02517}.Release|Any CPU.Build.0 = Release|Any CPU
+		{840E1B89-32D3-4D68-A859-CD1834215749}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{840E1B89-32D3-4D68-A859-CD1834215749}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{840E1B89-32D3-4D68-A859-CD1834215749}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{840E1B89-32D3-4D68-A859-CD1834215749}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {72F79642-BCAB-4EE0-99CD-935342E02CD0}
+	EndGlobalSection
+EndGlobal

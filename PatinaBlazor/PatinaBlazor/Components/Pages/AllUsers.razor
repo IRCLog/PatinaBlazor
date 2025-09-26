@@ -1,0 +1,425 @@
+@page "/admin/allUsers"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>All Users - Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>All Users</h1>
+    <a href="/admin" class="btn btn-secondary">Back to Admin</a>
+</div>
+
+@if (users == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading users...</p>
+    </div>
+}
+else
+{
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <button class="btn btn-success" @onclick="ActivateSelectedUsers" disabled="@(!selectedUsers.Any())">
+                Activate Selected (@selectedUsers.Count)
+            </button>
+        </div>
+        <div class="col-md-6 text-end">
+            <small class="text-muted">Total Users: @users.Count</small>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>
+                        <input type="checkbox" @onchange="ToggleAllUsers" />
+                    </th>
+                    <th>User ID</th>
+                    <th>Email</th>
+                    <th>Username</th>
+                    <th>New Password</th>
+                    <th>Created Date</th>
+                    <th>Account Locked</th>
+                    <th>Email Confirmed</th>
+                    <th>Roles</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in users)
+                {
+                    <tr class="@(selectedUsers.Contains(user.Id) ? "table-info" : "")">
+                        <td>
+                            <input type="checkbox" 
+                                   checked="@selectedUsers.Contains(user.Id)" 
+                                   @onchange="@((e) => ToggleUserSelection(user.Id, (bool)e.Value!))" />
+                        </td>
+                        <td>
+                            <small class="text-muted">@user.Id.Substring(0, 8)...</small>
+                        </td>
+                        <td>
+                            @if (user.Id == editingUserId)
+                            {
+                                <input type="email" class="form-control form-control-sm" @bind="editUserEmail" />
+                            }
+                            else
+                            {
+                                @user.Email
+                            }
+                        </td>
+                        <td>
+                            @if (user.Id == editingUserId)
+                            {
+                                <input type="text" class="form-control form-control-sm" @bind="editUserName" />
+                            }
+                            else
+                            {
+                                @user.UserName
+                            }
+                        </td>
+                        <td>
+                            @if (user.Id == editingUserId)
+                            {
+                                <div class="input-group input-group-sm">
+                                    <input type="@(showPassword ? "text" : "password")" 
+                                           class="form-control form-control-sm" 
+                                           @bind="editPassword" 
+                                           placeholder="Enter new password (current password cannot be displayed for security)"
+                                           autocomplete="new-password"
+                                           data-form="false"
+                                           @key="@($"pwd-{user.Id}")" />
+                                    <button class="btn btn-outline-secondary" 
+                                            type="button"
+                                            @onclick="TogglePasswordVisibility">
+                                        @(showPassword ? "🙈" : "👁️")
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                
+                            }
+                        </td>
+                        <td>
+                            <small class="text-muted">
+                                @user.CreatedDate.ToString("yyyy-MM-dd HH:mm")
+                            </small>
+                        </td>
+                        <td>
+                            @if (user.Id == editingUserId)
+                            {
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" @bind="editUserLocked" id="locked-@user.Id" />
+                                    <label class="form-check-label" for="locked-@user.Id">
+                                        @(editUserLocked ? "Locked" : "Unlocked")
+                                    </label>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="badge @(user.IsLocked ? "bg-danger" : "bg-success")">
+                                    @(user.IsLocked ? "Locked" : "Unlocked")
+                                </span>
+                            }
+                        </td>
+                        <td>
+                            <span class="badge @(user.EmailConfirmed ? "bg-success" : "bg-warning")">
+                                @(user.EmailConfirmed ? "Confirmed" : "Pending")
+                            </span>
+                        </td>
+                        <td>
+                            @if (userRoles.ContainsKey(user.Id) && userRoles[user.Id].Any())
+                            {
+                                @foreach (var role in userRoles[user.Id])
+                                {
+                                    <span class="badge bg-primary me-1">@role</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">No roles</span>
+                            }
+                        </td>
+                        <td>
+                            @if (user.Id == editingUserId)
+                            {
+                                <div class="d-flex">
+                                    <button class="btn btn-success btn-sm me-1" @onclick="SaveUser" title="Save">💾</button>
+                                    <button class="btn btn-secondary btn-sm" @onclick="CancelEdit" title="Cancel">❌</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary btn-sm me-1" @onclick="() => StartEdit(user)">Edit</button>
+                                @if (!user.EmailConfirmed)
+                                {
+                                    <button class="btn btn-success btn-sm" @onclick="() => ActivateUser(user.Id)">Activate</button>
+                                }
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
+        @message
+        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
+    </div>
+}
+
+@code {
+    private List<ApplicationUser> users = null!;
+    private Dictionary<string, List<string>> userRoles = new();
+    private HashSet<string> selectedUsers = new();
+    private string? editingUserId;
+    private string editUserEmail = "";
+    private string editUserName = "";
+    private string editPassword = "";
+    private bool editUserLocked = false;
+    private string message = "";
+    private bool isError = false;
+    private bool showPassword = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = UserManager.Users.ToList();
+        userRoles.Clear();
+
+        foreach (var user in users)
+        {
+            var roles = await UserManager.GetRolesAsync(user);
+            userRoles[user.Id] = roles.ToList();
+        }
+    }
+
+    private void ToggleUserSelection(string userId, bool isSelected)
+    {
+        if (isSelected)
+            selectedUsers.Add(userId);
+        else
+            selectedUsers.Remove(userId);
+    }
+
+    private void ToggleAllUsers(ChangeEventArgs e)
+    {
+        bool selectAll = (bool)e.Value!;
+        selectedUsers.Clear();
+        
+        if (selectAll)
+        {
+            foreach (var user in users)
+            {
+                selectedUsers.Add(user.Id);
+            }
+        }
+    }
+
+    private async Task ActivateSelectedUsers()
+    {
+        int activatedCount = 0;
+        
+        foreach (var userId in selectedUsers)
+        {
+            var user = await UserManager.FindByIdAsync(userId);
+            if (user != null && !user.EmailConfirmed)
+            {
+                user.EmailConfirmed = true;
+                await UserManager.UpdateAsync(user);
+                activatedCount++;
+            }
+        }
+
+        selectedUsers.Clear();
+        await LoadUsers();
+        ShowMessage($"Activated {activatedCount} user(s)", false);
+    }
+
+    private async Task ActivateUser(string userId)
+    {
+        var user = await UserManager.FindByIdAsync(userId);
+        if (user != null)
+        {
+            user.EmailConfirmed = true;
+            await UserManager.UpdateAsync(user);
+            await LoadUsers();
+            ShowMessage($"User {user.Email} activated successfully", false);
+        }
+    }
+
+    private void StartEdit(ApplicationUser user)
+    {
+        editingUserId = user.Id;
+        editUserEmail = user.Email ?? "";
+        editUserName = user.UserName ?? "";
+        editPassword = ""; // Start with empty password field
+        editUserLocked = user.IsLocked;
+        showPassword = false;
+        
+        // Debug: Log what we're setting
+        Console.WriteLine($"StartEdit: Setting editPassword to empty string for user {user.Email}");
+    }
+
+    private async Task SaveUser()
+    {
+        if (string.IsNullOrEmpty(editingUserId))
+            return;
+
+        var user = await UserManager.FindByIdAsync(editingUserId);
+        if (user == null)
+        {
+            ShowMessage("User not found", true);
+            return;
+        }
+
+        try
+        {
+            // Validate email format
+            if (string.IsNullOrWhiteSpace(editUserEmail) || !editUserEmail.Contains("@"))
+            {
+                ShowMessage("Please enter a valid email address", true);
+                return;
+            }
+
+            // Validate username
+            if (string.IsNullOrWhiteSpace(editUserName))
+            {
+                ShowMessage("Username cannot be empty", true);
+                return;
+            }
+
+            // Check if email already exists for another user
+            var existingEmailUser = await UserManager.FindByEmailAsync(editUserEmail);
+            if (existingEmailUser != null && existingEmailUser.Id != user.Id)
+            {
+                ShowMessage("Email address is already in use by another user", true);
+                return;
+            }
+
+            // Check if username already exists for another user
+            var existingUsernameUser = await UserManager.FindByNameAsync(editUserName);
+            if (existingUsernameUser != null && existingUsernameUser.Id != user.Id)
+            {
+                ShowMessage("Username is already taken by another user", true);
+                return;
+            }
+
+            // Update user properties
+            user.Email = editUserEmail;
+            user.UserName = editUserName;
+            user.NormalizedEmail = editUserEmail.ToUpper();
+            user.NormalizedUserName = editUserName.ToUpper();
+            user.IsLocked = editUserLocked;
+
+            var result = await UserManager.UpdateAsync(user);
+            
+            if (!result.Succeeded)
+            {
+                ShowMessage("Error updating user: " + string.Join(", ", result.Errors.Select(e => e.Description)), true);
+                return;
+            }
+
+            // Handle password change if provided and not empty/whitespace
+            if (!string.IsNullOrWhiteSpace(editPassword))
+            {
+                Console.WriteLine($"SaveUser: About to check password. editPassword='{editPassword}'");
+                
+                // Check if the entered password is different from the current password
+                var isCurrentPassword = await UserManager.CheckPasswordAsync(user, editPassword);
+                
+                Console.WriteLine($"SaveUser: CheckPasswordAsync returned {isCurrentPassword}");
+                
+                if (!isCurrentPassword)
+                {
+                    Console.WriteLine($"SaveUser: Password is different, updating...");
+                    
+                    // Password is different, so update it
+                    var token = await UserManager.GeneratePasswordResetTokenAsync(user);
+                    var passwordResult = await UserManager.ResetPasswordAsync(user, token, editPassword);
+                    
+                    if (!passwordResult.Succeeded)
+                    {
+                        ShowMessage("User updated but password change failed: " + string.Join(", ", passwordResult.Errors.Select(e => e.Description)), true);
+                        return;
+                    }
+                    
+                    Console.WriteLine($"SaveUser: Password updated successfully");
+                    ShowMessage($"User {user.Email} and password updated successfully", false);
+                }
+                else
+                {
+                    Console.WriteLine($"SaveUser: Password is same as current, skipping update");
+                    // Password is the same as current, no need to update
+                    ShowMessage($"User {user.Email} updated successfully (password unchanged)", false);
+                }
+            }
+            else
+            {
+                Console.WriteLine($"SaveUser: No password provided (empty/whitespace)");
+                ShowMessage($"User {user.Email} updated successfully", false);
+            }
+
+            // Success - clear all edit state and refresh data
+            CancelEdit();
+            await LoadUsers();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage($"Error updating user: {ex.Message}", true);
+        }
+    }
+
+    private void CancelEdit()
+    {
+        editingUserId = null;
+        editUserEmail = "";
+        editUserName = "";
+        editPassword = "";
+        editUserLocked = false;
+        showPassword = false;
+        
+        // Debug: Log what we're clearing
+        Console.WriteLine($"CancelEdit: Clearing all edit fields including editPassword");
+    }
+
+    private void ShowMessage(string msg, bool error)
+    {
+        message = msg;
+        isError = error;
+        StateHasChanged();
+    }
+
+    private void ClearMessage()
+    {
+        message = "";
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+        
+        // Debug: Log what we're showing/hiding
+        Console.WriteLine($"TogglePasswordVisibility: showPassword={showPassword}, editPassword='{editPassword}'");
+    }
+}

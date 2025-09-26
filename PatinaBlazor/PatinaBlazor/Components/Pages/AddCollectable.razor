@@ -1,0 +1,225 @@
+@page "/add-collectable"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@using System.ComponentModel.DataAnnotations
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Add New Collectable</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-plus-circle"></i> Add New Collectable</h1>
+    <div>
+        <a href="/my-collectables" class="btn btn-secondary me-2">
+            <i class="bi bi-list-ul"></i> My Collectables
+        </a>
+        <a href="/collectables" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Collectables
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-body">
+                <EditForm Model="@newCollectable" OnValidSubmit="@HandleValidSubmit" FormName="AddCollectableForm">
+                    <DataAnnotationsValidator />
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                        <InputText id="description" 
+                                   class="form-control" 
+                                   @bind-Value="newCollectable.Description" 
+                                   placeholder="Enter description of your collectable" />
+                        <ValidationMessage For="@(() => newCollectable.Description)" class="text-danger" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Price (USD) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <InputNumber id="price" 
+                                         class="form-control" 
+                                         @bind-Value="newCollectable.Price" 
+                                         placeholder="0.00" 
+                                         step="0.01" />
+                        </div>
+                        <ValidationMessage For="@(() => newCollectable.Price)" class="text-danger" />
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">Notes</label>
+                        <InputTextArea id="notes" 
+                                       class="form-control" 
+                                       @bind-Value="newCollectable.Notes" 
+                                       placeholder="Add any additional notes about this collectable (optional)"
+                                       rows="4" />
+                        <ValidationMessage For="@(() => newCollectable.Notes)" class="text-danger" />
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" @onclick="ResetForm">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                            @if (isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="bi bi-save"></i> Save Collectable
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-check-circle me-2"></i>
+                @toastMessage
+                @if (!string.IsNullOrEmpty(collectableLink))
+                {
+                    <div class="mt-2">
+                        <a href="@collectableLink" class="btn btn-light btn-sm">
+                            <i class="bi bi-eye"></i> View My Collectables
+                        </a>
+                    </div>
+                }
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+    
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-exclamation-circle me-2"></i>
+                @toastMessage
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CollectableFormModel newCollectable = new();
+    private string currentUserId = string.Empty;
+    private bool isSubmitting = false;
+    private string toastMessage = string.Empty;
+    private string collectableLink = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        
+        if (user != null)
+        {
+            currentUserId = user.Id;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            await ShowErrorToast("User not found. Please log in again.");
+            return;
+        }
+
+        isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            var collectable = new Collectable
+            {
+                Description = newCollectable.Description,
+                Price = newCollectable.Price,
+                Notes = newCollectable.Notes,
+                UserId = currentUserId,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            DbContext.Collectables.Add(collectable);
+            await DbContext.SaveChangesAsync();
+
+            collectableLink = "/my-collectables";
+            await ShowSuccessToast($"Successfully added '{collectable.Description}' to your collection!");
+            
+            // Reset form
+            newCollectable = new CollectableFormModel();
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorToast($"Failed to save collectable: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetForm()
+    {
+        newCollectable = new CollectableFormModel();
+        toastMessage = string.Empty;
+        collectableLink = string.Empty;
+    }
+
+    private async Task ShowSuccessToast(string message)
+    {
+        toastMessage = message;
+        StateHasChanged();
+        
+        await JSRuntime.InvokeVoidAsync("showToast", "successToast");
+    }
+
+    private async Task ShowErrorToast(string message)
+    {
+        toastMessage = message;
+        StateHasChanged();
+        
+        await JSRuntime.InvokeVoidAsync("showToast", "errorToast");
+    }
+
+    public class CollectableFormModel
+    {
+        [Required(ErrorMessage = "Description is required")]
+        [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
+        public string Description { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Price is required")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than $0.00")]
+        public decimal Price { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters")]
+        public string? Notes { get; set; }
+    }
+}
+
+<script>
+    window.showToast = (toastId) => {
+        const toastElement = document.getElementById(toastId);
+        if (toastElement) {
+            const toast = new bootstrap.Toast(toastElement, {
+                autohide: true,
+                delay: 5000
+            });
+            toast.show();
+        }
+    };
+</script>

@@ -1,0 +1,81 @@
+@rendermode InteractiveServer
+@using PatinaBlazor.Data
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="hit-counter">
+    <small class="text-muted">
+        <i class="bi bi-eye"></i>
+        @if (isLoading)
+        {
+            <span>Loading...</span>
+        }
+        else
+        {
+            <span>@hitCount @(hitCount == 1 ? "view" : "views")</span>
+        }
+    </small>
+</div>
+
+@code {
+    [Parameter] public string PagePath { get; set; } = "/";
+    
+    private long hitCount = 0;
+    private bool isLoading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await RecordAndGetHitCount();
+        }
+    }
+
+    private async Task RecordAndGetHitCount()
+    {
+        try
+        {
+            var counter = await DbContext.HitCounters
+                .FirstOrDefaultAsync(h => h.PagePath == PagePath);
+
+            if (counter == null)
+            {
+                counter = new Data.HitCounter
+                {
+                    PagePath = PagePath,
+                    HitCount = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    LastHit = DateTime.UtcNow
+                };
+                DbContext.HitCounters.Add(counter);
+                hitCount = 1;
+            }
+            else
+            {
+                counter.HitCount++;
+                counter.LastHit = DateTime.UtcNow;
+                hitCount = counter.HitCount;
+            }
+
+            await DbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error recording hit count: {ex.Message}");
+            hitCount = 0;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Clean up resources if needed
+        await Task.CompletedTask;
+    }
+}

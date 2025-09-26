@@ -1,0 +1,38 @@
+@page "/collectables"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Collectables</PageTitle>
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="card-title mb-0 text-center">
+                        <i class="bi bi-collection"></i> Collectables
+                    </h1>
+                </div>
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-collection display-1 text-primary"></i>
+                    </div>
+                    <h3 class="mb-4">Manage Your Collection</h3>
+                    <p class="lead mb-4">
+                        Keep track of your valuable collectables, their prices, and important notes all in one place.
+                    </p>
+                    
+                    <div class="d-grid gap-3 col-6 mx-auto">
+                        <a href="/my-collectables" class="btn btn-primary btn-lg">
+                            <i class="bi bi-list-ul"></i> My Collectables
+                        </a>
+                        <a href="/add-collectable" class="btn btn-success btn-lg">
+                            <i class="bi bi-plus-circle"></i> Add New Collectable
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

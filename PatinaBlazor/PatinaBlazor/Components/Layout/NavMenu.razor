@@ -1,0 +1,159 @@
+﻿@implements IDisposable
+@using Microsoft.JSInterop
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<!-- Mobile Header -->
+<div class="mobile-header">
+    <div class="navbar-brand">
+        <NavLink href="" Match="NavLinkMatch.All">Patina</NavLink>
+    </div>
+    <button class="navbar-toggle" @onclick="ToggleNavMenu" aria-label="Toggle navigation" type="button">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+    </button>
+</div>
+
+<!-- Navigation Menu -->
+<div class="nav-menu @(collapseNavMenu ? "collapsed" : "expanded") @(sidebarCollapsed ? "sidebar-collapsed" : "sidebar-expanded")">
+    <!-- Desktop Sidebar Header -->
+    <div class="sidebar-header">
+        <div class="sidebar-brand">
+            <NavLink href="" Match="NavLinkMatch.All" class="brand-link">
+                <span class="brand-text">Patina</span>
+            </NavLink>
+        </div>
+        <button class="sidebar-toggle" @onclick="ToggleSidebar" aria-label="Toggle sidebar" type="button">
+            <i class="bi @(sidebarCollapsed ? "bi-chevron-right" : "bi-chevron-left")"></i>
+        </button>
+    </div>
+
+    <nav>
+        <!-- Main Navigation Items -->
+        <div class="nav-item">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" @onclick="CloseNavMenu" title="Home">
+                <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+                <span class="nav-text">Home</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="counter" @onclick="CloseNavMenu" title="Counter">
+                <i class="bi bi-plus-square-fill" aria-hidden="true"></i>
+                <span class="nav-text">Counter</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="weather" @onclick="CloseNavMenu" title="Weather">
+                <i class="bi bi-list-nested" aria-hidden="true"></i>
+                <span class="nav-text">Weather</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item">
+            <NavLink class="nav-link" href="auth" @onclick="CloseNavMenu" title="Auth Required">
+                <i class="bi bi-lock" aria-hidden="true"></i>
+                <span class="nav-text">Auth Required</span>
+            </NavLink>
+        </div>
+
+        <!-- Authenticated User Items -->
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="collectables" @onclick="CloseNavMenu" title="Collectables">
+                        <i class="bi bi-gem" aria-hidden="true"></i>
+                        <span class="nav-text">Collectables</span>
+                    </NavLink>
+                </div>
+
+                <AuthorizeView Roles="Admin">
+                    <Authorized Context="adminContext">
+                        <div class="nav-item">
+                            <NavLink class="nav-link" href="admin" @onclick="CloseNavMenu" title="Admin">
+                                <i class="bi bi-gear-fill" aria-hidden="true"></i>
+                                <span class="nav-text">Admin</span>
+                            </NavLink>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+
+                <div class="nav-divider"></div>
+
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="Account/Manage" @onclick="CloseNavMenu" title="@context.User.Identity?.Name">
+                        <i class="bi bi-person-fill" aria-hidden="true"></i>
+                        <span class="nav-text">@context.User.Identity?.Name</span>
+                    </NavLink>
+                </div>
+
+                <div class="nav-item">
+                    <form action="Account/Logout" method="post">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                        <button type="submit" class="nav-link logout-button" title="Logout">
+                            <i class="bi bi-arrow-bar-left" aria-hidden="true"></i>
+                            <span class="nav-text">Logout</span>
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="Account/Register" @onclick="CloseNavMenu" title="Register">
+                        <i class="bi bi-person" aria-hidden="true"></i>
+                        <span class="nav-text">Register</span>
+                    </NavLink>
+                </div>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="Account/Login" @onclick="CloseNavMenu" title="Login">
+                        <i class="bi bi-person-badge" aria-hidden="true"></i>
+                        <span class="nav-text">Login</span>
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool sidebarCollapsed = false;
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void ToggleSidebar()
+    {
+        sidebarCollapsed = !sidebarCollapsed;
+    }
+
+    private void CloseNavMenu()
+    {
+        collapseNavMenu = true;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        collapseNavMenu = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

@@ -1,0 +1,78 @@
+@page "/admin"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Admin</PageTitle>
+
+<h1>Admin Panel</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3>System Statistics</h3>
+            </div>
+            <div class="card-body">
+                <p><strong>Total Users:</strong> 1,234</p>
+                <p><strong>Active Sessions:</strong> 56</p>
+                <p><strong>Database Size:</strong> 2.3 MB</p>
+                <p><strong>Last Backup:</strong> 2025-01-08 10:30 AM</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3>Quick Actions</h3>
+            </div>
+            <div class="card-body">
+                <a href="/admin/allUsers" class="btn btn-primary mb-2 w-100">Users</a>
+                <button class="btn btn-warning mb-2 w-100">Clear Cache</button>
+                <button class="btn btn-info mb-2 w-100">View Logs</button>
+                <button class="btn btn-danger w-100">System Maintenance</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3>Recent Activity</h3>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>10:45 AM</td>
+                            <td>john.doe@example.com</td>
+                            <td>Login</td>
+                            <td><span class="badge bg-success">Success</span></td>
+                        </tr>
+                        <tr>
+                            <td>10:32 AM</td>
+                            <td>jane.smith@example.com</td>
+                            <td>Password Reset</td>
+                            <td><span class="badge bg-warning">Pending</span></td>
+                        </tr>
+                        <tr>
+                            <td>10:15 AM</td>
+                            <td>admin@example.com</td>
+                            <td>Database Backup</td>
+                            <td><span class="badge bg-success">Completed</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

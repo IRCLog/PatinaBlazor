@@ -1,0 +1,124 @@
+/* Main Page Layout */
+.page {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+}
+
+/* Main Content Area */
+main {
+    flex: 1;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 2rem;
+}
+
+.content {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Sidebar (Desktop Only) */
+.sidebar {
+    background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 70%);
+    border-right: 1px solid var(--border-primary);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Desktop Layout (Large screens) */
+@media (min-width: 1024px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        flex-shrink: 0;
+        transition: width 0.3s ease;
+        overflow: visible;
+    }
+
+    main {
+        padding: 2.5rem 3rem;
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+/* Tablet Layout */
+@media (max-width: 1023px) and (min-width: 768px) {
+    .sidebar {
+        display: contents;
+    }
+
+    main {
+        padding-top: 0;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        padding-bottom: 2rem;
+    }
+}
+
+/* Mobile Layout */
+@media (max-width: 767px) {
+    .sidebar {
+        display: contents;
+    }
+
+    main {
+        padding: 1.5rem 1rem;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    main {
+        padding: 1rem 0.75rem;
+    }
+}
+
+/* Error UI Styling */
+#blazor-error-ui {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px 6px 0 0;
+    bottom: 0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    color: var(--text-primary);
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 18px;
+    line-height: 1;
+    border: none;
+    background: none;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+#blazor-error-ui .dismiss:hover {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
