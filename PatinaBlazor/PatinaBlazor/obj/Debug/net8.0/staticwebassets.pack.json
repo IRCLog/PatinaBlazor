@@ -21,6 +21,10 @@
       "PackagePath": "staticwebassets\\favicon.png"
     },
     {
+      "Id": "C:\\Users\\adams\\source\\repos\\PatinaBlazor\\PatinaBlazor\\PatinaBlazor\\wwwroot\\uploads\\collectables\\390028e9-347b-4686-bbce-6413a7af4d96.jpg",
+      "PackagePath": "staticwebassets\\uploads\\collectables\\390028e9-347b-4686-bbce-6413a7af4d96.jpg"
+    },
+    {
       "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.PatinaBlazor.Microsoft.AspNetCore.StaticWebAssets.props",
       "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
     },

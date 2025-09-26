@@ -396,6 +396,7 @@ C:/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor/bin/Debug/net
 /mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor/obj/Debug/net8.0/PatinaBlazor.pdb
 /mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor/obj/Debug/net8.0/PatinaBlazor.genruntimeconfig.cache
 /mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor/obj/Debug/net8.0/ref/PatinaBlazor.dll
+/mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor/obj/Debug/net8.0/PatinaBlazor.sourcelink.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\bin\Debug\net8.0\appsettings.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\bin\Debug\net8.0\appsettings.Production.json
@@ -577,6 +578,7 @@ C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net8.0\PatinaBlazor.AssemblyInfo.cs
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net8.0\PatinaBlazor.csproj.CoreCompileInputs.cache
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net8.0\PatinaBlazor.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net8.0\PatinaBlazor.sourcelink.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor\obj\Debug\net8.0\staticwebassets\msbuild.PatinaBlazor.Microsoft.AspNetCore.StaticWebAssets.props

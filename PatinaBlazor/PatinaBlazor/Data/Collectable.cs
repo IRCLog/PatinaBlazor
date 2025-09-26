@@ -24,6 +24,14 @@ namespace PatinaBlazor.Data
         [Required]
         public string UserId { get; set; } = string.Empty;
 
+        [StringLength(500)]
+        public string? ImageFileName { get; set; }
+
+        [StringLength(100)]
+        public string? ImageContentType { get; set; }
+
+        public long? ImageFileSize { get; set; }
+
         // Navigation property
         public virtual ApplicationUser? User { get; set; }
     }

@@ -2074,6 +2074,7 @@ C:/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor.Client/obj/De
 /mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor.Client/obj/Debug/net8.0/refint/PatinaBlazor.Client.dll
 /mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor.Client/obj/Debug/net8.0/PatinaBlazor.Client.pdb
 /mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor.Client/obj/Debug/net8.0/ref/PatinaBlazor.Client.dll
+/mnt/c/Users/adams/source/repos/PatinaBlazor/PatinaBlazor/PatinaBlazor.Client/obj/Debug/net8.0/PatinaBlazor.Client.sourcelink.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\bin\Debug\net8.0\wwwroot\_framework\blazor.webassembly.js
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\bin\Debug\net8.0\wwwroot\_framework\dotnet.js
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\bin\Debug\net8.0\wwwroot\_framework\dotnet.js.map
@@ -2697,6 +2698,7 @@ C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\De
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\Debug\net8.0\PatinaBlazor.Client.AssemblyInfo.cs
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\Debug\net8.0\PatinaBlazor.Client.csproj.CoreCompileInputs.cache
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\Debug\net8.0\PatinaBlazor.Client.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\Debug\net8.0\PatinaBlazor.Client.sourcelink.json
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\Debug\net8.0\webcil\Microsoft.AspNetCore.Authorization.wasm
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\Debug\net8.0\webcil\Microsoft.AspNetCore.Components.wasm
 C:\Users\adams\source\repos\PatinaBlazor\PatinaBlazor\PatinaBlazor.Client\obj\Debug\net8.0\webcil\Microsoft.AspNetCore.Components.Authorization.wasm

@@ -2,6 +2,8 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -10,6 +12,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
+@inject IImageService ImageService
 
 <PageTitle>Add New Collectable</PageTitle>
 
@@ -54,14 +57,57 @@
                         <ValidationMessage For="@(() => newCollectable.Price)" class="text-danger" />
                     </div>
 
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label for="notes" class="form-label">Notes</label>
-                        <InputTextArea id="notes" 
-                                       class="form-control" 
-                                       @bind-Value="newCollectable.Notes" 
+                        <InputTextArea id="notes"
+                                       class="form-control"
+                                       @bind-Value="newCollectable.Notes"
                                        placeholder="Add any additional notes about this collectable (optional)"
                                        rows="4" />
                         <ValidationMessage For="@(() => newCollectable.Notes)" class="text-danger" />
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="image" class="form-label">Image</label>
+                        <InputFile id="image"
+                                   class="form-control"
+                                   OnChange="OnImageSelected"
+                                   accept="image/*" />
+                        <div class="form-text">
+                            <small>Upload an image for your collectable (max 5MB). Supported formats: JPG, PNG, GIF, WebP</small>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(imageUploadError))
+                        {
+                            <div class="text-danger mt-2">
+                                <i class="bi bi-exclamation-circle"></i> @imageUploadError
+                            </div>
+                        }
+
+                        @if (selectedImageFile != null)
+                        {
+                            <div class="mt-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="bi bi-image"></i> Selected Image
+                                        </h6>
+                                        <p class="card-text mb-1">
+                                            <strong>File:</strong> @selectedImageFile.Name
+                                        </p>
+                                        <p class="card-text mb-1">
+                                            <strong>Size:</strong> @FormatFileSize(selectedImageFile.Size)
+                                        </p>
+                                        <p class="card-text mb-0">
+                                            <strong>Type:</strong> @selectedImageFile.ContentType
+                                        </p>
+                                        <button type="button" class="btn btn-sm btn-outline-danger mt-2" @onclick="ClearSelectedImage">
+                                            <i class="bi bi-x-circle"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -119,6 +165,8 @@
     private bool isSubmitting = false;
     private string toastMessage = string.Empty;
     private string collectableLink = string.Empty;
+    private IBrowserFile? selectedImageFile;
+    private string imageUploadError = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -153,6 +201,23 @@
                 CreatedDate = DateTime.UtcNow
             };
 
+            // Handle image upload if present
+            if (selectedImageFile != null)
+            {
+                var imageResult = await ImageService.SaveImageAsync(selectedImageFile);
+                if (imageResult.Success)
+                {
+                    collectable.ImageFileName = imageResult.FileName;
+                    collectable.ImageContentType = imageResult.ContentType;
+                    collectable.ImageFileSize = imageResult.FileSize;
+                }
+                else
+                {
+                    await ShowErrorToast($"Failed to upload image: {imageResult.ErrorMessage}");
+                    return;
+                }
+            }
+
             DbContext.Collectables.Add(collectable);
             await DbContext.SaveChangesAsync();
 
@@ -178,6 +243,47 @@
         newCollectable = new CollectableFormModel();
         toastMessage = string.Empty;
         collectableLink = string.Empty;
+        selectedImageFile = null;
+        imageUploadError = string.Empty;
+    }
+
+    private void OnImageSelected(InputFileChangeEventArgs e)
+    {
+        selectedImageFile = e.File;
+        imageUploadError = string.Empty;
+
+        if (selectedImageFile != null)
+        {
+            if (!ImageService.IsValidImageFile(selectedImageFile))
+            {
+                imageUploadError = "Invalid file. Please select a valid image file (max 5MB).";
+                selectedImageFile = null;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearSelectedImage()
+    {
+        selectedImageFile = null;
+        imageUploadError = string.Empty;
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] suffixes = { "B", "KB", "MB", "GB" };
+        int counter = 0;
+        decimal number = bytes;
+
+        while (Math.Round(number / 1024) >= 1)
+        {
+            number /= 1024;
+            counter++;
+        }
+
+        return $"{number:n1}{suffixes[counter]}";
     }
 
     private async Task ShowSuccessToast(string message)
