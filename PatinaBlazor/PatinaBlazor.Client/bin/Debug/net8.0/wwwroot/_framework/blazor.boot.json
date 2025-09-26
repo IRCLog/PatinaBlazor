@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "PatinaBlazor.Client",
   "resources": {
-    "hash": "sha256-ukwIfVDjONu80SIed5rBf7pcC6hFkln1eIqiKkWLQCk=",
+    "hash": "sha256-8npKQc/1RGTxZH3RtgfBhlI0lPQDLpXxZN+8npCkybY=",
     "jsModuleNative": {
       "dotnet.native.8.0.7.q0lf3awg2z.js": "sha256-tFsxPBbhkdn6GKNBKvCRLzrfAHdyM86odYTe0MtrwMk="
     },
@@ -210,10 +210,10 @@
       "mscorlib.wasm": "sha256-fLbZiSHBNdpHoh4EgRqMaNP5NQyIK5TEj6AXFLqo8m8=",
       "netstandard.wasm": "sha256-d4xbAE8qrKq5euUoZHPO+jkYPjlCYBzUew45MKsYKic=",
       "System.Private.CoreLib.wasm": "sha256-8yi6NcX1lkNQgV4WKjnMBYIZyKh4P+OXnXVQmgxGZD4=",
-      "PatinaBlazor.Client.wasm": "sha256-gxXqMTdZyQXkgITc1NRFCdGzCoFgJBPt44RXDqa82PM="
+      "PatinaBlazor.Client.wasm": "sha256-5sfYuE+ouIzI5RM26BgZ1uKnhDBLRoFEZdSqrVFnE4Y="
     },
     "pdb": {
-      "PatinaBlazor.Client.pdb": "sha256-PoxB+1QdqvbYwuwGsc/iK9YygtEiOV3VFC5BN0kwHE0="
+      "PatinaBlazor.Client.pdb": "sha256-AoYGG9IAdnieK8ONNcju8SGDx5/swNl0TyBsXDVcb9s="
     }
   },
   "cacheBootResources": true,

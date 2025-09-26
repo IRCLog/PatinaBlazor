@@ -3,11 +3,14 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
 @attribute [Authorize]
 @rendermode InteractiveServer
 @inject ApplicationDbContext DbContext
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IImageService ImageService
+@inject IJSRuntime JSRuntime
 
 <PageTitle>My Collectables</PageTitle>
 
@@ -65,6 +68,15 @@ else
                         <small class="text-muted">ID: #@collectable.Id</small>
                         <small class="text-muted">@collectable.CreatedDate.ToString("MMM dd, yyyy")</small>
                     </div>
+                    @if (!string.IsNullOrEmpty(collectable.ImageFileName))
+                    {
+                        <div class="card-img-top-container" style="height: 200px; overflow: hidden;">
+                            <img src="@ImageService.GetImageUrl(collectable.ImageFileName)"
+                                 alt="@collectable.Description"
+                                 class="card-img-top"
+                                 style="height: 100%; width: 100%; object-fit: cover;" />
+                        </div>
+                    }
                     <div class="card-body">
                         <h5 class="card-title">@collectable.Description</h5>
                         <div class="mb-3">
@@ -80,10 +92,16 @@ else
                     </div>
                     <div class="card-footer">
                         <div class="btn-group w-100" role="group">
-                            <button class="btn btn-outline-primary btn-sm" onclick="alert('Edit functionality coming soon!')">
+                            <a href="/edit-collectable/@collectable.Id" class="btn btn-outline-primary btn-sm">
                                 <i class="bi bi-pencil"></i> Edit
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="alert('Delete functionality coming soon!')">
+                            </a>
+                            <button class="btn btn-outline-danger btn-sm"
+                                    @onclick="(() => ConfirmDelete(collectable))"
+                                    disabled="@isDeleting">
+                                @if (isDeleting && deletingId == collectable.Id)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                }
                                 <i class="bi bi-trash"></i> Delete
                             </button>
                         </div>
@@ -97,12 +115,14 @@ else
 @code {
     private List<Collectable>? collectables;
     private string currentUserId = string.Empty;
+    private bool isDeleting = false;
+    private int deletingId = 0;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = await UserManager.GetUserAsync(authState.User);
-        
+
         if (user != null)
         {
             currentUserId = user.Id;
@@ -116,5 +136,51 @@ else
             .Where(c => c.UserId == currentUserId)
             .OrderByDescending(c => c.CreatedDate)
             .ToListAsync();
+    }
+
+    private async Task ConfirmDelete(Collectable collectable)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"Are you sure you want to delete '{collectable.Description}'? This action cannot be undone.");
+
+        if (confirmed)
+        {
+            await DeleteCollectable(collectable);
+        }
+    }
+
+    private async Task DeleteCollectable(Collectable collectable)
+    {
+        isDeleting = true;
+        deletingId = collectable.Id;
+        StateHasChanged();
+
+        try
+        {
+            // Delete the image file if it exists
+            if (!string.IsNullOrEmpty(collectable.ImageFileName))
+            {
+                await ImageService.DeleteImageAsync(collectable.ImageFileName);
+            }
+
+            // Remove from database
+            DbContext.Collectables.Remove(collectable);
+            await DbContext.SaveChangesAsync();
+
+            // Remove from local list
+            collectables?.Remove(collectable);
+
+            await JSRuntime.InvokeVoidAsync("alert", $"'{collectable.Description}' has been deleted successfully.");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Failed to delete collectable: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+            deletingId = 0;
+            StateHasChanged();
+        }
     }
 }

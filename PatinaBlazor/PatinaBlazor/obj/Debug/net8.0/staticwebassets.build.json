@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "AIwRLkbtndY8zF2HvpNDBAuX/vfreBAYKMMgnD6wEaI=",
+  "Hash": "LGDMkhG2VpRQSLTl/IpSX25zm+qgr74PbXm779W4prE=",
   "Source": "PatinaBlazor",
   "BasePath": "_content/PatinaBlazor",
   "Mode": "Default",
@@ -8033,6 +8033,44 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\favicon.png"
+    },
+    {
+      "Identity": "C:\\Users\\adams\\source\\repos\\PatinaBlazor\\PatinaBlazor\\PatinaBlazor\\wwwroot\\uploads\\collectables\\390028e9-347b-4686-bbce-6413a7af4d96.jpg",
+      "SourceId": "PatinaBlazor",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\adams\\source\\repos\\PatinaBlazor\\PatinaBlazor\\PatinaBlazor\\wwwroot\\",
+      "BasePath": "_content/PatinaBlazor",
+      "RelativePath": "uploads/collectables/390028e9-347b-4686-bbce-6413a7af4d96.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\collectables\\390028e9-347b-4686-bbce-6413a7af4d96.jpg"
+    },
+    {
+      "Identity": "C:\\Users\\adams\\source\\repos\\PatinaBlazor\\PatinaBlazor\\PatinaBlazor\\wwwroot\\uploads\\collectables\\cc684cf8-f580-4033-9e5f-9bd9d26c9142.jpg",
+      "SourceId": "PatinaBlazor",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\adams\\source\\repos\\PatinaBlazor\\PatinaBlazor\\PatinaBlazor\\wwwroot\\",
+      "BasePath": "_content/PatinaBlazor",
+      "RelativePath": "uploads/collectables/cc684cf8-f580-4033-9e5f-9bd9d26c9142.jpg",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\collectables\\cc684cf8-f580-4033-9e5f-9bd9d26c9142.jpg"
     }
   ]
 }

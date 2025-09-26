@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PatinaBlazor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a56e8c10917ad8b0253f1621d37b5e152792440c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f354a40ca69edfd91503109c4e019a4c122953b4")]
 [assembly: System.Reflection.AssemblyProductAttribute("PatinaBlazor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PatinaBlazor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

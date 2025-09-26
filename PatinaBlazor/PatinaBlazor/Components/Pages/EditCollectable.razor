@@ -1,0 +1,407 @@
+@page "/edit-collectable/{id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.EntityFrameworkCore
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject ApplicationDbContext DbContext
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject IImageService ImageService
+
+<PageTitle>Edit Collectable</PageTitle>
+
+@if (collectable == null)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading collectable...</p>
+    </div>
+}
+else if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger" role="alert">
+        <i class="bi bi-exclamation-circle"></i> @errorMessage
+    </div>
+    <div class="text-center">
+        <a href="/my-collectables" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to My Collectables
+        </a>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-pencil-square"></i> Edit Collectable</h1>
+        <div>
+            <a href="/my-collectables" class="btn btn-secondary me-2">
+                <i class="bi bi-list-ul"></i> My Collectables
+            </a>
+            <a href="/collectables" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Collectables
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-body">
+                    <EditForm Model="@editModel" OnValidSubmit="@HandleValidSubmit" FormName="EditCollectableForm">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                            <InputText id="description"
+                                       class="form-control"
+                                       @bind-Value="editModel.Description"
+                                       placeholder="Enter description of your collectable" />
+                            <ValidationMessage For="@(() => editModel.Description)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Price (USD) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <InputNumber id="price"
+                                             class="form-control"
+                                             @bind-Value="editModel.Price"
+                                             placeholder="0.00"
+                                             step="0.01" />
+                            </div>
+                            <ValidationMessage For="@(() => editModel.Price)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <InputTextArea id="notes"
+                                           class="form-control"
+                                           @bind-Value="editModel.Notes"
+                                           placeholder="Add any additional notes about this collectable (optional)"
+                                           rows="4" />
+                            <ValidationMessage For="@(() => editModel.Notes)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Current Image</label>
+                            @if (!string.IsNullOrEmpty(collectable.ImageFileName))
+                            {
+                                <div class="mb-3">
+                                    <img src="@ImageService.GetImageUrl(collectable.ImageFileName)"
+                                         alt="@collectable.Description"
+                                         class="img-thumbnail"
+                                         style="max-height: 200px; max-width: 100%;" />
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-outline-danger btn-sm" @onclick="RemoveCurrentImage">
+                                            <i class="bi bi-trash"></i> Remove Current Image
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted">No image currently set.</p>
+                            }
+
+                            <label for="image" class="form-label">Upload New Image</label>
+                            <InputFile id="image"
+                                       class="form-control"
+                                       OnChange="OnImageSelected"
+                                       accept="image/*" />
+                            <div class="form-text">
+                                <small>Upload a new image for your collectable (max 5MB). Supported formats: JPG, PNG, GIF, WebP</small>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(imageUploadError))
+                            {
+                                <div class="text-danger mt-2">
+                                    <i class="bi bi-exclamation-circle"></i> @imageUploadError
+                                </div>
+                            }
+
+                            @if (selectedImageFile != null)
+                            {
+                                <div class="mt-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="bi bi-image"></i> New Image Selected
+                                            </h6>
+                                            <p class="card-text mb-1">
+                                                <strong>File:</strong> @selectedImageFile.Name
+                                            </p>
+                                            <p class="card-text mb-1">
+                                                <strong>Size:</strong> @FormatFileSize(selectedImageFile.Size)
+                                            </p>
+                                            <p class="card-text mb-0">
+                                                <strong>Type:</strong> @selectedImageFile.ContentType
+                                            </p>
+                                            <button type="button" class="btn btn-sm btn-outline-danger mt-2" @onclick="ClearSelectedImage">
+                                                <i class="bi bi-x-circle"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/my-collectables" class="btn btn-secondary me-md-2">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <i class="bi bi-save"></i> Update Collectable
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-check-circle me-2"></i>
+                @toastMessage
+                @if (!string.IsNullOrEmpty(collectableLink))
+                {
+                    <div class="mt-2">
+                        <a href="@collectableLink" class="btn btn-light btn-sm">
+                            <i class="bi bi-eye"></i> View My Collectables
+                        </a>
+                    </div>
+                }
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+
+    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="bi bi-exclamation-circle me-2"></i>
+                @toastMessage
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Collectable? collectable;
+    private CollectableEditModel editModel = new();
+    private string currentUserId = string.Empty;
+    private bool isSubmitting = false;
+    private string toastMessage = string.Empty;
+    private string collectableLink = string.Empty;
+    private string errorMessage = string.Empty;
+    private IBrowserFile? selectedImageFile;
+    private string imageUploadError = string.Empty;
+    private bool shouldRemoveCurrentImage = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+
+        if (user != null)
+        {
+            currentUserId = user.Id;
+            await LoadCollectable();
+        }
+    }
+
+    private async Task LoadCollectable()
+    {
+        collectable = await DbContext.Collectables
+            .FirstOrDefaultAsync(c => c.Id == Id && c.UserId == currentUserId);
+
+        if (collectable == null)
+        {
+            errorMessage = "Collectable not found or you don't have permission to edit it.";
+            return;
+        }
+
+        // Populate the edit model
+        editModel.Description = collectable.Description;
+        editModel.Price = collectable.Price;
+        editModel.Notes = collectable.Notes;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (collectable == null || string.IsNullOrEmpty(currentUserId))
+        {
+            await ShowErrorToast("Invalid collectable or user session. Please refresh and try again.");
+            return;
+        }
+
+        isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            // Update basic properties
+            collectable.Description = editModel.Description;
+            collectable.Price = editModel.Price;
+            collectable.Notes = editModel.Notes;
+
+            // Handle image changes
+            if (shouldRemoveCurrentImage && !string.IsNullOrEmpty(collectable.ImageFileName))
+            {
+                // Delete the old image file
+                await ImageService.DeleteImageAsync(collectable.ImageFileName);
+                collectable.ImageFileName = null;
+                collectable.ImageContentType = null;
+                collectable.ImageFileSize = null;
+            }
+
+            if (selectedImageFile != null)
+            {
+                // If there was an existing image and we're replacing it, delete the old one
+                if (!shouldRemoveCurrentImage && !string.IsNullOrEmpty(collectable.ImageFileName))
+                {
+                    await ImageService.DeleteImageAsync(collectable.ImageFileName);
+                }
+
+                // Save the new image
+                var imageResult = await ImageService.SaveImageAsync(selectedImageFile);
+                if (imageResult.Success)
+                {
+                    collectable.ImageFileName = imageResult.FileName;
+                    collectable.ImageContentType = imageResult.ContentType;
+                    collectable.ImageFileSize = imageResult.FileSize;
+                }
+                else
+                {
+                    await ShowErrorToast($"Failed to upload image: {imageResult.ErrorMessage}");
+                    return;
+                }
+            }
+
+            await DbContext.SaveChangesAsync();
+
+            collectableLink = "/my-collectables";
+            await ShowSuccessToast($"Successfully updated '{collectable.Description}'!");
+
+            // Navigate back after a short delay
+            await Task.Delay(2000);
+            Navigation.NavigateTo("/my-collectables");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorToast($"Failed to update collectable: {ex.Message}");
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveCurrentImage()
+    {
+        shouldRemoveCurrentImage = true;
+        StateHasChanged();
+    }
+
+    private void OnImageSelected(InputFileChangeEventArgs e)
+    {
+        selectedImageFile = e.File;
+        imageUploadError = string.Empty;
+
+        if (selectedImageFile != null)
+        {
+            if (!ImageService.IsValidImageFile(selectedImageFile))
+            {
+                imageUploadError = "Invalid file. Please select a valid image file (max 5MB).";
+                selectedImageFile = null;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearSelectedImage()
+    {
+        selectedImageFile = null;
+        imageUploadError = string.Empty;
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] suffixes = { "B", "KB", "MB", "GB" };
+        int counter = 0;
+        decimal number = bytes;
+
+        while (Math.Round(number / 1024) >= 1)
+        {
+            number /= 1024;
+            counter++;
+        }
+
+        return $"{number:n1}{suffixes[counter]}";
+    }
+
+    private async Task ShowSuccessToast(string message)
+    {
+        toastMessage = message;
+        StateHasChanged();
+
+        await JSRuntime.InvokeVoidAsync("showToast", "successToast");
+    }
+
+    private async Task ShowErrorToast(string message)
+    {
+        toastMessage = message;
+        StateHasChanged();
+
+        await JSRuntime.InvokeVoidAsync("showToast", "errorToast");
+    }
+
+    public class CollectableEditModel
+    {
+        [Required(ErrorMessage = "Description is required")]
+        [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
+        public string Description { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Price is required")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than $0.00")]
+        public decimal Price { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters")]
+        public string? Notes { get; set; }
+    }
+}
+
+<script>
+    window.showToast = (toastId) => {
+        const toastElement = document.getElementById(toastId);
+        if (toastElement) {
+            const toast = new bootstrap.Toast(toastElement, {
+                autohide: true,
+                delay: 5000
+            });
+            toast.show();
+        }
+    };
+</script>
