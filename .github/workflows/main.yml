@@ -80,11 +80,21 @@ jobs:
         fi
       shell: bash
     
-    - name: Deploy via FTP (Alternative Action)
-      uses: sebastianpopp/ftp-action@releases/v2
-      with:
-        host: ${{ secrets.FTP_HOST }}
-        user: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        localDir: "./publish/"
-        remoteDir: "/"
+    - name: Deploy via FTP using lftp
+      run: |
+        # Install lftp
+        sudo apt-get update
+        sudo apt-get install -y lftp
+
+        # Upload files using lftp with mirror
+        lftp -e "
+        set ftp:ssl-allow no;
+        set ssl:verify-certificate no;
+        set net:timeout 30;
+        set net:max-retries 3;
+        set ftp:list-options -a;
+        open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+        mirror -R --verbose --delete ./publish/ ./;
+        bye
+        "
+      shell: bash
