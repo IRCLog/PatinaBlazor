@@ -34,9 +34,9 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
-    var mysqlConnectionString = builder.Configuration.GetConnectionString("MySqlConnection") ?? connectionString;
+    var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection") ?? connectionString;
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseMySql(mysqlConnectionString, ServerVersion.AutoDetect(mysqlConnectionString)));
+        options.UseSqlServer(sqlServerConnectionString));
 }
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

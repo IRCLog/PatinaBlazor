@@ -13,8 +13,30 @@ namespace PatinaBlazor.Data
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
-        [Range(0, double.MaxValue, ErrorMessage = "Price must be a positive value")]
-        public decimal Price { get; set; }
+        [Range(0, double.MaxValue, ErrorMessage = "Price paid must be a positive value")]
+        public decimal PricePaid { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        [Range(0, double.MaxValue, ErrorMessage = "Asking price must be a positive value")]
+        public decimal? AskingPrice { get; set; }
+
+        public DateTime? DateAcquired { get; set; }
+
+        [StringLength(200)]
+        public string? AcquiredFrom { get; set; }
+
+        public bool IsForSale { get; set; } = false;
+
+        public bool IsSold { get; set; } = false;
+
+        public DateTime? DateSold { get; set; }
+
+        [StringLength(200)]
+        public string? SoldTo { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        [Range(0, double.MaxValue, ErrorMessage = "Sale price must be a positive value")]
+        public decimal? SalePrice { get; set; }
 
         [StringLength(1000)]
         public string? Notes { get; set; }

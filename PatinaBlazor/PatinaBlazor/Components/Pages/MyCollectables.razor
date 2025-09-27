@@ -55,7 +55,7 @@ else
             <p class="text-muted">Total Items: <strong>@collectables.Count</strong></p>
         </div>
         <div class="col-md-6 text-end">
-            <p class="text-muted">Total Value: <strong>$@collectables.Sum(c => c.Price).ToString("N2")</strong></p>
+            <p class="text-muted">Total Value: <strong>$@collectables.Sum(c => c.PricePaid).ToString("N2")</strong></p>
         </div>
     </div>
 
@@ -83,7 +83,7 @@ else
                     <div class="card-body">
                         <h5 class="card-title">@collectable.Description</h5>
                         <div class="mb-3">
-                            <span class="badge bg-success fs-6">$@collectable.Price.ToString("N2")</span>
+                            <span class="badge bg-success fs-6">$@collectable.PricePaid.ToString("N2")</span>
                         </div>
                         @if (!string.IsNullOrWhiteSpace(collectable.Notes))
                         {

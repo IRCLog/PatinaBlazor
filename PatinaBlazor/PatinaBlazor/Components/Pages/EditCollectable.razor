@@ -60,138 +60,263 @@ else
                     <EditForm Model="@editModel" OnValidSubmit="@HandleValidSubmit" FormName="EditCollectableForm">
                         <DataAnnotationsValidator />
 
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
-                            <InputText id="description"
-                                       class="form-control"
-                                       @bind-Value="editModel.Description"
-                                       placeholder="Enter description of your collectable" />
-                            <ValidationMessage For="@(() => editModel.Description)" class="text-danger" />
-                        </div>
+                        <!-- Tab Navigation -->
+                        <ul class="nav nav-tabs mb-4" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link @(activeTab == "general" ? "active" : "")"
+                                        type="button"
+                                        @onclick="@(() => SetActiveTab("general"))">
+                                    <i class="bi bi-info-circle"></i> General Information
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link @(activeTab == "sale" ? "active" : "")"
+                                        type="button"
+                                        @onclick="@(() => SetActiveTab("sale"))">
+                                    <i class="bi bi-currency-dollar"></i> Sale Information
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link @(activeTab == "images" ? "active" : "")"
+                                        type="button"
+                                        @onclick="@(() => SetActiveTab("images"))">
+                                    <i class="bi bi-images"></i> Images
+                                </button>
+                            </li>
+                        </ul>
 
-                        <div class="mb-3">
-                            <label for="price" class="form-label">Price (USD) <span class="text-danger">*</span></label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <InputNumber id="price"
-                                             class="form-control"
-                                             @bind-Value="editModel.Price"
-                                             placeholder="0.00"
-                                             step="0.01" />
+                        <!-- Tab Content -->
+                        <div class="tab-content">
+                            <!-- General Information Tab -->
+                            <div class="tab-pane @(activeTab == "general" ? "show active" : "d-none")">
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                                    <InputText id="description"
+                                               class="form-control"
+                                               @bind-Value="editModel.Description"
+                                               placeholder="Enter description of your collectable" />
+                                    <ValidationMessage For="@(() => editModel.Description)" class="text-danger" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="pricePaid" class="form-label">Price Paid (USD) <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <InputNumber id="pricePaid"
+                                                     class="form-control"
+                                                     @bind-Value="editModel.PricePaid"
+                                                     placeholder="0.00"
+                                                     step="0.01" />
+                                    </div>
+                                    <ValidationMessage For="@(() => editModel.PricePaid)" class="text-danger" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="dateAcquired" class="form-label">Date Acquired</label>
+                                    <InputDate id="dateAcquired"
+                                              class="form-control"
+                                              @bind-Value="editModel.DateAcquired" />
+                                    <ValidationMessage For="@(() => editModel.DateAcquired)" class="text-danger" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="acquiredFrom" class="form-label">Acquired From</label>
+                                    <InputText id="acquiredFrom"
+                                              class="form-control"
+                                              @bind-Value="editModel.AcquiredFrom"
+                                              placeholder="Where or who did you acquire this from?" />
+                                    <ValidationMessage For="@(() => editModel.AcquiredFrom)" class="text-danger" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="notes" class="form-label">Notes</label>
+                                    <InputTextArea id="notes"
+                                                   class="form-control"
+                                                   @bind-Value="editModel.Notes"
+                                                   placeholder="Add any additional notes about this collectable (optional)"
+                                                   rows="4" />
+                                    <ValidationMessage For="@(() => editModel.Notes)" class="text-danger" />
+                                </div>
                             </div>
-                            <ValidationMessage For="@(() => editModel.Price)" class="text-danger" />
-                        </div>
 
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Notes</label>
-                            <InputTextArea id="notes"
-                                           class="form-control"
-                                           @bind-Value="editModel.Notes"
-                                           placeholder="Add any additional notes about this collectable (optional)"
-                                           rows="4" />
-                            <ValidationMessage For="@(() => editModel.Notes)" class="text-danger" />
-                        </div>
+                            <!-- Sale Information Tab -->
+                            <div class="tab-pane @(activeTab == "sale" ? "show active" : "d-none")">
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <InputCheckbox id="isForSale"
+                                                      class="form-check-input"
+                                                      @bind-Value="editModel.IsForSale" />
+                                        <label class="form-check-label" for="isForSale">
+                                            <i class="bi bi-tag"></i> This item is for sale
+                                        </label>
+                                    </div>
+                                </div>
 
-                        <div class="mb-4">
-                            <label class="form-label">Current Images</label>
-                            @if (collectable.Images != null && collectable.Images.Any())
-                            {
-                                <div class="row">
-                                    @foreach (var image in collectable.Images.OrderBy(i => i.DisplayOrder))
+                                @if (editModel.IsForSale)
+                                {
+                                    <div class="mb-3">
+                                        <label for="askingPrice" class="form-label">Asking Price (USD)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <InputNumber id="askingPrice"
+                                                         class="form-control"
+                                                         @bind-Value="editModel.AskingPrice"
+                                                         placeholder="0.00"
+                                                         step="0.01" />
+                                        </div>
+                                        <ValidationMessage For="@(() => editModel.AskingPrice)" class="text-danger" />
+                                    </div>
+                                }
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <InputCheckbox id="isSold"
+                                                      class="form-check-input"
+                                                      @bind-Value="editModel.IsSold" />
+                                        <label class="form-check-label" for="isSold">
+                                            <i class="bi bi-check-circle"></i> This item has been sold
+                                        </label>
+                                    </div>
+                                </div>
+
+                                @if (editModel.IsSold)
+                                {
+                                    <div class="mb-3">
+                                        <label for="salePrice" class="form-label">Sale Price (USD)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <InputNumber id="salePrice"
+                                                         class="form-control"
+                                                         @bind-Value="editModel.SalePrice"
+                                                         placeholder="0.00"
+                                                         step="0.01" />
+                                        </div>
+                                        <ValidationMessage For="@(() => editModel.SalePrice)" class="text-danger" />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="dateSold" class="form-label">Date Sold</label>
+                                        <InputDate id="dateSold"
+                                                  class="form-control"
+                                                  @bind-Value="editModel.DateSold" />
+                                        <ValidationMessage For="@(() => editModel.DateSold)" class="text-danger" />
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="soldTo" class="form-label">Sold To</label>
+                                        <InputText id="soldTo"
+                                                  class="form-control"
+                                                  @bind-Value="editModel.SoldTo"
+                                                  placeholder="Who did you sell this to?" />
+                                        <ValidationMessage For="@(() => editModel.SoldTo)" class="text-danger" />
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Images Tab -->
+                            <div class="tab-pane @(activeTab == "images" ? "show active" : "d-none")">
+                                <div class="mb-4">
+                                    <label class="form-label">Current Images</label>
+                                    @if (collectable.Images != null && collectable.Images.Any())
                                     {
-                                        <div class="col-md-6 mb-3">
-                                            <div class="card">
-                                                <img src="@ImageService.GetImageUrl(image)"
-                                                     alt="@collectable.Description"
-                                                     class="card-img-top"
-                                                     style="height: 200px; object-fit: cover; cursor: pointer;"
-                                                     @onclick="(() => ShowImageModal(image))" />
-                                                <div class="card-body">
-                                                    @if (image.IsMainImage)
-                                                    {
-                                                        <span class="badge bg-primary mb-2">Main Image</span>
-                                                    }
-                                                    <div class="d-flex gap-2">
-                                                        @if (!image.IsMainImage)
-                                                        {
-                                                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="(() => SetAsMainImage(image))">
-                                                                <i class="bi bi-star"></i> Set as Main
-                                                            </button>
-                                                        }
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveImage(image))">
-                                                            <i class="bi bi-trash"></i> Remove
-                                                        </button>
+                                        <div class="row">
+                                            @foreach (var image in collectable.Images.OrderBy(i => i.DisplayOrder))
+                                            {
+                                                <div class="col-md-6 mb-3">
+                                                    <div class="card">
+                                                        <img src="@ImageService.GetImageUrl(image)"
+                                                             alt="@collectable.Description"
+                                                             class="card-img-top"
+                                                             style="height: 200px; object-fit: cover; cursor: pointer;"
+                                                             @onclick="(() => ShowImageModal(image))" />
+                                                        <div class="card-body">
+                                                            @if (image.IsMainImage)
+                                                            {
+                                                                <span class="badge bg-primary mb-2">Main Image</span>
+                                                            }
+                                                            <div class="d-flex gap-2">
+                                                                @if (!image.IsMainImage)
+                                                                {
+                                                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="(() => SetAsMainImage(image))">
+                                                                        <i class="bi bi-star"></i> Set as Main
+                                                                    </button>
+                                                                }
+                                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveImage(image))">
+                                                                    <i class="bi bi-trash"></i> Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">No images currently set.</p>
+                                    }
+
+                                    <label for="images" class="form-label">Upload New Images</label>
+                                    <InputFile id="images"
+                                               class="form-control"
+                                               OnChange="OnImagesSelected"
+                                               accept="image/*"
+                                               multiple />
+                                    <div class="form-text">
+                                        <small>Upload up to 10 new images for your collectable (max 5MB each). Supported formats: JPG, PNG, GIF, WebP</small>
+                                    </div>
+
+                                    @if (imageUploadErrors.Any())
+                                    {
+                                        <div class="alert alert-danger mt-2">
+                                            <i class="bi bi-exclamation-circle"></i> Image Upload Errors:
+                                            <ul class="mb-0 mt-2">
+                                                @foreach (var error in imageUploadErrors)
+                                                {
+                                                    <li>@error</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+
+                                    @if (selectedImageFiles.Any())
+                                    {
+                                        <div class="mt-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <h6 class="mb-0">
+                                                    <i class="bi bi-images"></i> New Images Selected (@selectedImageFiles.Count)
+                                                </h6>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearSelectedImages">
+                                                    <i class="bi bi-x-circle"></i> Clear All
+                                                </button>
+                                            </div>
+                                            <div class="row">
+                                                @for (int i = 0; i < selectedImageFiles.Count; i++)
+                                                {
+                                                    var index = i;
+                                                    var file = selectedImageFiles[i];
+                                                    <div class="col-md-6 col-lg-4 mb-3">
+                                                        <div class="card">
+                                                            <div class="card-body">
+                                                                <h6 class="card-title">@file.Name</h6>
+                                                                <p class="card-text mb-1">
+                                                                    <strong>Size:</strong> @FormatFileSize(file.Size)
+                                                                </p>
+                                                                <p class="card-text mb-2">
+                                                                    <strong>Type:</strong> @file.ContentType
+                                                                </p>
+                                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveSelectedImage(index))">
+                                                                    <i class="bi bi-x-circle"></i> Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                }
                                             </div>
                                         </div>
                                     }
                                 </div>
-                            }
-                            else
-                            {
-                                <p class="text-muted">No images currently set.</p>
-                            }
-
-                            <label for="images" class="form-label">Upload New Images</label>
-                            <InputFile id="images"
-                                       class="form-control"
-                                       OnChange="OnImagesSelected"
-                                       accept="image/*"
-                                       multiple />
-                            <div class="form-text">
-                                <small>Upload up to 10 new images for your collectable (max 5MB each). Supported formats: JPG, PNG, GIF, WebP</small>
                             </div>
-
-                            @if (imageUploadErrors.Any())
-                            {
-                                <div class="alert alert-danger mt-2">
-                                    <i class="bi bi-exclamation-circle"></i> Image Upload Errors:
-                                    <ul class="mb-0 mt-2">
-                                        @foreach (var error in imageUploadErrors)
-                                        {
-                                            <li>@error</li>
-                                        }
-                                    </ul>
-                                </div>
-                            }
-
-                            @if (selectedImageFiles.Any())
-                            {
-                                <div class="mt-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 class="mb-0">
-                                            <i class="bi bi-images"></i> New Images Selected (@selectedImageFiles.Count)
-                                        </h6>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearSelectedImages">
-                                            <i class="bi bi-x-circle"></i> Clear All
-                                        </button>
-                                    </div>
-                                    <div class="row">
-                                        @for (int i = 0; i < selectedImageFiles.Count; i++)
-                                        {
-                                            var index = i;
-                                            var file = selectedImageFiles[i];
-                                            <div class="col-md-6 col-lg-4 mb-3">
-                                                <div class="card">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title">@file.Name</h6>
-                                                        <p class="card-text mb-1">
-                                                            <strong>Size:</strong> @FormatFileSize(file.Size)
-                                                        </p>
-                                                        <p class="card-text mb-2">
-                                                            <strong>Type:</strong> @file.ContentType
-                                                        </p>
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveSelectedImage(index))">
-                                                            <i class="bi bi-x-circle"></i> Remove
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -257,6 +382,7 @@ else
     private List<IBrowserFile> selectedImageFiles = new();
     private List<string> imageUploadErrors = new();
     private ImageModal imageModal = default!;
+    private string activeTab = "general";
 
     protected override async Task OnInitializedAsync()
     {
@@ -284,7 +410,15 @@ else
 
         // Populate the edit model
         editModel.Description = collectable.Description;
-        editModel.Price = collectable.Price;
+        editModel.PricePaid = collectable.PricePaid;
+        editModel.AskingPrice = collectable.AskingPrice;
+        editModel.DateAcquired = collectable.DateAcquired;
+        editModel.AcquiredFrom = collectable.AcquiredFrom;
+        editModel.IsForSale = collectable.IsForSale;
+        editModel.IsSold = collectable.IsSold;
+        editModel.DateSold = collectable.DateSold;
+        editModel.SoldTo = collectable.SoldTo;
+        editModel.SalePrice = collectable.SalePrice;
         editModel.Notes = collectable.Notes;
     }
 
@@ -303,7 +437,15 @@ else
         {
             // Update basic properties
             collectable.Description = editModel.Description;
-            collectable.Price = editModel.Price;
+            collectable.PricePaid = editModel.PricePaid;
+            collectable.AskingPrice = editModel.AskingPrice;
+            collectable.DateAcquired = editModel.DateAcquired;
+            collectable.AcquiredFrom = editModel.AcquiredFrom;
+            collectable.IsForSale = editModel.IsForSale;
+            collectable.IsSold = editModel.IsSold;
+            collectable.DateSold = editModel.DateSold;
+            collectable.SoldTo = editModel.SoldTo;
+            collectable.SalePrice = editModel.SalePrice;
             collectable.Notes = editModel.Notes;
 
             // Handle multiple new image uploads if present
@@ -482,15 +624,41 @@ else
         }
     }
 
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+        StateHasChanged();
+    }
+
     public class CollectableEditModel
     {
         [Required(ErrorMessage = "Description is required")]
         [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
         public string Description { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Price is required")]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than $0.00")]
-        public decimal Price { get; set; }
+        [Required(ErrorMessage = "Price paid is required")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Price paid must be greater than $0.00")]
+        public decimal PricePaid { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "Asking price must be a positive value")]
+        public decimal? AskingPrice { get; set; }
+
+        public DateTime? DateAcquired { get; set; }
+
+        [StringLength(200, ErrorMessage = "Acquired from cannot exceed 200 characters")]
+        public string? AcquiredFrom { get; set; }
+
+        public bool IsForSale { get; set; } = false;
+
+        public bool IsSold { get; set; } = false;
+
+        public DateTime? DateSold { get; set; }
+
+        [StringLength(200, ErrorMessage = "Sold to cannot exceed 200 characters")]
+        public string? SoldTo { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "Sale price must be a positive value")]
+        public decimal? SalePrice { get; set; }
 
         [StringLength(1000, ErrorMessage = "Notes cannot exceed 1000 characters")]
         public string? Notes { get; set; }
