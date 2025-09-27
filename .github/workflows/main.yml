@@ -2,12 +2,19 @@ name: Deploy to Web Host
 
 on:
   push:
-    branches: [ main ]  # or master, depending on your default branch
-  workflow_dispatch:    # allows manual triggering
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]  # Only when PR is merged
+  workflow_dispatch:    # Manual trigger
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Only deploy on push to main, merged PRs, or manual trigger
+    if: github.event_name == 'workflow_dispatch' || 
+        github.ref == 'refs/heads/main' ||
+        (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     
     steps:
     - uses: actions/checkout@v4
@@ -24,7 +31,31 @@ jobs:
       run: dotnet build --no-restore -c Release
     
     - name: Publish
-      run: dotnet publish -c Release -o ./publish --no-build
+      run: dotnet publish ./PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
+    
+    - name: Replace database password
+      run: |
+        sed -i 's/\*\*\*\*PROD_DB_PASSWORD\*\*\*\*/'"${{ secrets.PROD_DB_PASSWORD }}"'/g' ./publish/appsettings.Production.json
+      shell: bash
+    
+    - name: Add web.config for IIS
+      run: |
+        if [ ! -f ./publish/web.config ]; then
+          cat > ./publish/web.config << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <location path="." inheritInChildApplications="false">
+            <system.webServer>
+              <handlers>
+                <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
+              </handlers>
+              <aspNetCore processPath="dotnet" arguments=".\PatinaBlazor.dll" stdoutLogEnabled="false" stdoutLogFile=".\logs\stdout" hostingModel="inprocess" />
+            </system.webServer>
+          </location>
+        </configuration>
+        EOF
+        fi
+      shell: bash
     
     - name: Deploy via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -33,4 +64,4 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./publish/
-        server-dir: /wwwroot/  # adjust based on your host's structure
+        server-dir: /wwwroot/
