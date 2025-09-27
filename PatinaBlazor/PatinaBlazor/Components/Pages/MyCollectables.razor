@@ -68,10 +68,13 @@ else
                         <small class="text-muted">ID: #@collectable.Id</small>
                         <small class="text-muted">@collectable.CreatedDate.ToString("MMM dd, yyyy")</small>
                     </div>
-                    @if (!string.IsNullOrEmpty(collectable.ImageFileName))
+                    @{
+                        var mainImage = collectable.Images?.FirstOrDefault(i => i.IsMainImage);
+                    }
+                    @if (mainImage != null)
                     {
                         <div class="card-img-top-container" style="height: 200px; overflow: hidden;">
-                            <img src="@ImageService.GetImageUrl(collectable.ImageFileName)"
+                            <img src="@ImageService.GetImageUrl(mainImage)"
                                  alt="@collectable.Description"
                                  class="card-img-top"
                                  style="height: 100%; width: 100%; object-fit: cover;" />
@@ -133,6 +136,7 @@ else
     private async Task LoadCollectables()
     {
         collectables = await DbContext.Collectables
+            .Include(c => c.Images)
             .Where(c => c.UserId == currentUserId)
             .OrderByDescending(c => c.CreatedDate)
             .ToListAsync();
@@ -157,13 +161,16 @@ else
 
         try
         {
-            // Delete the image file if it exists
-            if (!string.IsNullOrEmpty(collectable.ImageFileName))
+            // Delete all image files if they exist
+            if (collectable.Images != null && collectable.Images.Any())
             {
-                await ImageService.DeleteImageAsync(collectable.ImageFileName);
+                foreach (var image in collectable.Images)
+                {
+                    await ImageService.DeleteCollectableImageAsync(image);
+                }
             }
 
-            // Remove from database
+            // Remove from database (cascading delete will handle CollectableImages)
             DbContext.Collectables.Remove(collectable);
             await DbContext.SaveChangesAsync();
 

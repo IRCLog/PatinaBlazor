@@ -1,13 +1,18 @@
 using Microsoft.AspNetCore.Components.Forms;
+using PatinaBlazor.Data;
 
 namespace PatinaBlazor.Services
 {
     public interface IImageService
     {
         Task<ImageUploadResult> SaveImageAsync(IBrowserFile file, string subfolder = "collectables");
+        Task<List<ImageUploadResult>> SaveMultipleImagesAsync(IReadOnlyList<IBrowserFile> files, string subfolder = "collectables");
         Task<bool> DeleteImageAsync(string fileName, string subfolder = "collectables");
+        Task<bool> DeleteCollectableImageAsync(CollectableImage image);
         string GetImageUrl(string fileName, string subfolder = "collectables");
+        string GetImageUrl(CollectableImage image);
         bool IsValidImageFile(IBrowserFile file);
+        List<string> ValidateImageFiles(IReadOnlyList<IBrowserFile> files);
     }
 
     public class ImageService : IImageService
@@ -86,11 +91,11 @@ namespace PatinaBlazor.Services
             }
         }
 
-        public async Task<bool> DeleteImageAsync(string fileName, string subfolder = "collectables")
+        public Task<bool> DeleteImageAsync(string fileName, string subfolder = "collectables")
         {
             try
             {
-                if (string.IsNullOrEmpty(fileName)) return true;
+                if (string.IsNullOrEmpty(fileName)) return Task.FromResult(true);
 
                 var filePath = Path.Combine(_environment.WebRootPath, "uploads", subfolder, fileName);
                 if (File.Exists(filePath))
@@ -98,19 +103,74 @@ namespace PatinaBlazor.Services
                     File.Delete(filePath);
                     _logger.LogInformation("Image deleted successfully: {FileName}", fileName);
                 }
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting image file: {FileName}", fileName);
-                return false;
+                return Task.FromResult(false);
             }
+        }
+
+        public async Task<bool> DeleteCollectableImageAsync(CollectableImage image)
+        {
+            return await DeleteImageAsync(image.FileName);
         }
 
         public string GetImageUrl(string fileName, string subfolder = "collectables")
         {
             if (string.IsNullOrEmpty(fileName)) return string.Empty;
             return $"/uploads/{subfolder}/{fileName}";
+        }
+
+        public string GetImageUrl(CollectableImage image)
+        {
+            return GetImageUrl(image.FileName);
+        }
+
+        public async Task<List<ImageUploadResult>> SaveMultipleImagesAsync(IReadOnlyList<IBrowserFile> files, string subfolder = "collectables")
+        {
+            var results = new List<ImageUploadResult>();
+
+            foreach (var file in files)
+            {
+                var result = await SaveImageAsync(file, subfolder);
+                results.Add(result);
+
+                // If one fails, stop processing to avoid partial uploads
+                if (!result.Success)
+                {
+                    break;
+                }
+            }
+
+            return results;
+        }
+
+        public List<string> ValidateImageFiles(IReadOnlyList<IBrowserFile> files)
+        {
+            var errors = new List<string>();
+
+            if (files == null || !files.Any())
+            {
+                errors.Add("No files selected.");
+                return errors;
+            }
+
+            if (files.Count > 10) // Limit to 10 images per upload
+            {
+                errors.Add("Maximum 10 images can be uploaded at once.");
+            }
+
+            foreach (var file in files)
+            {
+                if (!IsValidImageFile(file))
+                {
+                    errors.Add($"Invalid file: {file.Name}. Please select valid image files (max 5MB each).");
+                }
+            }
+
+            return errors;
         }
     }
 

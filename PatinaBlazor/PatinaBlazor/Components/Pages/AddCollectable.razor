@@ -68,43 +68,74 @@
                     </div>
 
                     <div class="mb-4">
-                        <label for="image" class="form-label">Image</label>
-                        <InputFile id="image"
+                        <label for="images" class="form-label">Images</label>
+                        <InputFile id="images"
                                    class="form-control"
-                                   OnChange="OnImageSelected"
-                                   accept="image/*" />
+                                   OnChange="OnImagesSelected"
+                                   accept="image/*"
+                                   multiple />
                         <div class="form-text">
-                            <small>Upload an image for your collectable (max 5MB). Supported formats: JPG, PNG, GIF, WebP</small>
+                            <small>Upload up to 10 images for your collectable (max 5MB each). Supported formats: JPG, PNG, GIF, WebP. The first image will be set as the main image.</small>
                         </div>
 
-                        @if (!string.IsNullOrEmpty(imageUploadError))
+                        @if (imageUploadErrors.Any())
                         {
-                            <div class="text-danger mt-2">
-                                <i class="bi bi-exclamation-circle"></i> @imageUploadError
+                            <div class="alert alert-danger mt-2">
+                                <i class="bi bi-exclamation-circle"></i> Image Upload Errors:
+                                <ul class="mb-0 mt-2">
+                                    @foreach (var error in imageUploadErrors)
+                                    {
+                                        <li>@error</li>
+                                    }
+                                </ul>
                             </div>
                         }
 
-                        @if (selectedImageFile != null)
+                        @if (selectedImageFiles.Any())
                         {
                             <div class="mt-3">
-                                <div class="card">
-                                    <div class="card-body">
-                                        <h6 class="card-title">
-                                            <i class="bi bi-image"></i> Selected Image
-                                        </h6>
-                                        <p class="card-text mb-1">
-                                            <strong>File:</strong> @selectedImageFile.Name
-                                        </p>
-                                        <p class="card-text mb-1">
-                                            <strong>Size:</strong> @FormatFileSize(selectedImageFile.Size)
-                                        </p>
-                                        <p class="card-text mb-0">
-                                            <strong>Type:</strong> @selectedImageFile.ContentType
-                                        </p>
-                                        <button type="button" class="btn btn-sm btn-outline-danger mt-2" @onclick="ClearSelectedImage">
-                                            <i class="bi bi-x-circle"></i> Remove
-                                        </button>
-                                    </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="mb-0">
+                                        <i class="bi bi-images"></i> Selected Images (@selectedImageFiles.Count)
+                                    </h6>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearSelectedImages">
+                                        <i class="bi bi-x-circle"></i> Clear All
+                                    </button>
+                                </div>
+                                <div class="row">
+                                    @for (int i = 0; i < selectedImageFiles.Count; i++)
+                                    {
+                                        var index = i;
+                                        var file = selectedImageFiles[i];
+                                        <div class="col-md-6 col-lg-4 mb-3">
+                                            <div class="card">
+                                                <div class="card-body">
+                                                    @if (index == 0)
+                                                    {
+                                                        <span class="badge bg-primary mb-2">Main Image</span>
+                                                    }
+                                                    <h6 class="card-title">@file.Name</h6>
+                                                    <p class="card-text mb-1">
+                                                        <strong>Size:</strong> @FormatFileSize(file.Size)
+                                                    </p>
+                                                    <p class="card-text mb-2">
+                                                        <strong>Type:</strong> @file.ContentType
+                                                    </p>
+                                                    <div class="d-flex gap-2">
+                                                        @if (index > 0)
+                                                        {
+                                                            <button type="button" class="btn btn-sm btn-outline-primary" @onclick="(() => MoveImageToMain(index))">
+                                                                <i class="bi bi-star"></i> Set as Main
+                                                            </button>
+                                                        }
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveSelectedImage(index))">
+                                                            <i class="bi bi-x-circle"></i> Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         }
@@ -165,8 +196,8 @@
     private bool isSubmitting = false;
     private string toastMessage = string.Empty;
     private string collectableLink = string.Empty;
-    private IBrowserFile? selectedImageFile;
-    private string imageUploadError = string.Empty;
+    private List<IBrowserFile> selectedImageFiles = new();
+    private List<string> imageUploadErrors = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -201,25 +232,51 @@
                 CreatedDate = DateTime.UtcNow
             };
 
-            // Handle image upload if present
-            if (selectedImageFile != null)
-            {
-                var imageResult = await ImageService.SaveImageAsync(selectedImageFile);
-                if (imageResult.Success)
-                {
-                    collectable.ImageFileName = imageResult.FileName;
-                    collectable.ImageContentType = imageResult.ContentType;
-                    collectable.ImageFileSize = imageResult.FileSize;
-                }
-                else
-                {
-                    await ShowErrorToast($"Failed to upload image: {imageResult.ErrorMessage}");
-                    return;
-                }
-            }
-
+            // Save collectable first to get ID
             DbContext.Collectables.Add(collectable);
             await DbContext.SaveChangesAsync();
+
+            // Handle multiple image uploads if present
+            if (selectedImageFiles.Any())
+            {
+                var uploadResults = await ImageService.SaveMultipleImagesAsync(selectedImageFiles);
+
+                var successfulUploads = uploadResults.Where(r => r.Success).ToList();
+                var failedUploads = uploadResults.Where(r => !r.Success).ToList();
+
+                if (failedUploads.Any())
+                {
+                    var errorMessage = string.Join(", ", failedUploads.Select(f => f.ErrorMessage));
+                    await ShowErrorToast($"Failed to upload some images: {errorMessage}");
+
+                    // Clean up successful uploads if any failed
+                    foreach (var successResult in successfulUploads)
+                    {
+                        await ImageService.DeleteImageAsync(successResult.FileName);
+                    }
+                    return;
+                }
+
+                // Create CollectableImage records for successful uploads
+                for (int i = 0; i < successfulUploads.Count; i++)
+                {
+                    var result = successfulUploads[i];
+                    var collectableImage = new CollectableImage
+                    {
+                        CollectableId = collectable.Id,
+                        FileName = result.FileName,
+                        ContentType = result.ContentType,
+                        FileSize = result.FileSize,
+                        IsMainImage = i == 0, // First image is main
+                        DisplayOrder = i,
+                        CreatedDate = DateTime.UtcNow
+                    };
+
+                    DbContext.CollectableImages.Add(collectableImage);
+                }
+
+                await DbContext.SaveChangesAsync();
+            }
 
             collectableLink = "/my-collectables";
             await ShowSuccessToast($"Successfully added '{collectable.Description}' to your collection!");
@@ -243,32 +300,50 @@
         newCollectable = new CollectableFormModel();
         toastMessage = string.Empty;
         collectableLink = string.Empty;
-        selectedImageFile = null;
-        imageUploadError = string.Empty;
+        selectedImageFiles.Clear();
+        imageUploadErrors.Clear();
     }
 
-    private void OnImageSelected(InputFileChangeEventArgs e)
+    private void OnImagesSelected(InputFileChangeEventArgs e)
     {
-        selectedImageFile = e.File;
-        imageUploadError = string.Empty;
+        selectedImageFiles.Clear();
+        imageUploadErrors.Clear();
 
-        if (selectedImageFile != null)
+        if (e.FileCount > 0)
         {
-            if (!ImageService.IsValidImageFile(selectedImageFile))
-            {
-                imageUploadError = "Invalid file. Please select a valid image file (max 5MB).";
-                selectedImageFile = null;
-            }
+            selectedImageFiles.AddRange(e.GetMultipleFiles());
+            imageUploadErrors = ImageService.ValidateImageFiles(selectedImageFiles);
         }
 
         StateHasChanged();
     }
 
-    private void ClearSelectedImage()
+    private void ClearSelectedImages()
     {
-        selectedImageFile = null;
-        imageUploadError = string.Empty;
+        selectedImageFiles.Clear();
+        imageUploadErrors.Clear();
         StateHasChanged();
+    }
+
+    private void RemoveSelectedImage(int index)
+    {
+        if (index >= 0 && index < selectedImageFiles.Count)
+        {
+            selectedImageFiles.RemoveAt(index);
+            imageUploadErrors = ImageService.ValidateImageFiles(selectedImageFiles);
+            StateHasChanged();
+        }
+    }
+
+    private void MoveImageToMain(int index)
+    {
+        if (index > 0 && index < selectedImageFiles.Count)
+        {
+            var imageToMove = selectedImageFiles[index];
+            selectedImageFiles.RemoveAt(index);
+            selectedImageFiles.Insert(0, imageToMove);
+            StateHasChanged();
+        }
     }
 
     private string FormatFileSize(long bytes)
