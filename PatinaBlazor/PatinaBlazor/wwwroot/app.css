@@ -96,12 +96,14 @@ html, body {
     background-color: #6c757d !important;
     font-weight: 600 !important;
     border-radius: 0.5rem !important;
+    margin: 0 0.5rem !important;
+    width: calc(100% - 1rem) !important;
 }
 
-.mobile-nav a,
-.mobile-nav a:link,
-.mobile-nav a:visited,
-.mobile-nav button,
+.mobile-nav .mobile-nav-item a,
+.mobile-nav .mobile-nav-item a:link,
+.mobile-nav .mobile-nav-item a:visited,
+.mobile-nav .mobile-nav-item button,
 .mobile-nav .mobile-nav-link,
 .mobile-nav .custom-mobile-nav-link {
     color: #9ca3af !important;
@@ -109,22 +111,36 @@ html, body {
     background-color: transparent !important;
 }
 
-.mobile-nav a:hover,
-.mobile-nav button:hover,
+/* Keep mobile brand/logo links with their original styling */
+.mobile-nav .mobile-brand {
+    color: var(--text-primary) !important;
+    background-color: transparent !important;
+}
+
+.mobile-nav .mobile-brand:hover {
+    color: var(--accent-primary) !important;
+    background-color: transparent !important;
+}
+
+.mobile-nav .mobile-nav-item a:hover,
+.mobile-nav .mobile-nav-item button:hover,
 .mobile-nav .mobile-nav-link:hover,
 .mobile-nav .custom-mobile-nav-link:hover {
     color: var(--text-primary) !important;
     background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-.mobile-nav a.active,
-.mobile-nav button.active,
+.mobile-nav .mobile-nav-item a.active,
+.mobile-nav .mobile-nav-item button.active,
 .mobile-nav .mobile-nav-link.active,
 .mobile-nav .custom-mobile-nav-link.active {
     color: black !important;
     background-color: #6c757d !important;
     font-weight: 600 !important;
     border-radius: 0.5rem !important;
+    width: calc(100vw - 2rem) !important;
+    margin: 0 -1rem !important;
+    padding: 1rem !important;
 }
 
 /* Force dark theme on all elements */

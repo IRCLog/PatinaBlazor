@@ -56,9 +56,18 @@ builder.Services.AddScoped<IImageService, ImageService>();
 
 var app = builder.Build();
 
-// Seed the database with default user
+// Apply pending database migrations and seed data
 using (var scope = app.Services.CreateScope())
 {
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    // Apply any pending migrations (production only)
+    if (!app.Environment.IsDevelopment())
+    {
+        await context.Database.MigrateAsync();
+    }
+
+    // Seed the database with default user
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
 }
