@@ -80,16 +80,11 @@ jobs:
         fi
       shell: bash
     
-    - name: Deploy via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    - name: Deploy via FTP (Alternative Action)
+      uses: sebastianpopp/ftp-action@releases/v2
       with:
-        server: ${{ secrets.FTP_HOST }}
-        username: ${{ secrets.FTP_USERNAME }}
+        host: ${{ secrets.FTP_HOST }}
+        user: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./publish/
-        server-dir: /
-        exclude: |
-          **/*.pdb
-          **/BlazorDebugProxy/**
-          **/appsettings.Development.json
-          **/*Debug*
+        localDir: "./publish/"
+        remoteDir: "/"
