@@ -23,15 +23,18 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '8.0.x'
-    
+
+    - name: Clear NuGet cache
+      run: dotnet nuget locals all --clear
+
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore --force --no-cache
     
     - name: Build
       run: dotnet build --no-restore -c Release
     
     - name: Publish
-      run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build --no-self-contained -p:PublishSingleFile=false -p:PublishTrimmed=false
+      run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
 
     - name: Clean up debug files and localization
       run: |
