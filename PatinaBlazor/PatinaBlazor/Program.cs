@@ -61,11 +61,8 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-    // Apply any pending migrations (production only)
-    if (!app.Environment.IsDevelopment())
-    {
-        await context.Database.MigrateAsync();
-    }
+    // Apply any pending migrations (all environments)
+    await context.Database.MigrateAsync();
 
     // Seed the database with default user
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
