@@ -7,7 +7,7 @@
     <div class="sidebar-header">
         <div class="brand @(isCollapsed ? "collapsed" : "")">
             <NavLink href="" Match="NavLinkMatch.All" class="brand-link">
-                <span class="brand-text">Patina</span>
+                <img src="/img/SilzellNetLogo.png" alt="SilzellNet" class="brand-logo" />
             </NavLink>
         </div>
         <button class="collapse-btn" @onclick="ToggleSidebar" type="button">
@@ -113,7 +113,9 @@
 <!-- Mobile Navigation -->
 <div class="mobile-nav">
     <div class="mobile-header">
-        <NavLink href="" Match="NavLinkMatch.All" class="mobile-brand">Patina</NavLink>
+        <NavLink href="" Match="NavLinkMatch.All" class="mobile-brand">
+            <img src="/img/SilzellNetLogo.png" alt="SilzellNet" class="mobile-brand-logo" />
+        </NavLink>
         <button class="hamburger @(isMobileOpen ? "open" : "")" @onclick="ToggleMobileNav" type="button">
             <span></span>
             <span></span>
