@@ -1,0 +1,162 @@
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@inject IJSRuntime JSRuntime
+@inject IImageService ImageService
+
+<div class="modal @(isVisible ? "show d-block" : "d-none")" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" style="@(isVisible ? "background-color: rgba(0,0,0,0.5);" : "")" @onclick="CloseModal">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content bg-dark" @onclick:stopPropagation="true">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white" id="imageModalLabel">
+                    Image @(currentIndex + 1) of @imageCount
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="CloseModal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 position-relative">
+                @if (currentImage != null)
+                {
+                    <div class="d-flex align-items-center justify-content-center" style="min-height: 400px;">
+                        <img src="@GetImageSource()"
+                             alt="@(Description ?? "Image")"
+                             class="img-fluid"
+                             style="max-height: 80vh; max-width: 100%; object-fit: contain;" />
+                    </div>
+
+                    @if (imageCount > 1)
+                    {
+                        <button type="button"
+                                class="btn btn-light position-absolute top-50 start-0 translate-middle-y ms-3"
+                                style="z-index: 1055;"
+                                @onclick="PreviousImage">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-light position-absolute top-50 end-0 translate-middle-y me-3"
+                                style="z-index: 1055;"
+                                @onclick="NextImage">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    }
+                }
+            </div>
+            @if (currentImage != null && ShowImageInfo)
+            {
+                <div class="modal-footer border-secondary">
+                    <div class="text-white-50 small">
+                        @if (currentImage is CollectableImage collectableImage)
+                        {
+                            <span>Size: @FormatFileSize(collectableImage.FileSize)</span>
+                            <span class="ms-3">Type: @collectableImage.ContentType</span>
+                            @if (collectableImage.IsMainImage)
+                            {
+                                <span class="badge bg-primary ms-3">Main Image</span>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool ShowImageInfo { get; set; } = true;
+    [Parameter] public string? Description { get; set; }
+
+    private List<object> images = new();
+    private object? currentImage;
+    private int currentIndex = 0;
+    private int imageCount => images.Count;
+    private bool isVisible = false;
+
+    public async Task ShowModal(List<CollectableImage> collectableImages, int startIndex = 0)
+    {
+        images = collectableImages.Cast<object>().ToList();
+        currentIndex = Math.Max(0, Math.Min(startIndex, images.Count - 1));
+        currentImage = images.Count > 0 ? images[currentIndex] : null;
+        isVisible = true;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    public async Task ShowModal(List<string> imageUrls, int startIndex = 0)
+    {
+        images = imageUrls.Cast<object>().ToList();
+        currentIndex = Math.Max(0, Math.Min(startIndex, images.Count - 1));
+        currentImage = images.Count > 0 ? images[currentIndex] : null;
+        isVisible = true;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    private void NextImage()
+    {
+        if (images.Count > 1)
+        {
+            currentIndex = (currentIndex + 1) % images.Count;
+            currentImage = images[currentIndex];
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousImage()
+    {
+        if (images.Count > 1)
+        {
+            currentIndex = currentIndex == 0 ? images.Count - 1 : currentIndex - 1;
+            currentImage = images[currentIndex];
+            StateHasChanged();
+        }
+    }
+
+    private string GetImageSource()
+    {
+        return currentImage switch
+        {
+            CollectableImage collectableImage => ImageService.GetImageUrl(collectableImage),
+            string imageUrl => imageUrl,
+            _ => string.Empty
+        };
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] suffixes = { "B", "KB", "MB", "GB" };
+        int counter = 0;
+        decimal number = bytes;
+
+        while (Math.Round(number / 1024) >= 1)
+        {
+            number /= 1024;
+            counter++;
+        }
+
+        return $"{number:n1}{suffixes[counter]}";
+    }
+
+    private void CloseModal()
+    {
+        isVisible = false;
+        StateHasChanged();
+    }
+}
+
+<script>
+    // Add keyboard navigation
+    document.addEventListener('keydown', function(e) {
+        const modal = document.getElementById('imageModal');
+        if (modal && modal.classList.contains('show')) {
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = modal.querySelector('.btn:has(.bi-chevron-left)');
+                if (prevBtn) prevBtn.click();
+            } else if (e.key === 'ArrowRight') {
+                const nextBtn = modal.querySelector('.btn:has(.bi-chevron-right)');
+                if (nextBtn) nextBtn.click();
+            } else if (e.key === 'Escape') {
+                const closeBtn = modal.querySelector('.btn-close');
+                if (closeBtn) closeBtn.click();
+            }
+        }
+    });
+</script>

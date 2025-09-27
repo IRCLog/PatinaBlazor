@@ -14,6 +14,8 @@
 @inject IJSRuntime JSRuntime
 @inject IImageService ImageService
 
+<ImageModal @ref="imageModal" Description="@newCollectable.Description" ShowImageInfo="false" />
+
 <PageTitle>Add New Collectable</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -98,7 +100,7 @@
                                     <h6 class="mb-0">
                                         <i class="bi bi-images"></i> Selected Images (@selectedImageFiles.Count)
                                     </h6>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearSelectedImages">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(async () => await ClearSelectedImages())">
                                         <i class="bi bi-x-circle"></i> Clear All
                                     </button>
                                 </div>
@@ -114,7 +116,7 @@
                                                     {
                                                         <span class="badge bg-primary mb-2">Main Image</span>
                                                     }
-                                                    <h6 class="card-title">@file.Name</h6>
+                                                    <h6 class="card-title" style="cursor: pointer;" @onclick="(() => ShowSelectedImageModal(index))">@file.Name</h6>
                                                     <p class="card-text mb-1">
                                                         <strong>Size:</strong> @FormatFileSize(file.Size)
                                                     </p>
@@ -128,7 +130,7 @@
                                                                 <i class="bi bi-star"></i> Set as Main
                                                             </button>
                                                         }
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveSelectedImage(index))">
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(async () => await RemoveSelectedImage(index))">
                                                             <i class="bi bi-x-circle"></i> Remove
                                                         </button>
                                                     </div>
@@ -142,7 +144,7 @@
                     </div>
 
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <button type="button" class="btn btn-secondary me-md-2" @onclick="ResetForm">
+                        <button type="button" class="btn btn-secondary me-md-2" @onclick="@(async () => await ResetForm())">
                             <i class="bi bi-x-circle"></i> Clear
                         </button>
                         <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
@@ -198,6 +200,8 @@
     private string collectableLink = string.Empty;
     private List<IBrowserFile> selectedImageFiles = new();
     private List<string> imageUploadErrors = new();
+    private ImageModal imageModal = default!;
+    private List<string> imagePreviewUrls = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -295,40 +299,49 @@
         }
     }
 
-    private void ResetForm()
+    private async Task ResetForm()
     {
         newCollectable = new CollectableFormModel();
         toastMessage = string.Empty;
         collectableLink = string.Empty;
-        selectedImageFiles.Clear();
-        imageUploadErrors.Clear();
+        await ClearSelectedImages();
     }
 
-    private void OnImagesSelected(InputFileChangeEventArgs e)
+    private async Task OnImagesSelected(InputFileChangeEventArgs e)
     {
         selectedImageFiles.Clear();
         imageUploadErrors.Clear();
+        await ClearImagePreviewUrls();
 
         if (e.FileCount > 0)
         {
             selectedImageFiles.AddRange(e.GetMultipleFiles());
             imageUploadErrors = ImageService.ValidateImageFiles(selectedImageFiles);
+            await CreateImagePreviewUrls();
         }
 
         StateHasChanged();
     }
 
-    private void ClearSelectedImages()
+    private async Task ClearSelectedImages()
     {
         selectedImageFiles.Clear();
         imageUploadErrors.Clear();
+        await ClearImagePreviewUrls();
         StateHasChanged();
     }
 
-    private void RemoveSelectedImage(int index)
+    private async Task RemoveSelectedImage(int index)
     {
         if (index >= 0 && index < selectedImageFiles.Count)
         {
+            // Revoke the URL for the removed image
+            if (index < imagePreviewUrls.Count)
+            {
+                await JSRuntime.InvokeVoidAsync("URL.revokeObjectURL", imagePreviewUrls[index]);
+                imagePreviewUrls.RemoveAt(index);
+            }
+
             selectedImageFiles.RemoveAt(index);
             imageUploadErrors = ImageService.ValidateImageFiles(selectedImageFiles);
             StateHasChanged();
@@ -377,6 +390,34 @@
         await JSRuntime.InvokeVoidAsync("showToast", "errorToast");
     }
 
+    private async Task CreateImagePreviewUrls()
+    {
+        await ClearImagePreviewUrls();
+
+        foreach (var file in selectedImageFiles)
+        {
+            var url = await JSRuntime.InvokeAsync<string>("createObjectURL", file);
+            imagePreviewUrls.Add(url);
+        }
+    }
+
+    private async Task ClearImagePreviewUrls()
+    {
+        foreach (var url in imagePreviewUrls)
+        {
+            await JSRuntime.InvokeVoidAsync("URL.revokeObjectURL", url);
+        }
+        imagePreviewUrls.Clear();
+    }
+
+    private async Task ShowSelectedImageModal(int index)
+    {
+        if (imagePreviewUrls.Count > index)
+        {
+            await imageModal.ShowModal(imagePreviewUrls, index);
+        }
+    }
+
     public class CollectableFormModel
     {
         [Required(ErrorMessage = "Description is required")]
@@ -402,5 +443,9 @@
             });
             toast.show();
         }
+    };
+
+    window.createObjectURL = (file) => {
+        return URL.createObjectURL(file);
     };
 </script>
