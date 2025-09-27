@@ -2,11 +2,9 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<NavMenu @rendermode="InteractiveServer" />
 
+<div class="page">
     <main>
         <article class="content">
             @Body

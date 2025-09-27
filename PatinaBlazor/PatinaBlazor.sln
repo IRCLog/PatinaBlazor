@@ -4,8 +4,6 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PatinaBlazor", "PatinaBlazor\PatinaBlazor.csproj", "{70185B44-266E-56F8-1F84-43564F5D4F9F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PatinaBlazor.Client", "PatinaBlazor.Client\PatinaBlazor.Client.csproj", "{C3846341-9D7B-A93D-904C-130BB8843D85}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -16,10 +14,6 @@ Global
 		{70185B44-266E-56F8-1F84-43564F5D4F9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70185B44-266E-56F8-1F84-43564F5D4F9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70185B44-266E-56F8-1F84-43564F5D4F9F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C3846341-9D7B-A93D-904C-130BB8843D85}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C3846341-9D7B-A93D-904C-130BB8843D85}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C3846341-9D7B-A93D-904C-130BB8843D85}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C3846341-9D7B-A93D-904C-130BB8843D85}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

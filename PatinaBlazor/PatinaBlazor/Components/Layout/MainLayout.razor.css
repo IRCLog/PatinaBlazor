@@ -1,84 +1,56 @@
-/* Main Page Layout */
+/* Main Page Layout - Account for fixed navigation */
 .page {
     position: relative;
-    display: flex;
-    flex-direction: column;
     min-height: 100vh;
     background-color: var(--bg-primary);
 }
 
-/* Main Content Area */
-main {
-    flex: 1;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    padding: 2rem;
+/* Desktop Layout - Account for fixed sidebar */
+@media (min-width: 992px) {
+    .page {
+        margin-left: 280px; /* Width of expanded sidebar */
+        transition: margin-left 0.3s ease;
+    }
+
+    main {
+        padding: 2.5rem 3rem;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        min-height: 100vh;
+    }
 }
 
+/* Mobile Layout - Account for fixed header */
+@media (max-width: 991.98px) {
+    .page {
+        margin-left: 0;
+        padding-top: 60px; /* Height of mobile header */
+    }
+
+    main {
+        padding: 1.5rem 1rem;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        min-height: calc(100vh - 60px);
+    }
+}
+
+/* Content Area */
 .content {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
 }
 
-/* Sidebar (Desktop Only) */
-.sidebar {
-    background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 70%);
-    border-right: 1px solid var(--border-primary);
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Desktop Layout (Large screens) */
-@media (min-width: 1024px) {
+/* Smaller mobile adjustments */
+@media (max-width: 575.98px) {
     .page {
-        flex-direction: row;
+        padding-top: 55px; /* Height of smaller mobile header */
     }
 
-    .sidebar {
-        height: 100vh;
-        position: sticky;
-        top: 0;
-        flex-shrink: 0;
-        transition: width 0.3s ease;
-        overflow: visible;
-    }
-
-    main {
-        padding: 2.5rem 3rem;
-        flex: 1;
-        min-width: 0;
-    }
-}
-
-/* Tablet Layout */
-@media (max-width: 1023px) and (min-width: 768px) {
-    .sidebar {
-        display: contents;
-    }
-
-    main {
-        padding-top: 0;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        padding-bottom: 2rem;
-    }
-}
-
-/* Mobile Layout */
-@media (max-width: 767px) {
-    .sidebar {
-        display: contents;
-    }
-
-    main {
-        padding: 1.5rem 1rem;
-    }
-}
-
-/* Extra small screens */
-@media (max-width: 480px) {
     main {
         padding: 1rem 0.75rem;
+        min-height: calc(100vh - 55px);
     }
 }
 

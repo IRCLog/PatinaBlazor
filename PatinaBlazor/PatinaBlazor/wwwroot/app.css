@@ -25,7 +25,7 @@ html, body {
     font-size: 14px;
 }
 
-/* Bootstrap overrides */
+/* Bootstrap overrides - only target Bootstrap components */
 .navbar, .nav, .navbar-nav {
     background-color: var(--bg-secondary) !important;
 }
@@ -34,15 +34,16 @@ html, body {
     color: var(--text-primary) !important;
 }
 
-.nav-link {
+/* Only target Bootstrap nav components, not custom nav */
+.navbar .nav-link, .nav .nav-link {
     color: var(--text-secondary) !important;
 }
 
-.nav-link:hover {
+.navbar .nav-link:hover, .nav .nav-link:hover {
     color: var(--text-primary) !important;
 }
 
-.nav-link.active {
+.navbar .nav-link.active, .nav .nav-link.active {
     color: var(--accent-secondary) !important;
 }
 
