@@ -60,11 +60,12 @@ jobs:
         rm -rf ./publish/zh-Hans/
         rm -rf ./publish/zh-Hant/
 
-        # List remaining files for debugging
-        echo "Files being deployed:"
-        ls -la ./publish/ | head -20
+        # Count files for debugging
         echo "Total files in publish directory:"
         find ./publish -type f | wc -l
+        echo "Main application files:"
+        ls ./publish/*.dll 2>/dev/null | head -5 || echo "No .dll files found"
+        echo "Cleanup completed successfully"
       shell: bash
     
     - name: Replace database password
