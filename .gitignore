@@ -1,0 +1,37 @@
+# Build results
+**/bin/
+**/obj/
+
+# Database files
+**/*.db
+**/*.db-*
+
+# User uploads
+**/wwwroot/uploads/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.cache
+
+# Temporary files
+**/tmp/
+**/temp/
+
+# IDE and Editor folders
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
