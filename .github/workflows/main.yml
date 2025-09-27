@@ -31,7 +31,7 @@ jobs:
       run: dotnet build --no-restore -c Release
     
     - name: Publish
-      run: dotnet publish ./PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
+      run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
     
     - name: Replace database password
       run: |
