@@ -31,9 +31,9 @@ jobs:
       run: dotnet build --no-restore -c Release
     
     - name: Publish
-      run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
+      run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build --no-self-contained -p:PublishSingleFile=false -p:PublishTrimmed=false
 
-    - name: Clean up debug files
+    - name: Clean up debug files and localization
       run: |
         # Remove debugging and development files that shouldn't be deployed
         rm -rf ./publish/BlazorDebugProxy/
@@ -41,6 +41,25 @@ jobs:
         rm -f ./publish/appsettings.Development.json
         find ./publish -name "*.pdb" -delete
         find ./publish -name "*Debug*" -delete
+
+        # Remove localization folders that may cause FTP issues
+        rm -rf ./publish/cs/
+        rm -rf ./publish/de/
+        rm -rf ./publish/es/
+        rm -rf ./publish/fr/
+        rm -rf ./publish/it/
+        rm -rf ./publish/ja/
+        rm -rf ./publish/ko/
+        rm -rf ./publish/pl/
+        rm -rf ./publish/pt/
+        rm -rf ./publish/ru/
+        rm -rf ./publish/zh/
+        rm -rf ./publish/zh-Hans/
+        rm -rf ./publish/zh-Hant/
+
+        # List remaining files for debugging
+        echo "Files being deployed:"
+        find ./publish -type f | head -20
       shell: bash
     
     - name: Replace database password
@@ -80,3 +99,16 @@ jobs:
           **/BlazorDebugProxy/**
           **/appsettings.Development.json
           **/*Debug*
+          **/cs/**
+          **/de/**
+          **/es/**
+          **/fr/**
+          **/it/**
+          **/ja/**
+          **/ko/**
+          **/pl/**
+          **/pt/**
+          **/ru/**
+          **/zh/**
+          **/zh-Hans/**
+          **/zh-Hant/**
