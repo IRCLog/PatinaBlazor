@@ -62,7 +62,9 @@ jobs:
 
         # List remaining files for debugging
         echo "Files being deployed:"
-        find ./publish -type f | head -20
+        ls -la ./publish/ | head -20
+        echo "Total files in publish directory:"
+        find ./publish -type f | wc -l
       shell: bash
     
     - name: Replace database password
