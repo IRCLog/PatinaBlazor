@@ -32,6 +32,16 @@ jobs:
     
     - name: Publish
       run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
+
+    - name: Clean up debug files
+      run: |
+        # Remove debugging and development files that shouldn't be deployed
+        rm -rf ./publish/BlazorDebugProxy/
+        rm -f ./publish/*.pdb
+        rm -f ./publish/appsettings.Development.json
+        find ./publish -name "*.pdb" -delete
+        find ./publish -name "*Debug*" -delete
+      shell: bash
     
     - name: Replace database password
       run: |
@@ -65,3 +75,8 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./publish/
         server-dir: /
+        exclude: |
+          **/*.pdb
+          **/BlazorDebugProxy/**
+          **/appsettings.Development.json
+          **/*Debug*
