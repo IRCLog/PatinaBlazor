@@ -93,8 +93,9 @@ jobs:
         set net:timeout 30;
         set net:max-retries 3;
         set ftp:list-options -a;
+        set file:charset utf-8;
         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        mirror -R --verbose --delete ./publish/ ./;
+        mirror -R --verbose --delete --no-perms ./publish/ ./;
         bye
         "
       shell: bash
