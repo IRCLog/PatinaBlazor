@@ -1,4 +1,4 @@
-/* UPDATED CSS - Cache bust v4.0 - Fixed navigation display - FORCE REFRESH */
+/* UPDATED CSS - Cache bust v7.0 - Added custom nav classes with high specificity - FORCE REFRESH */
 /* BASE STYLES - Default to desktop sidebar, mobile will override */
 .sidebar-container {
     display: flex;
@@ -150,11 +150,11 @@
     margin: 0.25rem 0.5rem;
 }
 
-.nav-link {
+.sidebar-container .nav-link {
     display: flex;
     align-items: center;
     padding: 0.75rem 1rem;
-    color: #9ca3af;
+    color: #9ca3af !important;
     text-decoration: none;
     border-radius: 0.5rem;
     font-weight: 500;
@@ -173,20 +173,57 @@
     padding: 0.75rem 0.5rem;
 }
 
-.nav-link:hover {
+.sidebar-container .nav-link:hover {
     background-color: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     text-decoration: none;
 }
 
-.nav-link.active {
+.sidebar-container .nav-link.active {
     background-color: #6c757d !important;
     color: black !important;
     font-weight: 600;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.nav-link.active:hover {
+.sidebar-container .nav-link.active:hover {
+    background-color: #6c757d !important;
+    color: black !important;
+}
+
+/* ===== CUSTOM NAV LINK CLASSES - HIGHEST SPECIFICITY ===== */
+.sidebar-container .nav-item .custom-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: #9ca3af !important;
+    text-decoration: none !important;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    border: none;
+    background: transparent !important;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+}
+
+.sidebar-container .nav-item .custom-nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+}
+
+.sidebar-container .nav-item .custom-nav-link.active {
+    background-color: #6c757d !important;
+    color: black !important;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-container .nav-item .custom-nav-link.active:hover {
     background-color: #6c757d !important;
     color: black !important;
 }
@@ -355,11 +392,11 @@
     margin: 0.5rem 0;
 }
 
-.mobile-nav-link {
+.mobile-nav .mobile-nav-link {
     display: flex;
     align-items: center;
     padding: 1rem;
-    color: #9ca3af;
+    color: #9ca3af !important;
     text-decoration: none;
     border-radius: 0.5rem;
     font-weight: 500;
@@ -372,13 +409,43 @@
     cursor: pointer;
 }
 
-.mobile-nav-link:hover {
+.mobile-nav .mobile-nav-link:hover {
     background-color: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
+    color: var(--text-primary) !important;
     text-decoration: none;
 }
 
-.mobile-nav-link.active {
+.mobile-nav .mobile-nav-link.active {
+    background-color: #6c757d !important;
+    color: black !important;
+    font-weight: 600;
+}
+
+/* ===== CUSTOM MOBILE NAV LINK CLASSES - HIGHEST SPECIFICITY ===== */
+.mobile-nav .mobile-nav-item .custom-mobile-nav-link {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    color: #9ca3af !important;
+    text-decoration: none !important;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    border: none;
+    background: transparent !important;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mobile-nav .mobile-nav-item .custom-mobile-nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary) !important;
+    text-decoration: none !important;
+}
+
+.mobile-nav .mobile-nav-item .custom-mobile-nav-link.active {
     background-color: #6c757d !important;
     color: black !important;
     font-weight: 600;

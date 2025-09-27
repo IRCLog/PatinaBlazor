@@ -34,17 +34,97 @@ html, body {
     color: var(--text-primary) !important;
 }
 
-/* Only target Bootstrap nav components, not custom nav */
-.navbar .nav-link, .nav .nav-link {
+/* Only target Bootstrap navbar components, not custom sidebar nav */
+.navbar .nav-link {
     color: var(--text-secondary) !important;
 }
 
-.navbar .nav-link:hover, .nav .nav-link:hover {
+.navbar .nav-link:hover {
     color: var(--text-primary) !important;
 }
 
-.navbar .nav-link.active, .nav .nav-link.active {
+.navbar .nav-link.active {
     color: var(--accent-secondary) !important;
+}
+
+/* FORCE OVERRIDE - Custom Navigation Colors - HIGHEST PRIORITY */
+.sidebar-container .nav-item a,
+.sidebar-container .nav-item a:link,
+.sidebar-container .nav-item a:visited,
+.sidebar-container .nav-item button,
+.sidebar-container .nav-link,
+.sidebar-container .custom-nav-link {
+    color: #9ca3af !important;
+    text-decoration: none !important;
+    background-color: transparent !important;
+}
+
+/* Keep brand/logo links with their original styling */
+.sidebar-container .brand a,
+.sidebar-container .brand-link {
+    color: var(--text-primary) !important;
+    background-color: transparent !important;
+}
+
+.sidebar-container .brand a:hover,
+.sidebar-container .brand-link:hover {
+    color: var(--accent-primary) !important;
+    background-color: transparent !important;
+}
+
+/* Ensure icons always have transparent backgrounds */
+.sidebar-container i,
+.sidebar-container .bi,
+.mobile-nav i,
+.mobile-nav .bi {
+    background-color: transparent !important;
+}
+
+.sidebar-container .nav-item a:hover,
+.sidebar-container .nav-item button:hover,
+.sidebar-container .nav-link:hover,
+.sidebar-container .custom-nav-link:hover {
+    color: var(--text-primary) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar-container .nav-item a.active,
+.sidebar-container .nav-item button.active,
+.sidebar-container .nav-link.active,
+.sidebar-container .custom-nav-link.active {
+    color: black !important;
+    background-color: #6c757d !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+}
+
+.mobile-nav a,
+.mobile-nav a:link,
+.mobile-nav a:visited,
+.mobile-nav button,
+.mobile-nav .mobile-nav-link,
+.mobile-nav .custom-mobile-nav-link {
+    color: #9ca3af !important;
+    text-decoration: none !important;
+    background-color: transparent !important;
+}
+
+.mobile-nav a:hover,
+.mobile-nav button:hover,
+.mobile-nav .mobile-nav-link:hover,
+.mobile-nav .custom-mobile-nav-link:hover {
+    color: var(--text-primary) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.mobile-nav a.active,
+.mobile-nav button.active,
+.mobile-nav .mobile-nav-link.active,
+.mobile-nav .custom-mobile-nav-link.active {
+    color: black !important;
+    background-color: #6c757d !important;
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
 }
 
 /* Force dark theme on all elements */
