@@ -36,35 +36,23 @@ jobs:
     - name: Publish
       run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
 
-    - name: Clean up debug files and localization
+    - name: Clean up debug files only
       run: |
-        # Remove debugging and development files that shouldn't be deployed
+        # Remove only debugging files that shouldn't be deployed, keep localization
+        echo "Removing debug files..."
         rm -rf ./publish/BlazorDebugProxy/
         rm -f ./publish/*.pdb
         rm -f ./publish/appsettings.Development.json
-        find ./publish -name "*.pdb" -delete
-        find ./publish -name "*Debug*" -delete
+        find ./publish -name "*.pdb" -delete 2>/dev/null || true
+        find ./publish -name "*Debug*" -type f -delete 2>/dev/null || true
 
-        # Remove localization folders that may cause FTP issues
-        rm -rf ./publish/cs/
-        rm -rf ./publish/de/
-        rm -rf ./publish/es/
-        rm -rf ./publish/fr/
-        rm -rf ./publish/it/
-        rm -rf ./publish/ja/
-        rm -rf ./publish/ko/
-        rm -rf ./publish/pl/
-        rm -rf ./publish/pt/
-        rm -rf ./publish/ru/
-        rm -rf ./publish/zh/
-        rm -rf ./publish/zh-Hans/
-        rm -rf ./publish/zh-Hant/
+        # Wait for file operations to complete
+        sync
+        sleep 2
 
         # Count files for debugging
-        echo "Total files in publish directory:"
+        echo "Total files in publish directory after cleanup:"
         find ./publish -type f | wc -l
-        echo "Main application files:"
-        ls ./publish/*.dll 2>/dev/null | head -5 || echo "No .dll files found"
         echo "Cleanup completed successfully"
       shell: bash
     
@@ -105,16 +93,3 @@ jobs:
           **/BlazorDebugProxy/**
           **/appsettings.Development.json
           **/*Debug*
-          **/cs/**
-          **/de/**
-          **/es/**
-          **/fr/**
-          **/it/**
-          **/ja/**
-          **/ko/**
-          **/pl/**
-          **/pt/**
-          **/ru/**
-          **/zh/**
-          **/zh-Hans/**
-          **/zh-Hant/**
