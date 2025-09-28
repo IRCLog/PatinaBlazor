@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PatinaBlazor.Components;
@@ -45,6 +46,18 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IImageService, ImageService>();
+
+// Configure request size limits for file uploads (15MB)
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 15 * 1024 * 1024; // 15MB
+    options.ValueLengthLimit = 15 * 1024 * 1024; // 15MB
+});
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 15 * 1024 * 1024; // 15MB
+});
 
 var app = builder.Build();
 

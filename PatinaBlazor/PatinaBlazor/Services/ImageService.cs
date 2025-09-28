@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Forms;
 using PatinaBlazor.Data;
+using SkiaSharp;
 
 namespace PatinaBlazor.Services
 {
@@ -19,7 +20,7 @@ namespace PatinaBlazor.Services
     {
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<ImageService> _logger;
-        private readonly long _maxFileSize = 5 * 1024 * 1024; // 5MB
+        private readonly long _maxFileSize = 15 * 1024 * 1024; // 15MB
         private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
         public ImageService(IWebHostEnvironment environment, ILogger<ImageService> logger)
@@ -52,7 +53,7 @@ namespace PatinaBlazor.Services
                     return new ImageUploadResult
                     {
                         Success = false,
-                        ErrorMessage = "Invalid file. Please upload a valid image file (max 5MB)."
+                        ErrorMessage = "Invalid file. Please upload a valid image file (max 15MB)."
                     };
                 }
 
@@ -64,10 +65,9 @@ namespace PatinaBlazor.Services
                 var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads", subfolder);
                 Directory.CreateDirectory(uploadsPath);
 
-                // Save file
+                // Save file with optional compression
                 var filePath = Path.Combine(uploadsPath, fileName);
-                using var stream = File.Create(filePath);
-                await file.OpenReadStream(_maxFileSize).CopyToAsync(stream);
+                await SaveImageWithCompressionAsync(file, filePath);
 
                 _logger.LogInformation("Image saved successfully: {FileName}", fileName);
 
@@ -88,6 +88,64 @@ namespace PatinaBlazor.Services
                     Success = false,
                     ErrorMessage = "An error occurred while uploading the image."
                 };
+            }
+        }
+
+        private async Task SaveImageWithCompressionAsync(IBrowserFile file, string filePath)
+        {
+            const long compressionThreshold = 3 * 1024 * 1024; // 3MB
+
+            // If file is smaller than threshold, save directly
+            if (file.Size <= compressionThreshold)
+            {
+                using var stream = File.Create(filePath);
+                await file.OpenReadStream(_maxFileSize).CopyToAsync(stream);
+                return;
+            }
+
+            // Compress the image
+            try
+            {
+                using var inputStream = file.OpenReadStream(_maxFileSize);
+                using var skData = SKData.Create(inputStream);
+                using var skBitmap = SKBitmap.Decode(skData);
+
+                if (skBitmap == null)
+                {
+                    // If we can't decode as image, save as-is
+                    using var stream = File.Create(filePath);
+                    inputStream.Position = 0;
+                    await inputStream.CopyToAsync(stream);
+                    return;
+                }
+
+                // Calculate new dimensions (max 2048px on either side)
+                var maxDimension = 2048;
+                var scale = Math.Min((float)maxDimension / skBitmap.Width, (float)maxDimension / skBitmap.Height);
+                scale = Math.Min(scale, 1.0f); // Don't upscale
+
+                var newWidth = (int)(skBitmap.Width * scale);
+                var newHeight = (int)(skBitmap.Height * scale);
+
+                // Resize and compress
+                using var resizedBitmap = skBitmap.Resize(new SKImageInfo(newWidth, newHeight), SKFilterQuality.High);
+                using var image = SKImage.FromBitmap(resizedBitmap);
+                using var data = image.Encode(SKEncodedImageFormat.Jpeg, 80); // 80% quality
+
+                // Save compressed image
+                using var outputStream = File.Create(filePath);
+                data.SaveTo(outputStream);
+
+                _logger.LogInformation("Image compressed from {OriginalSize} bytes to {CompressedSize} bytes",
+                    file.Size, data.Size);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to compress image {FileName}, saving original", file.Name);
+                // If compression fails, save original
+                using var stream = File.Create(filePath);
+                using var inputStream = file.OpenReadStream(_maxFileSize);
+                await inputStream.CopyToAsync(stream);
             }
         }
 
@@ -166,7 +224,7 @@ namespace PatinaBlazor.Services
             {
                 if (!IsValidImageFile(file))
                 {
-                    errors.Add($"Invalid file: {file.Name}. Please select valid image files (max 5MB each).");
+                    errors.Add($"Invalid file: {file.Name}. Please select valid image files (max 15MB each).");
                 }
             }
 

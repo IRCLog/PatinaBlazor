@@ -200,8 +200,9 @@
                                            accept="image/*"
                                            multiple />
                                 <div class="form-text">
-                                    <small>Upload up to 10 images for your collectable (max 5MB each). Supported formats: JPG, PNG, GIF, WebP. The first image will be set as the main image.</small>
+                                    <small>Upload up to 10 images for your collectable (max 15MB each). Supported formats: JPG, PNG, GIF, WebP. Large images will be automatically compressed to improve upload speed. The first image will be set as the main image.</small>
                                 </div>
+
 
                                 @if (imageUploadErrors.Any())
                                 {
