@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,9 +14,52 @@ namespace PatinaBlazor.Data
         {
             base.OnModelCreating(builder);
 
+            // Configure Identity key lengths for SQL Server compatibility
+            builder.Entity<IdentityRole>(entity =>
+            {
+                entity.Property(e => e.Id).HasMaxLength(128);
+                entity.Property(e => e.Name).HasMaxLength(256);
+                entity.Property(e => e.NormalizedName).HasMaxLength(256);
+            });
+
             builder.Entity<ApplicationUser>(entity =>
             {
+                entity.Property(e => e.Id).HasMaxLength(128);
+                entity.Property(e => e.UserName).HasMaxLength(256);
+                entity.Property(e => e.NormalizedUserName).HasMaxLength(256);
+                entity.Property(e => e.Email).HasMaxLength(256);
+                entity.Property(e => e.NormalizedEmail).HasMaxLength(256);
                 entity.Property(e => e.CreatedDate).HasDefaultValueSql("datetime('now')");
+            });
+
+            builder.Entity<IdentityUserRole<string>>(entity =>
+            {
+                entity.Property(e => e.UserId).HasMaxLength(128);
+                entity.Property(e => e.RoleId).HasMaxLength(128);
+            });
+
+            builder.Entity<IdentityUserClaim<string>>(entity =>
+            {
+                entity.Property(e => e.UserId).HasMaxLength(128);
+            });
+
+            builder.Entity<IdentityUserLogin<string>>(entity =>
+            {
+                entity.Property(e => e.UserId).HasMaxLength(128);
+                entity.Property(e => e.LoginProvider).HasMaxLength(128);
+                entity.Property(e => e.ProviderKey).HasMaxLength(128);
+            });
+
+            builder.Entity<IdentityRoleClaim<string>>(entity =>
+            {
+                entity.Property(e => e.RoleId).HasMaxLength(128);
+            });
+
+            builder.Entity<IdentityUserToken<string>>(entity =>
+            {
+                entity.Property(e => e.UserId).HasMaxLength(128);
+                entity.Property(e => e.LoginProvider).HasMaxLength(128);
+                entity.Property(e => e.Name).HasMaxLength(128);
             });
 
             builder.Entity<HitCounter>(entity =>
