@@ -36,7 +36,7 @@ jobs:
     - name: Publish
       run: dotnet publish ./PatinaBlazor/PatinaBlazor/PatinaBlazor.csproj -c Release -o ./publish --no-build
 
-    - name: Clean up debug files and uploads
+    - name: Clean up debug files
       run: |
         # Remove only debugging files that shouldn't be deployed, keep localization
         echo "Removing debug files..."
@@ -46,11 +46,9 @@ jobs:
         find ./publish -name "*.pdb" -delete 2>/dev/null || true
         find ./publish -name "*Debug*" -type f -delete 2>/dev/null || true
 
-        # Remove files from uploads/collectables folder but keep the folder structure
-        echo "Removing files from uploads/collectables folder..."
-        if [ -d "./publish/wwwroot/uploads/collectables" ]; then
-          rm -f ./publish/wwwroot/uploads/collectables/* 2>/dev/null || true
-        fi
+        # Create uploads/collectables folder structure but don't remove existing files
+        echo "Ensuring uploads folder structure exists..."
+        mkdir -p ./publish/wwwroot/uploads/collectables
 
         # Wait for file operations to complete
         sync
@@ -121,7 +119,7 @@ jobs:
         set ftp:passive-mode on;
         set cmd:interactive no;
         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        mirror -R --verbose --delete --no-perms --exclude-glob logs/ --parallel=2 ./publish/ ./;
+        mirror -R --verbose --delete --no-perms --exclude-glob logs/ --exclude-glob wwwroot/uploads/ --parallel=2 ./publish/ ./;
         bye
         " || echo "FTP upload failed, retrying..." && sleep 10 && lftp -e "
         set ftp:ssl-allow no;
@@ -136,7 +134,7 @@ jobs:
         set ftp:passive-mode on;
         set cmd:interactive no;
         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        mirror -R --verbose --delete --no-perms --exclude-glob logs/ --parallel=2 ./publish/ ./;
+        mirror -R --verbose --delete --no-perms --exclude-glob logs/ --exclude-glob wwwroot/uploads/ --parallel=2 ./publish/ ./;
         bye
         "
       shell: bash
