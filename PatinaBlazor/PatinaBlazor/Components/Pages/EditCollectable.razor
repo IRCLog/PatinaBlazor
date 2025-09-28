@@ -720,11 +720,20 @@ else
     window.showToast = (toastId) => {
         const toastElement = document.getElementById(toastId);
         if (toastElement) {
-            const toast = new bootstrap.Toast(toastElement, {
-                autohide: true,
-                delay: 5000
-            });
-            toast.show();
+            // Check if Bootstrap is loaded
+            if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+                const toast = new bootstrap.Toast(toastElement, {
+                    autohide: true,
+                    delay: 5000
+                });
+                toast.show();
+            } else {
+                // Fallback: show toast manually
+                toastElement.classList.add('show');
+                setTimeout(() => {
+                    toastElement.classList.remove('show');
+                }, 5000);
+            }
         }
     };
 
