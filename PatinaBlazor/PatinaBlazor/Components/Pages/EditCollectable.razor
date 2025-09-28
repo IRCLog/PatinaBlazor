@@ -224,11 +224,13 @@ else
                                             {
                                                 <div class="col-md-6 mb-3">
                                                     <div class="card">
-                                                        <img src="@ImageService.GetImageUrl(image)"
-                                                             alt="@collectable.Description"
-                                                             class="card-img-top"
-                                                             style="height: 200px; object-fit: cover; cursor: pointer;"
-                                                             @onclick="(() => ShowImageModal(image))" />
+                                                        <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                                                            <img src="@ImageService.GetImageUrl(image)"
+                                                                 alt="@collectable.Description"
+                                                                 class="card-img-top"
+                                                                 style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
+                                                                 @onclick="(() => ShowImageModal(image))" />
+                                                        </div>
                                                         <div class="card-body">
                                                             @if (image.IsMainImage)
                                                             {
@@ -297,6 +299,16 @@ else
                                                     var file = selectedImageFiles[i];
                                                     <div class="col-md-6 col-lg-4 mb-3">
                                                         <div class="card">
+                                                            @if (index < imagePreviewUrls.Count)
+                                                            {
+                                                                <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                                                                    <img src="@imagePreviewUrls[index]"
+                                                                         alt="@file.Name"
+                                                                         class="card-img-top"
+                                                                         style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
+                                                                         @onclick="(() => ShowSelectedImageModal(index))" />
+                                                                </div>
+                                                            }
                                                             <div class="card-body">
                                                                 <h6 class="card-title">@file.Name</h6>
                                                                 <p class="card-text mb-1">
@@ -383,6 +395,7 @@ else
     private List<string> imageUploadErrors = new();
     private ImageModal imageModal = default!;
     private string activeTab = "general";
+    private List<string> imagePreviewUrls = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -552,31 +565,41 @@ else
         }
     }
 
-    private void OnImagesSelected(InputFileChangeEventArgs e)
+    private async Task OnImagesSelected(InputFileChangeEventArgs e)
     {
         selectedImageFiles.Clear();
         imageUploadErrors.Clear();
+        await ClearImagePreviewUrls();
 
         if (e.FileCount > 0)
         {
             selectedImageFiles.AddRange(e.GetMultipleFiles());
             imageUploadErrors = ImageService.ValidateImageFiles(selectedImageFiles);
+            await CreateImagePreviewUrls();
         }
 
         StateHasChanged();
     }
 
-    private void ClearSelectedImages()
+    private async Task ClearSelectedImages()
     {
         selectedImageFiles.Clear();
         imageUploadErrors.Clear();
+        await ClearImagePreviewUrls();
         StateHasChanged();
     }
 
-    private void RemoveSelectedImage(int index)
+    private async Task RemoveSelectedImage(int index)
     {
         if (index >= 0 && index < selectedImageFiles.Count)
         {
+            // Revoke the URL for the removed image
+            if (index < imagePreviewUrls.Count)
+            {
+                await JSRuntime.InvokeVoidAsync("URL.revokeObjectURL", imagePreviewUrls[index]);
+                imagePreviewUrls.RemoveAt(index);
+            }
+
             selectedImageFiles.RemoveAt(index);
             imageUploadErrors = ImageService.ValidateImageFiles(selectedImageFiles);
             StateHasChanged();
@@ -630,6 +653,34 @@ else
         StateHasChanged();
     }
 
+    private async Task CreateImagePreviewUrls()
+    {
+        await ClearImagePreviewUrls();
+
+        foreach (var file in selectedImageFiles)
+        {
+            var url = await JSRuntime.InvokeAsync<string>("createObjectURL", file);
+            imagePreviewUrls.Add(url);
+        }
+    }
+
+    private async Task ClearImagePreviewUrls()
+    {
+        foreach (var url in imagePreviewUrls)
+        {
+            await JSRuntime.InvokeVoidAsync("URL.revokeObjectURL", url);
+        }
+        imagePreviewUrls.Clear();
+    }
+
+    private async Task ShowSelectedImageModal(int index)
+    {
+        if (imagePreviewUrls.Count > index)
+        {
+            await imageModal.ShowModal(imagePreviewUrls, index);
+        }
+    }
+
     public class CollectableEditModel
     {
         [Required(ErrorMessage = "Description is required")]
@@ -675,5 +726,9 @@ else
             });
             toast.show();
         }
+    };
+
+    window.createObjectURL = (file) => {
+        return URL.createObjectURL(file);
     };
 </script>

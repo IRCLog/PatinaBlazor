@@ -235,6 +235,16 @@
                                                 var file = selectedImageFiles[i];
                                                 <div class="col-md-6 col-lg-4 mb-3">
                                                     <div class="card">
+                                                        @if (index < imagePreviewUrls.Count)
+                                                        {
+                                                            <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                                                                <img src="@imagePreviewUrls[index]"
+                                                                     alt="@file.Name"
+                                                                     class="card-img-top"
+                                                                     style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
+                                                                     @onclick="(() => ShowSelectedImageModal(index))" />
+                                                            </div>
+                                                        }
                                                         <div class="card-body">
                                                             @if (index == 0)
                                                             {
@@ -485,11 +495,17 @@
 
     private void MoveImageToMain(int index)
     {
-        if (index > 0 && index < selectedImageFiles.Count)
+        if (index > 0 && index < selectedImageFiles.Count && index < imagePreviewUrls.Count)
         {
             var imageToMove = selectedImageFiles[index];
+            var urlToMove = imagePreviewUrls[index];
+
             selectedImageFiles.RemoveAt(index);
             selectedImageFiles.Insert(0, imageToMove);
+
+            imagePreviewUrls.RemoveAt(index);
+            imagePreviewUrls.Insert(0, urlToMove);
+
             StateHasChanged();
         }
     }

@@ -73,11 +73,11 @@ else
                     }
                     @if (mainImage != null)
                     {
-                        <div class="card-img-top-container" style="height: 200px; overflow: hidden;">
+                        <div class="card-img-top-container" style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
                             <img src="@ImageService.GetImageUrl(mainImage)"
                                  alt="@collectable.Description"
                                  class="card-img-top"
-                                 style="height: 100%; width: 100%; object-fit: cover;" />
+                                 style="max-height: 100%; max-width: 100%; object-fit: contain;" />
                         </div>
                     }
                     <div class="card-body">
