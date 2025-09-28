@@ -110,7 +110,7 @@ jobs:
         set ftp:list-options -a;
         set file:charset utf-8;
         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        mirror -R --verbose --delete --no-perms ./publish/ ./;
+        mirror -R --verbose --delete --no-perms --exclude-glob logs/ ./publish/ ./;
         bye
         "
       shell: bash
