@@ -60,9 +60,11 @@ jobs:
         echo "Cleanup completed successfully"
       shell: bash
     
-    - name: Replace database password
+    - name: Replace production secrets
       run: |
         sed -i 's/\*\*\*\*PROD_DB_PASSWORD\*\*\*\*/'"${{ secrets.PROD_DB_PASSWORD }}"'/g' ./publish/appsettings.Production.json
+        sed -i 's/\*\*\*\*SMTP_USER\*\*\*\*/'"${{ secrets.SMTP_USER }}"'/g' ./publish/appsettings.Production.json
+        sed -i 's/\*\*\*\*SMTP_PASSWORD\*\*\*\*/'"${{ secrets.SMTP_PASSWORD }}"'/g' ./publish/appsettings.Production.json
       shell: bash
     
     - name: Add web.config for IIS
