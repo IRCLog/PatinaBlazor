@@ -29,16 +29,7 @@ namespace PatinaBlazor.Data
                 entity.Property(e => e.NormalizedUserName).HasMaxLength(256);
                 entity.Property(e => e.Email).HasMaxLength(256);
                 entity.Property(e => e.NormalizedEmail).HasMaxLength(256);
-
-                // Database-specific default values
-                if (Database.IsSqlServer())
-                {
-                    entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
-                }
-                else
-                {
-                    entity.Property(e => e.CreatedDate).HasDefaultValueSql("datetime('now')");
-                }
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
             });
 
             builder.Entity<IdentityUserRole<string>>(entity =>
@@ -74,34 +65,15 @@ namespace PatinaBlazor.Data
             builder.Entity<HitCounter>(entity =>
             {
                 entity.HasIndex(e => e.PagePath).IsUnique();
-
-                // Database-specific default values
-                if (Database.IsSqlServer())
-                {
-                    entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
-                    entity.Property(e => e.LastHit).HasDefaultValueSql("GETUTCDATE()");
-                }
-                else
-                {
-                    entity.Property(e => e.CreatedAt).HasDefaultValueSql("datetime('now')");
-                    entity.Property(e => e.LastHit).HasDefaultValueSql("datetime('now')");
-                }
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.LastHit).HasDefaultValueSql("GETUTCDATE()");
             });
 
             builder.Entity<Collectable>(entity =>
             {
                 // Configure foreign key to match Identity user ID length
                 entity.Property(e => e.UserId).HasMaxLength(128);
-
-                // Database-specific default values
-                if (Database.IsSqlServer())
-                {
-                    entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
-                }
-                else
-                {
-                    entity.Property(e => e.CreatedDate).HasDefaultValueSql("datetime('now')");
-                }
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
 
                 entity.HasOne(e => e.User)
                       .WithMany()
@@ -115,15 +87,7 @@ namespace PatinaBlazor.Data
 
             builder.Entity<CollectableImage>(entity =>
             {
-                // Database-specific default values
-                if (Database.IsSqlServer())
-                {
-                    entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
-                }
-                else
-                {
-                    entity.Property(e => e.CreatedDate).HasDefaultValueSql("datetime('now')");
-                }
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
 
                 entity.HasOne(e => e.Collectable)
                       .WithMany(e => e.Images)
