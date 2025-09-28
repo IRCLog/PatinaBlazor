@@ -107,16 +107,36 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y lftp
 
-        # Upload files using lftp with mirror
+        # Upload files using lftp with mirror and robust timeout settings
         lftp -e "
         set ftp:ssl-allow no;
         set ssl:verify-certificate no;
-        set net:timeout 30;
-        set net:max-retries 3;
+        set net:timeout 120;
+        set net:max-retries 5;
+        set net:reconnect-interval-base 5;
+        set net:reconnect-interval-max 10;
         set ftp:list-options -a;
         set file:charset utf-8;
+        set cmd:fail-exit yes;
+        set ftp:passive-mode on;
+        set cmd:interactive no;
         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        mirror -R --verbose --delete --no-perms --exclude-glob logs/ ./publish/ ./;
+        mirror -R --verbose --delete --no-perms --exclude-glob logs/ --parallel=2 ./publish/ ./;
+        bye
+        " || echo "FTP upload failed, retrying..." && sleep 10 && lftp -e "
+        set ftp:ssl-allow no;
+        set ssl:verify-certificate no;
+        set net:timeout 120;
+        set net:max-retries 5;
+        set net:reconnect-interval-base 5;
+        set net:reconnect-interval-max 10;
+        set ftp:list-options -a;
+        set file:charset utf-8;
+        set cmd:fail-exit yes;
+        set ftp:passive-mode on;
+        set cmd:interactive no;
+        open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+        mirror -R --verbose --delete --no-perms --exclude-glob logs/ --parallel=2 ./publish/ ./;
         bye
         "
       shell: bash
