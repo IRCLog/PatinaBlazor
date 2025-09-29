@@ -42,9 +42,13 @@
             </div>
         }
 
-        <div class="mt-2">
-            <small class="text-muted">by @(Collectable.User?.UserName ?? "Unknown")</small>
-        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="mt-2">
+                    <small class="text-muted">by @(Collectable.User?.UserName ?? "Unknown")</small>
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -78,8 +82,8 @@
     }
 
     .collectable-carousel-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
     }
 
     .card-img-container {
@@ -91,7 +95,8 @@
     .card-img-top {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: contain;
+        background-color: #f8f9fa;
     }
 
     .no-image-placeholder {

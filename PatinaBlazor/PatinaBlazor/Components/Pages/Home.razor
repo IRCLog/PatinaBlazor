@@ -74,7 +74,7 @@
             </div>
 
             <!-- Recent Collectables Carousel -->
-            <div class="mt-5 mb-5">
+            <div class="mt-5 mb-5" style="padding-top: 10px;">
                 <div class="text-center mb-4">
                     <h2 class="h3 text-muted">Recent Collectables</h2>
                     <p class="text-muted">Discover the latest additions to our collectors' treasures</p>
@@ -89,7 +89,7 @@
                                     @for (int i = 0; i < Math.Ceiling((double)recentCollectables.Count / itemsPerSlide); i++)
                                     {
                                         <div class="carousel-item @(i == 0 ? "active" : "")">
-                                            <div class="row g-3 justify-content-center">
+                                            <div class="row g-3 justify-content-center" style="padding: 10px 0;">
                                                 @foreach (var collectable in recentCollectables.Skip(i * itemsPerSlide).Take(itemsPerSlide))
                                                 {
                                                     <div class="col-4">
