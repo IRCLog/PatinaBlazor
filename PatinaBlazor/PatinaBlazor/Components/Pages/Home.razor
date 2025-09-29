@@ -1,11 +1,77 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Welcome to Silzell.net</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold text-primary mb-3">Welcome to Silzell.net</h1>
+                <p class="lead text-muted">Your digital home for collecting and sharing treasures</p>
+            </div>
 
-Welcome to your new app.
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="mb-3">
+                                <i class="bi bi-collection-fill text-primary" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="card-title">Track Your Collections</h4>
+                            <p class="card-text text-muted">Organize and catalog your collectables with detailed information, photos, and personal notes.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="mb-3">
+                                <i class="bi bi-people-fill text-success" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="card-title">Connect with Collectors</h4>
+                            <p class="card-text text-muted">Share your passion with fellow collectors and discover amazing collections from around the world.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm">
+                        <div class="card-body text-center p-4">
+                            <div class="mb-3">
+                                <i class="bi bi-search text-info" style="font-size: 3rem;"></i>
+                            </div>
+                            <h4 class="card-title">Discover & Explore</h4>
+                            <p class="card-text text-muted">Search through collections to find that perfect piece you've been looking for.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-<div class="mt-4 d-flex justify-content-center">
-    <HitCounter PagePath="/" />
+            <div class="text-center mb-4">
+                <p class="fs-5 text-muted mb-4">
+                    Whether you collect coins, stamps, cards, or any other treasures, Silzell.net provides the tools you need to
+                    document, organize, and share your passion with the collecting community.
+                </p>
+
+                <AuthorizeView>
+                    <Authorized>
+                        <a href="/collectables" class="btn btn-primary btn-lg me-3">
+                            <i class="bi bi-gem me-2"></i>View Collections
+                        </a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/Account/Register" class="btn btn-primary btn-lg me-3">
+                            <i class="bi bi-person-plus me-2"></i>Get Started
+                        </a>
+                        <a href="/Account/Login" class="btn btn-outline-secondary btn-lg">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                        </a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+
+            <div class="mt-5 d-flex justify-content-center">
+                <HitCounter PagePath="/" />
+            </div>
+        </div>
+    </div>
 </div>
