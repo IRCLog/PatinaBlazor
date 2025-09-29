@@ -52,6 +52,7 @@ builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentitySmtpEmailSender>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<ICollectableService, CollectableService>();
 
 // Configure request size limits for file uploads (15MB)
 builder.Services.Configure<FormOptions>(options =>
