@@ -83,33 +83,33 @@
                 @if (recentCollectables != null && recentCollectables.Any())
                 {
                     <div class="d-flex justify-content-center">
-                        <div class="carousel-container" style="max-width: 960px; width: 100%;">
-                            <div id="collectablesCarousel" class="carousel slide" data-bs-ride="false">
-                                <div class="carousel-inner">
-                                    @for (int i = 0; i < Math.Ceiling((double)recentCollectables.Count / itemsPerSlide); i++)
-                                    {
-                                        <div class="carousel-item @(i == 0 ? "active" : "")">
-                                            <div class="row g-3 justify-content-center" style="padding: 10px 0;">
-                                                @foreach (var collectable in recentCollectables.Skip(i * itemsPerSlide).Take(itemsPerSlide))
-                                                {
-                                                    <div class="col-4">
-                                                        <CollectableCarouselCard Collectable="collectable" OnImageClick="ShowImageModal" />
-                                                    </div>
-                                                }
+                        <div class="carousel-container" style="max-width: 960px; width: 100%; position: relative;">
+                            <div class="custom-carousel">
+                                <div class="carousel-inner" style="overflow: hidden;">
+                                    <div class="carousel-track" style="display: flex; transform: translateX(-@(currentSlide * 100)%); transition: transform 0.3s ease;">
+                                        @for (int i = 0; i < Math.Ceiling((double)recentCollectables.Count / itemsPerSlide); i++)
+                                        {
+                                            <div class="carousel-slide" style="flex: 0 0 100%; width: 100%;">
+                                                <div class="row g-3 justify-content-center" style="padding: 10px 0;">
+                                                    @foreach (var collectable in recentCollectables.Skip(i * itemsPerSlide).Take(itemsPerSlide))
+                                                    {
+                                                        <div class="col-4">
+                                                            <CollectableCarouselCard Collectable="collectable" OnImageClick="ShowImageModal" />
+                                                        </div>
+                                                    }
+                                                </div>
                                             </div>
-                                        </div>
-                                    }
+                                        }
+                                    </div>
                                 </div>
 
-                                @if (recentCollectables.Count > itemsPerSlide)
+                                @if (totalSlides > 1)
                                 {
-                                    <button class="carousel-control-prev" type="button" data-bs-target="#collectablesCarousel" data-bs-slide="prev" style="width: 40px; height: 40px; top: 50%; transform: translateY(-50%); background-color: rgba(0,0,0,0.5); border-radius: 50%; left: -50px;">
-                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                                        <span class="visually-hidden">Previous</span>
+                                    <button class="custom-carousel-btn prev-btn" @onclick="PreviousSlide" type="button" style="position: absolute; left: -50px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; background-color: rgba(0,0,0,0.6); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-chevron-left"></i>
                                     </button>
-                                    <button class="carousel-control-next" type="button" data-bs-target="#collectablesCarousel" data-bs-slide="next" style="width: 40px; height: 40px; top: 50%; transform: translateY(-50%); background-color: rgba(0,0,0,0.5); border-radius: 50%; right: -50px;">
-                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                                        <span class="visually-hidden">Next</span>
+                                    <button class="custom-carousel-btn next-btn" @onclick="NextSlide" type="button" style="position: absolute; right: -50px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; background-color: rgba(0,0,0,0.6); border: none; border-radius: 50%; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-chevron-right"></i>
                                     </button>
                                 }
                             </div>
@@ -146,6 +146,8 @@
     private List<Collectable>? recentCollectables;
     private int itemsPerSlide = 3; // Number of items to show per carousel slide
     private ImageModal? imageModal;
+    private int currentSlide = 0;
+    private int totalSlides => recentCollectables != null ? (int)Math.Ceiling((double)recentCollectables.Count / itemsPerSlide) : 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -166,6 +168,24 @@
         {
             var imageList = collectable.Images.OrderBy(img => img.IsMainImage ? 0 : img.DisplayOrder).ToList();
             await imageModal.ShowModal(imageList, 0);
+        }
+    }
+
+    private void NextSlide()
+    {
+        if (totalSlides > 1)
+        {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousSlide()
+    {
+        if (totalSlides > 1)
+        {
+            currentSlide = currentSlide == 0 ? totalSlides - 1 : currentSlide - 1;
+            StateHasChanged();
         }
     }
 }
