@@ -82,7 +82,8 @@
 
                 @if (recentCollectables != null && recentCollectables.Any())
                 {
-                    <div class="d-flex justify-content-center">
+                    <!-- Desktop Carousel (3 cards per slide) -->
+                    <div class="d-none d-lg-flex justify-content-center">
                         <div class="carousel-container" style="max-width: 960px; width: 100%; position: relative;">
                             <div class="custom-carousel">
                                 <div class="carousel-inner" style="overflow: hidden;">
@@ -115,6 +116,18 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Mobile Carousel (1 card centered with peek effect) -->
+                    <div class="d-lg-none mobile-carousel-container" style="position: relative; width: 100%; overflow: hidden; touch-action: pan-x;" @ontouchstart="OnTouchStart" @ontouchend="OnTouchEnd">
+                        <div class="mobile-carousel-track" style="display: flex; transform: translateX(calc(-@(currentMobileSlide * 80)% + 10%)); transition: transform 0.3s ease; padding: 10px 0;">
+                            @foreach (var collectable in recentCollectables)
+                            {
+                                <div class="mobile-carousel-item" style="flex: 0 0 80%; padding: 0 2.5%; max-width: 300px;">
+                                    <CollectableCarouselCard Collectable="collectable" OnImageClick="ShowImageModal" />
+                                </div>
+                            }
+                        </div>
+                    </div>
                 }
                 else if (recentCollectables != null)
                 {
@@ -144,10 +157,12 @@
 
 @code {
     private List<Collectable>? recentCollectables;
-    private int itemsPerSlide = 3; // Number of items to show per carousel slide
+    private int itemsPerSlide = 3; // Number of items to show per carousel slide on desktop
     private ImageModal? imageModal;
-    private int currentSlide = 0;
+    private int currentSlide = 0; // For desktop carousel
+    private int currentMobileSlide = 0; // For mobile carousel
     private int totalSlides => recentCollectables != null ? (int)Math.Ceiling((double)recentCollectables.Count / itemsPerSlide) : 0;
+    private int totalMobileSlides => recentCollectables?.Count ?? 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,6 +186,7 @@
         }
     }
 
+    // Desktop carousel navigation
     private void NextSlide()
     {
         if (totalSlides > 1)
@@ -186,6 +202,65 @@
         {
             currentSlide = currentSlide == 0 ? totalSlides - 1 : currentSlide - 1;
             StateHasChanged();
+        }
+    }
+
+    // Mobile carousel navigation with touch support
+    private double touchStartX = 0;
+    private double touchEndX = 0;
+
+    private void NextMobileSlide()
+    {
+        if (totalMobileSlides > 1)
+        {
+            currentMobileSlide = (currentMobileSlide + 1) % totalMobileSlides;
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousMobileSlide()
+    {
+        if (totalMobileSlides > 1)
+        {
+            currentMobileSlide = currentMobileSlide == 0 ? totalMobileSlides - 1 : currentMobileSlide - 1;
+            StateHasChanged();
+        }
+    }
+
+    private void OnTouchStart(TouchEventArgs e)
+    {
+        if (e.Touches.Length > 0)
+        {
+            touchStartX = e.Touches[0].ClientX;
+        }
+    }
+
+    private void OnTouchEnd(TouchEventArgs e)
+    {
+        if (e.ChangedTouches.Length > 0)
+        {
+            touchEndX = e.ChangedTouches[0].ClientX;
+            HandleSwipe();
+        }
+    }
+
+    private void HandleSwipe()
+    {
+        const double minSwipeDistance = 50;
+        double swipeDistance = touchStartX - touchEndX;
+
+        if (Math.Abs(swipeDistance) > minSwipeDistance)
+        {
+            if (swipeDistance > 0)
+            {
+                // Swiped left - go to next slide
+                NextMobileSlide();
+            }
+            else
+            {
+                // Swiped right - go to previous slide
+                PreviousMobileSlide();
+            }
         }
     }
 }
