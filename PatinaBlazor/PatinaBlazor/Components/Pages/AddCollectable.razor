@@ -13,6 +13,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @inject IImageService ImageService
+@inject ICollectionService CollectionService
 
 <ImageModal @ref="imageModal" Description="@newCollectable.Description" ShowImageInfo="false" />
 
@@ -425,6 +426,13 @@
                 }
 
                 await DbContext.SaveChangesAsync();
+            }
+
+            // Add collectable to "All Collectables" system collection
+            var allCollectablesCollection = await CollectionService.GetAllCollectablesCollectionAsync(currentUserId);
+            if (allCollectablesCollection != null)
+            {
+                await CollectionService.AddCollectableToCollectionAsync(allCollectablesCollection.Id, collectable.Id);
             }
 
             collectableLink = "/my-collectables";

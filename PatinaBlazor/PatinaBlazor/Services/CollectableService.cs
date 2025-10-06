@@ -30,5 +30,16 @@ namespace PatinaBlazor.Services
                 .Include(c => c.User)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
+
+        public async Task<List<Collectable>> GetUserCollectablesAsync(string userId)
+        {
+            return await _context.Collectables
+                .AsNoTracking()
+                .Include(c => c.Images)
+                .Include(c => c.User)
+                .Where(c => c.UserId == userId)
+                .OrderByDescending(c => c.CreatedDate)
+                .ToListAsync();
+        }
     }
 }

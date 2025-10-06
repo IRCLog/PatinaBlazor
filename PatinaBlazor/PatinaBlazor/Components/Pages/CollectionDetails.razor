@@ -1,0 +1,251 @@
+@page "/collection/{Id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize]
+@inject ICollectionService CollectionService
+@inject ICollectableService CollectableService
+@inject IImageService ImageService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(collection?.Name ?? "Collection")</PageTitle>
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-10 col-lg-8">
+            @if (collection == null)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h1 class="h3 mb-0">
+                                <i class="bi bi-folder-fill"></i> @collection.Name
+                            </h1>
+                            <button class="btn btn-light btn-sm" @onclick="NavigateBack">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small>
+                                @collection.CollectableItems.Count item(s) •
+                                Created @collection.CreatedDate.ToString("MMM dd, yyyy") •
+                                Modified @collection.ModifiedDate.ToString("MMM dd, yyyy")
+                            </small>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        @if (!collection.IsSystemCollection)
+                        {
+                            <div class="mb-3">
+                                <button class="btn btn-success" @onclick="ShowAddCollectableModal">
+                                    <i class="bi bi-plus-circle"></i> Add Collectable
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info mb-3">
+                                <i class="bi bi-info-circle"></i> This is a system collection that automatically includes all your collectables. Items cannot be manually added or removed.
+                            </div>
+                        }
+
+                        @if (!collection.CollectableItems.Any())
+                        {
+                            <div class="text-center text-muted py-5">
+                                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                                <p class="mt-2">This collection is empty.</p>
+                                <p class="small">Add collectables to get started!</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                                @foreach (var item in collection.CollectableItems.OrderByDescending(i => i.AddedDate))
+                                {
+                                    var collectable = item.Collectable;
+                                    <div class="col">
+                                        <div class="card h-100">
+                                            <div class="card-img-container" style="height: 200px; overflow: hidden;">
+                                                @if (collectable.Images.Any())
+                                                {
+                                                    var mainImage = collectable.Images.FirstOrDefault(img => img.IsMainImage) ?? collectable.Images.First();
+                                                    <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" class="card-img-top" style="width: 100%; height: 100%; object-fit: cover;" />
+                                                }
+                                                else
+                                                {
+                                                    <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                                                        <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                                                    </div>
+                                                }
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="card-text">@collectable.Description</p>
+                                                @if (collectable.IsForSale && !collectable.IsSold && collectable.AskingPrice.HasValue)
+                                                {
+                                                    <p class="text-success fw-bold">$@collectable.AskingPrice.Value.ToString("N2")</p>
+                                                }
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">Added @item.AddedDate.ToString("MMM dd, yyyy")</small>
+                                                    @if (!collection.IsSystemCollection)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveCollectable(item.CollectableId)">
+                                                            <i class="bi bi-trash"></i> Remove
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Add Collectable Modal -->
+@if (showAddModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Collectable to Collection</h5>
+                    <button type="button" class="btn-close" @onclick="HideAddCollectableModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (availableCollectables == null)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (!availableCollectables.Any())
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <p class="mt-2">No collectables available to add.</p>
+                            <p class="small">All your collectables are already in this collection or you don't have any collectables yet.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group" style="max-height: 400px; overflow-y: auto;">
+                            @foreach (var collectable in availableCollectables)
+                            {
+                                <button type="button" class="list-group-item list-group-item-action" @onclick="() => AddCollectable(collectable.Id)">
+                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                        <div class="flex-grow-1">
+                                            <p class="mb-1">@collectable.Description</p>
+                                            <small class="text-muted">Created @collectable.CreatedDate.ToString("MMM dd, yyyy")</small>
+                                        </div>
+                                        @if (collectable.Images.Any())
+                                        {
+                                            var mainImage = collectable.Images.FirstOrDefault(img => img.IsMainImage) ?? collectable.Images.First();
+                                            <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />
+                                        }
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideAddCollectableModal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private CollectableCollection? collection;
+    private List<Collectable>? availableCollectables;
+    private bool showAddModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCollection();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadCollection();
+    }
+
+    private async Task LoadCollection()
+    {
+        collection = await CollectionService.GetCollectionByIdAsync(Id);
+    }
+
+    private async Task ShowAddCollectableModal()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            // Get all user's collectables
+            var allCollectables = await GetUserCollectablesAsync(userId);
+
+            // Filter out collectables already in this collection
+            var collectablesInCollection = collection?.CollectableItems.Select(ci => ci.CollectableId).ToHashSet() ?? new HashSet<Guid>();
+            availableCollectables = allCollectables.Where(c => !collectablesInCollection.Contains(c.Id)).ToList();
+        }
+
+        showAddModal = true;
+    }
+
+    private void HideAddCollectableModal()
+    {
+        showAddModal = false;
+        availableCollectables = null;
+    }
+
+    private async Task AddCollectable(Guid collectableId)
+    {
+        await CollectionService.AddCollectableToCollectionAsync(Id, collectableId);
+        await LoadCollection();
+        HideAddCollectableModal();
+    }
+
+    private async Task RemoveCollectable(Guid collectableId)
+    {
+        await CollectionService.RemoveCollectableFromCollectionAsync(Id, collectableId);
+        await LoadCollection();
+    }
+
+    private async Task<List<Collectable>> GetUserCollectablesAsync(string userId)
+    {
+        return await CollectableService.GetUserCollectablesAsync(userId);
+    }
+
+    private string GetImageUrl(CollectableImage image)
+    {
+        return ImageService.GetImageUrl(image);
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/collectables");
+    }
+}

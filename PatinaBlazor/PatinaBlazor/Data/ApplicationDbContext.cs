@@ -9,6 +9,8 @@ namespace PatinaBlazor.Data
         public DbSet<HitCounter> HitCounters { get; set; }
         public DbSet<Collectable> Collectables { get; set; }
         public DbSet<CollectableImage> CollectableImages { get; set; }
+        public DbSet<CollectableCollection> CollectableCollections { get; set; }
+        public DbSet<CollectableCollectionItem> CollectableCollectionItems { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -93,6 +95,38 @@ namespace PatinaBlazor.Data
                       .WithMany(e => e.Images)
                       .HasForeignKey(e => e.CollectableId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<CollectableCollection>(entity =>
+            {
+                entity.Property(e => e.UserId).HasMaxLength(128);
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(e => e.User)
+                      .WithMany()
+                      .HasForeignKey(e => e.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(e => e.CollectableItems)
+                      .WithOne(e => e.Collection)
+                      .HasForeignKey(e => e.CollectableCollectionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<CollectableCollectionItem>(entity =>
+            {
+                entity.Property(e => e.AddedDate).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(e => e.Collection)
+                      .WithMany(e => e.CollectableItems)
+                      .HasForeignKey(e => e.CollectableCollectionId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Collectable)
+                      .WithMany()
+                      .HasForeignKey(e => e.CollectableId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

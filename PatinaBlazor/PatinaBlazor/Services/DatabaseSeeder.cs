@@ -7,12 +7,14 @@ namespace PatinaBlazor.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly ICollectionService _collectionService;
         private readonly ILogger<DatabaseSeeder> _logger;
 
-        public DatabaseSeeder(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<DatabaseSeeder> logger)
+        public DatabaseSeeder(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ICollectionService collectionService, ILogger<DatabaseSeeder> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
+            _collectionService = collectionService;
             _logger = logger;
         }
 
@@ -85,6 +87,10 @@ namespace PatinaBlazor.Services
                     {
                         _logger.LogError("User created but failed to assign Admin role");
                     }
+
+                    // Create "All Collectables" collection for the new user
+                    await _collectionService.EnsureAllCollectablesCollectionExistsAsync(user.Id);
+                    _logger.LogInformation("Created 'All Collectables' collection for user Adam");
                 }
                 else
                 {

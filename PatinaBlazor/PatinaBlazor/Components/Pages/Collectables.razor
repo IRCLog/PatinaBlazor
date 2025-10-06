@@ -1,13 +1,18 @@
 @page "/collectables"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
 @attribute [Authorize]
+@inject ICollectionService CollectionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @rendermode InteractiveServer
 
 <PageTitle>Collectables</PageTitle>
 
 <div class="container-fluid">
     <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6">
+        <div class="col-12 col-md-10 col-lg-8">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
                     <h1 class="card-title mb-0 text-center">
@@ -22,7 +27,7 @@
                     <p class="lead mb-4">
                         Keep track of your valuable collectables, their prices, and important notes all in one place.
                     </p>
-                    
+
                     <div class="d-grid gap-3 col-6 mx-auto">
                         <a href="/my-collectables" class="btn btn-primary btn-lg">
                             <i class="bi bi-list-ul"></i> My Collectables
@@ -33,6 +38,193 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Collections Section -->
+            <div class="card shadow mt-4">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h2 class="h4 mb-0">
+                        <i class="bi bi-folder"></i> My Collections
+                    </h2>
+                    <button class="btn btn-light btn-sm" @onclick="ShowCreateCollectionModal">
+                        <i class="bi bi-plus-circle"></i> New Collection
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (collections == null)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (!collections.Any())
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="bi bi-folder-x" style="font-size: 3rem;"></i>
+                            <p class="mt-2">You haven't created any collections yet.</p>
+                            <p class="small">Click "New Collection" to get started!</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var collection in collections)
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between align-items-start">
+                                        <div>
+                                            <h5 class="mb-1">
+                                                @if (collection.IsSystemCollection)
+                                                {
+                                                    <i class="bi bi-folder-fill text-primary"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-folder-fill text-warning"></i>
+                                                }
+                                                @collection.Name
+                                                @if (collection.IsSystemCollection)
+                                                {
+                                                    <span class="badge bg-primary ms-2">System</span>
+                                                }
+                                            </h5>
+                                            <p class="mb-1 text-muted small">
+                                                @collection.CollectableItems.Count item(s) •
+                                                Created @collection.CreatedDate.ToString("MMM dd, yyyy") •
+                                                Modified @collection.ModifiedDate.ToString("MMM dd, yyyy")
+                                            </p>
+                                        </div>
+                                        <div class="btn-group" role="group">
+                                            <a href="/collection/@collection.Id" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i> View
+                                            </a>
+                                            @if (!collection.IsSystemCollection)
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteCollection(collection.Id)">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Create Collection Modal -->
+@if (showCreateModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Collection</h5>
+                    <button type="button" class="btn-close" @onclick="HideCreateCollectionModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="collectionName" class="form-label">Collection Name</label>
+                        <input type="text" class="form-control" id="collectionName" @bind="newCollectionName" placeholder="e.g., Rare Coins, Vintage Cards" />
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(errorMessage))
+                    {
+                        <div class="alert alert-danger">@errorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideCreateCollectionModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="CreateCollection" disabled="@string.IsNullOrWhiteSpace(newCollectionName)">
+                        <i class="bi bi-plus-circle"></i> Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CollectableCollection>? collections;
+    private bool showCreateModal = false;
+    private string newCollectionName = string.Empty;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCollections();
+    }
+
+    private async Task LoadCollections()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                collections = await CollectionService.GetUserCollectionsAsync(userId);
+            }
+        }
+    }
+
+    private void ShowCreateCollectionModal()
+    {
+        newCollectionName = string.Empty;
+        errorMessage = string.Empty;
+        showCreateModal = true;
+    }
+
+    private void HideCreateCollectionModal()
+    {
+        showCreateModal = false;
+    }
+
+    private async Task CreateCollection()
+    {
+        if (string.IsNullOrWhiteSpace(newCollectionName))
+        {
+            errorMessage = "Collection name is required.";
+            return;
+        }
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                await CollectionService.CreateCollectionAsync(newCollectionName, userId);
+                await LoadCollections();
+                HideCreateCollectionModal();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating collection: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteCollection(Guid id)
+    {
+        if (confirm("Are you sure you want to delete this collection?"))
+        {
+            await CollectionService.DeleteCollectionAsync(id);
+            await LoadCollections();
+        }
+    }
+
+    [JSInvokable]
+    public static bool confirm(string message)
+    {
+        // This is a placeholder - in real implementation, use JS interop
+        return true;
+    }
+}

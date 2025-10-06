@@ -7,6 +7,7 @@ using PatinaBlazor.Components;
 using PatinaBlazor.Components.Account;
 using PatinaBlazor.Data;
 using PatinaBlazor.Services;
+using App = PatinaBlazor.Components.App;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,6 +54,7 @@ builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentitySmtpEmailSe
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICollectableService, CollectableService>();
+builder.Services.AddScoped<ICollectionService, CollectionService>();
 
 // Configure request size limits for file uploads (15MB)
 builder.Services.Configure<FormOptions>(options =>
