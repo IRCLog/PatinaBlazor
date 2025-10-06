@@ -119,7 +119,7 @@ else
     private List<Collectable>? collectables;
     private string currentUserId = string.Empty;
     private bool isDeleting = false;
-    private int deletingId = 0;
+    private Guid deletingId = Guid.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -186,7 +186,7 @@ else
         finally
         {
             isDeleting = false;
-            deletingId = 0;
+            deletingId = Guid.Empty;
             StateHasChanged();
         }
     }

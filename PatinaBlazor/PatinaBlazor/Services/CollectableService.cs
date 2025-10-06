@@ -15,6 +15,7 @@ namespace PatinaBlazor.Services
         public async Task<List<Collectable>> GetRecentCollectablesAsync(int count = 10)
         {
             return await _context.Collectables
+                .AsNoTracking()
                 .Include(c => c.Images)
                 .Include(c => c.User)
                 .OrderByDescending(c => c.CreatedDate)
@@ -22,7 +23,7 @@ namespace PatinaBlazor.Services
                 .ToListAsync();
         }
 
-        public async Task<Collectable?> GetCollectableByIdAsync(int id)
+        public async Task<Collectable?> GetCollectableByIdAsync(Guid id)
         {
             return await _context.Collectables
                 .Include(c => c.Images)

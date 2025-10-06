@@ -5,7 +5,7 @@ namespace PatinaBlazor.Data
 {
     public class Collectable
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
 
         [Required]
         [StringLength(500)]

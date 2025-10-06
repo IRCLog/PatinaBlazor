@@ -8,7 +8,7 @@ namespace PatinaBlazor.Data
         public int Id { get; set; }
 
         [Required]
-        public int CollectableId { get; set; }
+        public Guid CollectableId { get; set; }
 
         [Required]
         [StringLength(500)]

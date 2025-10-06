@@ -2,6 +2,7 @@
 @using PatinaBlazor.Data
 @using PatinaBlazor.Services
 @inject ICollectableService CollectableService
+@inject ILogger<Home> Logger
 @rendermode InteractiveServer
 
 <PageTitle>Welcome to Silzell.net</PageTitle>
@@ -166,13 +167,30 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCollectablesAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && recentCollectables == null)
+        {
+            await LoadCollectablesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCollectablesAsync()
+    {
         try
         {
-            recentCollectables = await CollectableService.GetRecentCollectablesAsync(10);
+            Logger.LogInformation("Loading recent collectables...");
+            var collectables = await CollectableService.GetRecentCollectablesAsync(10);
+            Logger.LogInformation("Loaded {Count} collectables", collectables?.Count ?? 0);
+            recentCollectables = collectables ?? new List<Collectable>();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Log error or handle gracefully
+            Logger.LogError(ex, "Error loading collectables");
             recentCollectables = new List<Collectable>();
         }
     }

@@ -1,7 +1,7 @@
 /* UPDATED CSS - Cache bust v7.0 - Added custom nav classes with high specificity - FORCE REFRESH */
-/* BASE STYLES - Default to desktop sidebar, mobile will override */
+/* BASE STYLES - Hide both by default to prevent FOUC (Flash of Unstyled Content) */
 .sidebar-container {
-    display: flex;
+    display: none;
 }
 
 .mobile-nav {
