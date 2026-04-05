@@ -11,6 +11,7 @@ namespace PatinaBlazor.Data
         public DbSet<CollectableImage> CollectableImages { get; set; }
         public DbSet<CollectableCollection> CollectableCollections { get; set; }
         public DbSet<CollectableCollectionItem> CollectableCollectionItems { get; set; }
+        public DbSet<IrcEvent> IrcEvents { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -127,6 +128,13 @@ namespace PatinaBlazor.Data
                       .WithMany()
                       .HasForeignKey(e => e.CollectableId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            builder.Entity<IrcEvent>(entity =>
+            {
+                entity.Property(e => e.Action).HasConversion<string>();
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.HasIndex(e => new { e.Network, e.Timestamp });
             });
         }
     }

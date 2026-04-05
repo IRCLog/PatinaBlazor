@@ -1,0 +1,100 @@
+# PatinaBlazor Project Notes
+
+## IRC Event Logging API
+
+### Overview
+REST API endpoint for logging IRC events from Python bots to the SQL Server database.
+
+### Endpoint
+```
+POST /api/irc/events
+```
+
+### Authentication
+The API uses a static API key passed in the `X-Api-Key` header. Valid keys are configured in `appsettings.json` under `IrcApi.ApiKeys`.
+
+### Request Headers
+| Header | Required | Description |
+|--------|----------|-------------|
+| `Content-Type` | Yes | Must be `application/json` |
+| `X-Api-Key` | Yes | Valid API key from configuration |
+
+### Request Body
+```json
+{
+  "action": "MESSAGE",
+  "network": "Libera.Chat",
+  "channel": "#mychannel",
+  "target": "targetuser",
+  "message": "Hello, world!",
+  "sender": "botuser",
+  "user": "someuser",
+  "timestamp": "2025-10-10T12:00:00Z"
+}
+```
+Note: `timestamp` is optional. If omitted, it defaults to the current UTC time.
+
+### Fields
+| Field | Type | Required | Max Length | Description |
+|-------|------|----------|------------|-------------|
+| `action` | string | Yes | - | Event type (see valid actions below) |
+| `network` | string | Yes | 100 | IRC network name |
+| `timestamp` | DateTime | No | - | UTC timestamp of the event (defaults to current UTC time if not supplied) |
+| `channel` | string | No | 200 | Channel where event occurred |
+| `target` | string | No | 200 | Target of the action |
+| `message` | string | No | 4000 | Message content |
+| `sender` | string | No | 100 | User who triggered the event |
+| `user` | string | No | 100 | Additional user context |
+
+### Valid Actions
+`JOIN`, `PART`, `MESSAGE`, `QUIT`, `KICK`, `MODE`, `ACTION`, `NOTICE`, `CONNECT`, `TOPIC`
+
+### Response
+- **201 Created**: Event logged successfully, returns `{ "id": <int> }`
+- **400 Bad Request**: Invalid action value
+- **401 Unauthorized**: Missing or invalid API key
+
+### Sample curl Call
+```bash
+curl -X POST https://localhost:5001/api/irc/events \
+  -H "Content-Type: application/json" \
+  -H "X-Api-Key: your-api-key-here" \
+  -d '{
+    "action": "MESSAGE",
+    "network": "Libera.Chat",
+    "channel": "#mychannel",
+    "message": "Hello from the bot!",
+    "sender": "mybot"
+  }'
+```
+
+### Sample Python Call
+```python
+import requests
+
+response = requests.post(
+    "https://your-domain/api/irc/events",
+    headers={
+        "X-Api-Key": "your-api-key-here",
+        "Content-Type": "application/json"
+    },
+    json={
+        "action": "MESSAGE",
+        "network": "Libera.Chat",
+        "channel": "#mychannel",
+        "message": "Hello from the bot!",
+        "sender": "mybot"
+    }
+)
+
+if response.status_code == 201:
+    event_id = response.json()["id"]
+    print(f"Event logged with ID: {event_id}")
+```
+
+### Related Files
+- Entity: `PatinaBlazor/Data/IrcEvent.cs`
+- Enum: `PatinaBlazor/Data/ChatAction.cs`
+- Service: `PatinaBlazor/Services/IrcEventService.cs`
+- Endpoint: `PatinaBlazor/Endpoints/IrcEventEndpoints.cs`
+- Config: `PatinaBlazor/Services/IrcApiSettings.cs`

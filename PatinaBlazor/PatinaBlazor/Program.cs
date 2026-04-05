@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using PatinaBlazor.Components;
 using PatinaBlazor.Components.Account;
 using PatinaBlazor.Data;
+using PatinaBlazor.Endpoints;
 using PatinaBlazor.Services;
 using App = PatinaBlazor.Components.App;
 
@@ -48,6 +49,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 // Configure email settings
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
+// Configure IRC API settings
+builder.Services.Configure<IrcApiSettings>(builder.Configuration.GetSection("IrcApi"));
+
 // Register email services
 builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentitySmtpEmailSender>();
@@ -55,6 +59,7 @@ builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICollectableService, CollectableService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
+builder.Services.AddScoped<IIrcEventService, IrcEventService>();
 
 // Configure request size limits for file uploads (15MB)
 builder.Services.Configure<FormOptions>(options =>
@@ -119,5 +124,8 @@ app.MapRazorComponents<App>()
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+// Add IRC event API endpoints
+app.MapIrcEventEndpoints();
 
 app.Run();

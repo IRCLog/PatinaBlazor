@@ -449,6 +449,8 @@
     background-color: #6c757d !important;
     color: black !important;
     font-weight: 600;
+    padding: 6.5px !important;
+    margin: 0 !important;
 }
 
 .mobile-nav-link i {
