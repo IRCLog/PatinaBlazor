@@ -1,0 +1,241 @@
+@page "/chat"
+@using Microsoft.AspNetCore.Authorization
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@using System.Text.RegularExpressions
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject IIrcEventService IrcEventService
+@inject IrcChatNotifier Notifier
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>IRC Chat</PageTitle>
+
+<div class="mirc-window">
+    <div class="mirc-titlebar">
+        <span class="mirc-title-text">mIRC - [@selectedNetwork@(selectedChannel != null ? $" / {selectedChannel}" : "")]</span>
+        <div class="mirc-filters">
+            <select class="mirc-select" @onchange="OnNetworkChanged" value="@selectedNetwork">
+                <option value="">All Networks</option>
+                @foreach (var net in networks)
+                {
+                    <option value="@net">@net</option>
+                }
+            </select>
+            <select class="mirc-select" @onchange="OnChannelChanged" value="@selectedChannel">
+                <option value="">All Channels</option>
+                @foreach (var chan in channels)
+                {
+                    <option value="@chan">@chan</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="mirc-body">
+        <div class="mirc-chat-area" id="chatArea">
+            @if (events.Count == 0)
+            {
+                <div class="mirc-line mirc-system">[No events to display]</div>
+            }
+            @foreach (var evt in events)
+            {
+                <div class="mirc-line @GetLineClass(evt.Action)">@FormatEvent(evt)</div>
+            }
+        </div>
+
+        <div class="mirc-channel-list">
+            <div class="mirc-channel-list-header">Channels</div>
+            @foreach (var chan in channels)
+            {
+                <div class="mirc-channel-item @(chan == selectedChannel ? "active" : "")"
+                     @onclick="() => SelectChannel(chan)">
+                    @chan
+                </div>
+            }
+            @if (channels.Count == 0)
+            {
+                <div class="mirc-channel-item-empty">—</div>
+            }
+        </div>
+    </div>
+
+    <div class="mirc-statusbar">
+        @if (string.IsNullOrEmpty(selectedNetwork))
+        {
+            <span>All Networks</span>
+        }
+        else
+        {
+            <span>@selectedNetwork</span>
+        }
+        <span class="mirc-status-sep">|</span>
+        @if (string.IsNullOrEmpty(selectedChannel))
+        {
+            <span>All Channels</span>
+        }
+        else
+        {
+            <span>@selectedChannel</span>
+        }
+        <span class="mirc-status-sep">|</span>
+        <span>@events.Count messages</span>
+    </div>
+</div>
+
+@code {
+    private List<IrcEvent> events = new();
+    private List<string> networks = new();
+    private List<string> channels = new();
+    private string? selectedNetwork;
+    private string? selectedChannel;
+    private const int MaxEvents = 500;
+    private const int InitialLoad = 200;
+
+    private const string Pattern = @"^(?<nick>[^!]+)!(?<ident>[^@]+)@(?<host>.+)$";
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        networks = await IrcEventService.GetNetworksAsync();
+        if (networks.Count > 0)
+        {
+            selectedNetwork = networks[0];
+            channels = await IrcEventService.GetChannelsAsync(selectedNetwork);
+            if (channels.Count > 0)
+                selectedChannel = channels[0];
+        }
+
+        events = await IrcEventService.GetRecentEventsAsync(InitialLoad, selectedNetwork, selectedChannel);
+        Notifier.OnEventLogged += OnNewEvent;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await ScrollToBottom();
+    }
+
+    private async void OnNewEvent(IrcEvent evt)
+    {
+        if (!string.IsNullOrEmpty(selectedNetwork) && evt.Network != selectedNetwork)
+            return;
+        if (!string.IsNullOrEmpty(selectedChannel) && evt.Channel != selectedChannel)
+            return;
+
+        await InvokeAsync(async () =>
+        {
+            events.Add(evt);
+            if (events.Count > MaxEvents)
+                events.RemoveAt(0);
+
+            // Refresh channel list if we see a new channel
+            if (evt.Channel != null && !channels.Contains(evt.Channel))
+                channels = await IrcEventService.GetChannelsAsync(selectedNetwork ?? evt.Network);
+
+            StateHasChanged();
+            await ScrollToBottom();
+        });
+    }
+
+    private async Task OnNetworkChanged(ChangeEventArgs e)
+    {
+        selectedNetwork = e.Value?.ToString();
+        selectedChannel = null;
+
+        if (!string.IsNullOrEmpty(selectedNetwork))
+            channels = await IrcEventService.GetChannelsAsync(selectedNetwork);
+        else
+            channels = new List<string>();
+
+        await ReloadEvents();
+    }
+
+    private async Task OnChannelChanged(ChangeEventArgs e)
+    {
+        selectedChannel = e.Value?.ToString();
+        if (string.IsNullOrEmpty(selectedChannel))
+            selectedChannel = null;
+        await ReloadEvents();
+    }
+
+    private async Task SelectChannel(string channel)
+    {
+        selectedChannel = channel;
+        await ReloadEvents();
+    }
+
+    private async Task ReloadEvents()
+    {
+        events = await IrcEventService.GetRecentEventsAsync(InitialLoad, selectedNetwork, selectedChannel);
+        StateHasChanged();
+        await ScrollToBottom();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        await JSRuntime.InvokeVoidAsync("eval",
+            "var el = document.getElementById('chatArea'); if(el) el.scrollTop = el.scrollHeight;");
+    }
+
+    private static string GetLineClass(ChatAction action) => action switch
+    {
+        ChatAction.MESSAGE => "mirc-message",
+        ChatAction.ACTION => "mirc-action",
+        ChatAction.JOIN => "mirc-join",
+        ChatAction.PART => "mirc-part",
+        ChatAction.QUIT => "mirc-quit",
+        ChatAction.KICK => "mirc-kick",
+        ChatAction.MODE => "mirc-mode",
+        ChatAction.NOTICE => "mirc-notice",
+        ChatAction.TOPIC => "mirc-topic",
+        ChatAction.CONNECT => "mirc-system",
+        _ => "mirc-system"
+    };
+
+    private static string FormatEvent(IrcEvent evt)
+    {
+        if (evt == null)
+            return string.Empty;
+        
+        var ts = evt.Timestamp.ToString("HH:mm:ss");
+        var channel = evt.Channel ?? string.Empty;
+        var sender = evt.Sender ?? evt.User ?? "?";
+        var target = evt.Target ?? string.Empty;
+        var user = evt.User;
+        var nick = user;
+        var ident = user;
+        
+        var host = user;
+        var match = Regex.Match(evt.User ?? string.Empty, Pattern);
+        if (match.Success)
+        {
+            nick = match.Groups["nick"].Value;
+            ident = match.Groups["ident"].Value;
+            host = match.Groups["host"].Value;
+        }
+        
+        var msg = evt.Message ?? string.Empty;
+
+        return evt.Action switch
+        {
+            ChatAction.MESSAGE => $"[{ts}] <{nick}> {msg}",
+            ChatAction.ACTION => $"[{ts}] * {nick} {msg}",
+            ChatAction.JOIN => $"[{ts}] *** {nick} ({ident}@{host}) has joined {channel}",
+            ChatAction.PART => $"[{ts}] *** {nick} ({ident}@{host}) has left {channel}" + (string.IsNullOrEmpty(msg) ? "" : $" ({msg})"),
+            ChatAction.QUIT => $"[{ts}] *** {nick} ({ident}@{host}) has quit" + (string.IsNullOrEmpty(msg) ? "" : $" ({msg})"),
+            ChatAction.KICK => $"[{ts}] *** {target} was kicked from {channel} by {nick}" + (string.IsNullOrEmpty(msg) ? "" : $" ({msg})"),
+            ChatAction.MODE => $"[{ts}] *** {nick} sets mode: {msg}",
+            ChatAction.NOTICE => $"[{ts}] -{nick}- {msg}",
+            ChatAction.TOPIC => $"[{ts}] *** {nick} changed the topic to: {msg}",
+            ChatAction.CONNECT => $"[{ts}] *** {sender} Connected to {evt.Network}",
+            _ => $"[{ts}] *** {evt.Action}: {msg}"
+        };
+    }
+
+    public void Dispose()
+    {
+        Notifier.OnEventLogged -= OnNewEvent;
+    }
+}

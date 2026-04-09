@@ -59,6 +59,7 @@ builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICollectableService, CollectableService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
+builder.Services.AddSingleton<IrcChatNotifier>();
 builder.Services.AddScoped<IIrcEventService, IrcEventService>();
 
 // Configure request size limits for file uploads (15MB)

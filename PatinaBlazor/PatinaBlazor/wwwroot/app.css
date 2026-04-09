@@ -365,18 +365,232 @@ p {
     html, body {
         font-size: 13px;
     }
-    
+
     .content {
         padding: 0.75rem;
     }
-    
+
     .card {
         padding: 12px;
         margin-bottom: 12px;
     }
-    
+
     .btn-primary {
         padding: 4px 12px;
         font-size: 13px;
+    }
+}
+
+/* =============================================================
+   mIRC-style Chat Page  (/chat)
+   ============================================================= */
+
+/* Desktop: main padding 2.5rem*2 + article.content padding 1.5rem*2 = 8rem total vertical */
+.mirc-window {
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc(100vh - 8rem);
+    background: #000000 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 13px !important;
+    color: #c0c0c0 !important;
+    border: 2px solid #808080;
+    overflow: hidden;
+}
+
+/* Title bar — classic mIRC blue */
+.mirc-titlebar {
+    background: #000080 !important;
+    color: #ffffff !important;
+    padding: 4px 8px;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 2px solid #0000cc;
+    user-select: none;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+.mirc-title-text {
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #ffffff !important;
+}
+
+.mirc-filters {
+    display: flex !important;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.mirc-select {
+    background: #000040 !important;
+    color: #ffffff !important;
+    border: 1px solid #4040aa;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 12px;
+    padding: 1px 4px;
+    cursor: pointer;
+    outline: none;
+}
+
+.mirc-select:focus {
+    border-color: #8080ff;
+}
+
+/* Main body — chat area + channel list */
+.mirc-body {
+    display: flex !important;
+    flex: 1;
+    overflow: hidden;
+    background: #000000 !important;
+}
+
+/* Scrollable chat area */
+.mirc-chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 6px;
+    background: #000000 !important;
+    word-break: break-word;
+    line-height: 1.4;
+    font-family: 'Courier New', Courier, monospace !important;
+    color: #c0c0c0 !important;
+}
+
+.mirc-chat-area::-webkit-scrollbar {
+    width: 12px;
+}
+
+.mirc-chat-area::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-left: 1px solid #333;
+}
+
+.mirc-chat-area::-webkit-scrollbar-thumb {
+    background: #444;
+    border: 1px solid #555;
+}
+
+.mirc-chat-area::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}
+
+/* Channel list panel */
+.mirc-channel-list {
+    width: 140px;
+    flex-shrink: 0;
+    background: #0a0a0a !important;
+    border-left: 1px solid #333333;
+    overflow-y: auto;
+    display: flex !important;
+    flex-direction: column !important;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+.mirc-channel-list-header {
+    background: #000080 !important;
+    color: #ffffff !important;
+    font-weight: bold;
+    padding: 3px 6px;
+    font-size: 12px;
+    border-bottom: 1px solid #0000cc;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.mirc-channel-item {
+    padding: 3px 8px;
+    color: #c0c0c0 !important;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid #111111;
+    background: transparent !important;
+}
+
+.mirc-channel-item:hover {
+    background: #001a4d !important;
+    color: #ffffff !important;
+}
+
+.mirc-channel-item.active {
+    background: #000080 !important;
+    color: #ffffff !important;
+}
+
+.mirc-channel-item-empty {
+    padding: 3px 8px;
+    color: #404040 !important;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* Status bar */
+.mirc-statusbar {
+    background: #000080 !important;
+    color: #ffffff !important;
+    padding: 2px 8px;
+    font-size: 12px;
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    border-top: 2px solid #0000cc;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+.mirc-status-sep {
+    color: #8080ff !important;
+}
+
+/* Message lines */
+.mirc-line {
+    padding: 0 2px;
+    white-space: pre-wrap;
+    font-family: 'Courier New', Courier, monospace !important;
+}
+
+.mirc-line:hover {
+    background: #0a0a0a !important;
+}
+
+/* Color-coded by action type */
+.mirc-message { color: #c0c0c0 !important; }
+.mirc-action  { color: #ff69b4 !important; font-style: italic; }
+.mirc-join    { color: #00cc00 !important; }
+.mirc-part    { color: #cc4444 !important; }
+.mirc-quit    { color: #cc4444 !important; }
+.mirc-kick    { color: #ff8c00 !important; }
+.mirc-mode    { color: #808080 !important; font-style: italic; }
+.mirc-notice  { color: #00cccc !important; }
+.mirc-topic   { color: #ffff00 !important; }
+.mirc-system  { color: #808080 !important; font-style: italic; }
+
+/* Mobile tablet (≤991.98px): nav 60px + main 1.5rem*2 + content 1.5rem*2 */
+@media (max-width: 991.98px) {
+    .mirc-window {
+        height: calc(100vh - 60px - 6rem);
+    }
+}
+
+/* Small mobile (≤575.98px): nav 55px + main 1rem*2 + content 1.5rem*2 */
+@media (max-width: 575.98px) {
+    .mirc-window {
+        height: calc(100vh - 55px - 5rem);
+    }
+
+    .mirc-channel-list {
+        width: 100px;
+    }
+
+    .mirc-title-text {
+        font-size: 11px;
     }
 }

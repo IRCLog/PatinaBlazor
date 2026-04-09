@@ -46,6 +46,12 @@
                     <AuthorizeView Roles="Admin">
                         <Authorized Context="adminContext">
                             <div class="nav-item">
+                                <NavLink class="nav-link custom-nav-link" href="/chat" title="Chat">
+                                    <i class="bi bi-chat-dots-fill"></i>
+                                    <span class="nav-text">Chat</span>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
                                 <NavLink class="nav-link custom-nav-link" href="/admin" title="Admin">
                                     <i class="bi bi-gear-fill"></i>
                                     <span class="nav-text">Admin</span>
@@ -140,6 +146,12 @@
 
                     <AuthorizeView Roles="Admin">
                         <Authorized Context="adminContext">
+                            <div class="mobile-nav-item">
+                                <NavLink class="mobile-nav-link custom-mobile-nav-link" href="/chat" @onclick="CloseMobileNav">
+                                    <i class="bi bi-chat-dots-fill"></i>
+                                    <span>Chat</span>
+                                </NavLink>
+                            </div>
                             <div class="mobile-nav-item">
                                 <NavLink class="mobile-nav-link custom-mobile-nav-link" href="/admin" @onclick="CloseMobileNav">
                                     <i class="bi bi-gear-fill"></i>

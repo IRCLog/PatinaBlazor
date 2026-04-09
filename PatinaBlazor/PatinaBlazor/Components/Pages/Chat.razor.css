@@ -1,0 +1,3 @@
+/* Styles for the Chat page are in app.css under the .mirc-* selectors.
+   Scoped CSS is not used here because the scope attribute is not emitted
+   for this page component in the current Blazor configuration. */
