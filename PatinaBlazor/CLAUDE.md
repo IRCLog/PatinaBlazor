@@ -1,5 +1,42 @@
 # PatinaBlazor Project Notes
 
+## Project Purpose & Context
+
+### What PatinaBlazor Is
+A personal web app with modular, independent features. The name "Patina" reflects the core concept — aged, valuable antique items. Features are designed to be self-contained so each area of the app can grow independently without coupling.
+
+### Features
+- **Collections / Collectables** — The original and core feature. Allows tracking of antique collections. Still being refined.
+- **Chat (IRC Bridge)** — A mIRC-style chat interface that bridges to IRC networks. A Python IRC bot logs events to the app via REST API; admins can monitor live IRC activity in a retro terminal-style UI.
+- *(Additional features are expected to be added over time in a modular way)*
+
+### Design Philosophy
+- Features should be modular and independent where it makes sense
+- Primarily personal use, but potentially shared with others
+- Prefer building on existing patterns in the codebase rather than introducing new ones
+
+---
+
+## Working Checkpoint
+
+*Last updated: 2026-04-10*
+
+### Current State
+- Collections feature exists and is functional
+- IRC Chat monitoring page is implemented for Admins, with real-time updates via a SignalR-backed notifier
+- IRC events are logged via REST API (`POST /api/irc/events`) from a Python bot
+- Chat view has a mIRC-style retro UI with a channel sidebar, network selector, and unread indicators (red channel names for activity on non-selected channels)
+
+### Recent Decisions
+- Removed channel dropdown from the titlebar; channel selection is now only via the sidebar list
+- Network selector moved into the channel list panel, centered above the channel list
+- Unread channel tracking is keyed by `(network, channel)` tuple so switching networks preserves unread state for all networks
+
+### Next Steps / In Progress
+- *(Update this before clearing context)*
+
+---
+
 ## IRC Event Logging API
 
 ### Overview

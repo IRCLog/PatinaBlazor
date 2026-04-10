@@ -5,5 +5,18 @@
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "^/clear$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'REMINDER: Ask Claude to update the Working Checkpoint in CLAUDE.md before clearing context.'"
+          }
+        ]
+      }
+    ]
   }
 }
