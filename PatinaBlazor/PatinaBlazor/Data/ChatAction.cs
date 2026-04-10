@@ -11,5 +11,7 @@ public enum ChatAction
     ACTION,
     NOTICE,
     CONNECT,
-    TOPIC
+    TOPIC,
+    NICK,
+    CTCP
 }
