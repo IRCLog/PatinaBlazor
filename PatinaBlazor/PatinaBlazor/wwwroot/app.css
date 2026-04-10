@@ -492,6 +492,16 @@ p {
     font-family: 'Courier New', Courier, monospace !important;
 }
 
+.mirc-network-select {
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+}
+
 .mirc-channel-list-header {
     background: #000080 !important;
     color: #ffffff !important;
@@ -523,6 +533,10 @@ p {
 .mirc-channel-item.active {
     background: #000080 !important;
     color: #ffffff !important;
+}
+
+.mirc-channel-item.unread {
+    color: #ff4444 !important;
 }
 
 .mirc-channel-item-empty {
