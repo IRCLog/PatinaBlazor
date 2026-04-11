@@ -232,7 +232,7 @@
             ChatAction.NOTICE => $"[{ts}] -{nick}- {msg}",
             ChatAction.TOPIC => $"[{ts}] *** {nick} changed the topic to: {msg}",
             ChatAction.CONNECT => $"[{ts}] *** {sender} Connected to {evt.Network}",
-            ChatAction.NICK => $"[{ts}] *** {nick} is now known as {evt.Message}",
+            ChatAction.NICK => $"[{ts}] *** {nick} is now known as {evt.Target}",
             ChatAction.CTCP => $"[{ts}] -> [{nick}] {evt.Message}",
             _ => $"[{ts}] *** {evt.Action}: {msg}"
         };
