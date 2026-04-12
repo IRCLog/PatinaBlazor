@@ -7,6 +7,7 @@ using PatinaBlazor.Components;
 using PatinaBlazor.Components.Account;
 using PatinaBlazor.Data;
 using PatinaBlazor.Endpoints;
+using PatinaBlazor.Hubs;
 using PatinaBlazor.Services;
 using App = PatinaBlazor.Components.App;
 
@@ -60,7 +61,9 @@ builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICollectableService, CollectableService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddSingleton<IrcChatNotifier>();
+builder.Services.AddSingleton<IrcBotService>();
 builder.Services.AddScoped<IIrcEventService, IrcEventService>();
+builder.Services.AddSignalR();
 
 // Configure request size limits for file uploads (15MB)
 builder.Services.Configure<FormOptions>(options =>
@@ -128,5 +131,6 @@ app.MapAdditionalIdentityEndpoints();
 
 // Add IRC event API endpoints
 app.MapIrcEventEndpoints();
+app.MapHub<IrcBotHub>("/hubs/ircbot");
 
 app.Run();
