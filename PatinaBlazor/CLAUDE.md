@@ -15,6 +15,9 @@ A personal web app with modular, independent features. The name "Patina" reflect
 - Primarily personal use, but potentially shared with others
 - Prefer building on existing patterns in the codebase rather than introducing new ones
 
+### External Documentation
+- **`/BOT_HUB_INTEGRATION.md`** (repo root) — Integration guide for the Python IRC bot project. Describes how bots connect to the SignalR hub, register channels, log events, and receive commands. **Keep this file up to date whenever the hub API changes** (new hub methods, changes to `IrcEventRequest`, new `ChatAction` values, or changes to the `ReceiveCommand` contract).
+
 ---
 
 ## Working Checkpoint

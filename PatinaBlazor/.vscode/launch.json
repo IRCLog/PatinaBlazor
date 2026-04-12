@@ -2,13 +2,31 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Blazor Server",
+      "name": "Launch (http — LAN accessible)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${workspaceFolder}/PatinaBlazor/bin/Debug/net8.0/PatinaBlazor.dll",
       "args": [],
       "cwd": "${workspaceFolder}/PatinaBlazor",
+      "launchSettingsProfile": "http",
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "Launch (https — localhost only)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/PatinaBlazor/bin/Debug/net8.0/PatinaBlazor.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/PatinaBlazor",
+      "launchSettingsProfile": "https",
       "serverReadyAction": {
         "action": "openExternally",
         "pattern": "\\bNow listening on:\\s+(https?://\\S+)"

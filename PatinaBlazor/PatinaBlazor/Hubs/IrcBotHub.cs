@@ -22,12 +22,12 @@ public class IrcBotHub : Hub
     {
         var httpContext = Context.GetHttpContext();
 
-        string? apiKey = httpContext?.Request.Query["apiKey"].ToString();
+        string? apiKey = httpContext?.Request.Headers["X-Api-Key"].ToString();
 
         if (string.IsNullOrEmpty(apiKey))
-            apiKey = httpContext?.Request.Headers["X-Api-Key"].ToString();
+            apiKey = httpContext?.Request.Query["apiKey"].ToString();
 
-        if (string.IsNullOrEmpty(apiKey) || !_apiSettings.ApiKeys.Contains(apiKey))
+        if (string.IsNullOrEmpty(apiKey) || !_apiSettings.ApiKeys.Any(k => k.Trim() == apiKey.Trim()))
         {
             Context.Abort();
             return;

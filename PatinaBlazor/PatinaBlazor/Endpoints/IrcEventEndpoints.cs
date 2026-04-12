@@ -16,7 +16,7 @@ public static class IrcEventEndpoints
         {
             // Validate API key
             if (!httpContext.Request.Headers.TryGetValue("X-Api-Key", out var apiKey) ||
-                !apiSettings.Value.ApiKeys.Contains(apiKey.ToString()))
+                !apiSettings.Value.ApiKeys.Any(k => k.Trim() == apiKey.ToString().Trim()))
             {
                 return Results.Unauthorized();
             }
