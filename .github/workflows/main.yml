@@ -108,18 +108,23 @@ jobs:
 
     - name: Take site offline
       run: |
-        echo '<!DOCTYPE html><html><body><h1>Site is being updated. Please check back shortly.</h1></body></html>' > /tmp/app_offline.htm
+        mkdir -p /tmp/offline_upload
+        echo '<!DOCTYPE html><html><body><h1>Site is being updated. Please check back shortly.</h1></body></html>' > /tmp/offline_upload/app_offline.htm
 
         lftp -e "
         set ftp:ssl-allow no;
         set ssl:verify-certificate no;
         set net:timeout 30;
-        set net:max-retries 3;
-        set ftp:passive-mode on;
+        set net:max-retries 5;
+        set net:reconnect-interval-base 5;
+        set net:reconnect-interval-max 10;
+        set ftp:list-options -a;
+        set file:charset utf-8;
         set cmd:fail-exit yes;
+        set ftp:passive-mode on;
         set cmd:interactive no;
         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        put /tmp/app_offline.htm -o app_offline.htm;
+        mirror -R --no-perms /tmp/offline_upload/ ./;
         bye
         "
 
