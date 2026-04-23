@@ -101,6 +101,11 @@ jobs:
         fi
       shell: bash
     
+    - name: Install lftp
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lftp
+
     - name: Take site offline
       run: |
         cat > /tmp/app_offline.htm << 'EOF'
@@ -123,10 +128,6 @@ jobs:
 
     - name: Deploy via FTP using lftp
       run: |
-        # Install lftp
-        sudo apt-get update
-        sudo apt-get install -y lftp
-
         # Upload files using lftp with mirror and robust timeout settings
         lftp -e "
         set ftp:ssl-allow no;
