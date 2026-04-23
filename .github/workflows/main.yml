@@ -161,17 +161,3 @@ jobs:
         bye
         "
       shell: bash
-
-    - name: Bring site back online
-      run: |
-        lftp -e "
-        set ftp:ssl-allow no;
-        set ssl:verify-certificate no;
-        set net:timeout 30;
-        set ftp:passive-mode on;
-        open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        rm app_offline.htm;
-        bye
-        "
-        echo "Site back online"
-      shell: bash
