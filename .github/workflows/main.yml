@@ -110,13 +110,18 @@ jobs:
       run: |
         echo '<!DOCTYPE html><html><body><h1>Site is being updated. Please check back shortly.</h1></body></html>' > /tmp/app_offline.htm
 
-        curl -T /tmp/app_offline.htm \
-          "ftp://${{ secrets.FTP_HOST }}/app_offline.htm" \
-          --user "${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}" \
-          --ftp-pasv \
-          --no-ssl \
-          --connect-timeout 30 \
-          --max-time 60
+        lftp -e "
+        set ftp:ssl-allow no;
+        set ssl:verify-certificate no;
+        set net:timeout 30;
+        set net:max-retries 3;
+        set ftp:passive-mode on;
+        set cmd:fail-exit yes;
+        set cmd:interactive no;
+        open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+        put /tmp/app_offline.htm -o app_offline.htm;
+        bye
+        "
 
         echo "Site taken offline, waiting for process to release locks..."
         sleep 4
