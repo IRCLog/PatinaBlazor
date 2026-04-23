@@ -101,6 +101,26 @@ jobs:
         fi
       shell: bash
     
+    - name: Take site offline
+      run: |
+        cat > /tmp/app_offline.htm << 'EOF'
+        <!DOCTYPE html>
+        <html><body><h1>Site is being updated. Please check back shortly.</h1></body></html>
+        EOF
+
+        lftp -e "
+        set ftp:ssl-allow no;
+        set ssl:verify-certificate no;
+        set net:timeout 30;
+        set ftp:passive-mode on;
+        open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+        put /tmp/app_offline.htm -o app_offline.htm;
+        bye
+        "
+        echo "Site taken offline, waiting for process to release locks..."
+        sleep 4
+      shell: bash
+
     - name: Deploy via FTP using lftp
       run: |
         # Install lftp
@@ -139,4 +159,18 @@ jobs:
         mirror -R --verbose --delete --no-perms --exclude-glob logs/ --exclude-glob wwwroot/uploads/ --parallel=2 ./publish/ ./;
         bye
         "
+      shell: bash
+
+    - name: Bring site back online
+      run: |
+        lftp -e "
+        set ftp:ssl-allow no;
+        set ssl:verify-certificate no;
+        set net:timeout 30;
+        set ftp:passive-mode on;
+        open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+        rm app_offline.htm;
+        bye
+        "
+        echo "Site back online"
       shell: bash
