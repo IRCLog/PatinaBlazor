@@ -8,6 +8,7 @@
 @inject IIrcEventService IrcEventService
 @inject IrcChatNotifier Notifier
 @inject IJSRuntime JSRuntime
+@inject IrcBotService BotService
 @implements IDisposable
 
 <PageTitle>IRC Chat</PageTitle>
@@ -65,15 +66,31 @@
         <span class="mirc-status-sep">|</span>
         <span>@events.Count messages</span>
     </div>
+
+    <div class="mirc-input-bar">
+        <input type="text"
+               class="mirc-input"
+               placeholder="@(CanSend ? $"Send to {selectedChannel}..." : "Select a channel to chat")"
+               disabled="@(!CanSend)"
+               @bind="_messageInput"
+               @bind:event="oninput"
+               @onkeydown="OnInputKeyDown" />
+    </div>
 </div>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
     private List<IrcEvent> events = new();
     private List<string> networks = new();
     private List<string> channels = new();
     private HashSet<(string network, string channel)> unreadChannels = new();
     private string? selectedNetwork;
     private string? selectedChannel;
+    private string _messageInput = string.Empty;
+    private string _currentUsername = "unknown";
+    private bool CanSend => !string.IsNullOrEmpty(selectedNetwork) && !string.IsNullOrEmpty(selectedChannel);
     private const int MaxEvents = 500;
     private const int InitialLoad = 200;
     private TimeZoneInfo _userTimeZone = TimeZoneInfo.Utc;
@@ -93,6 +110,12 @@
 
         events = await IrcEventService.GetRecentEventsAsync(InitialLoad, selectedNetwork, selectedChannel);
         Notifier.OnEventLogged += OnNewEvent;
+
+        if (AuthenticationStateTask != null)
+        {
+            var authState = await AuthenticationStateTask;
+            _currentUsername = authState.User.Identity?.Name ?? "unknown";
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -236,6 +259,31 @@
             ChatAction.CTCP => $"[{ts}] -> [{nick}] {evt.Message}",
             _ => $"[{ts}] *** {evt.Action}: {msg}"
         };
+    }
+
+    private async Task SendMessage()
+    {
+        if (!CanSend || string.IsNullOrWhiteSpace(_messageInput))
+            return;
+
+        var command = new BotCommand(
+            Action: "MESSAGE",
+            User: _currentUsername,
+            Message: _messageInput.Trim(),
+            Timestamp: DateTime.UtcNow,
+            Source: "silzell.net",
+            MessageId: Guid.NewGuid().ToString(),
+            Channel: selectedChannel
+        );
+
+        await BotService.SendCommandAsync(selectedNetwork!, selectedChannel!, command);
+        _messageInput = string.Empty;
+    }
+
+    private async Task OnInputKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SendMessage();
     }
 
     public void Dispose()

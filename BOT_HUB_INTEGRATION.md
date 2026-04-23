@@ -116,21 +116,41 @@ Action strings are case-insensitive.
 
 ---
 
-## Receiving Commands (Future)
+## Receiving Commands
 
-The hub will send commands back to the primary bot for a channel using the `ReceiveCommand` method. Register a handler at startup so your bot is ready when this is implemented.
+The hub sends commands to the primary bot for a channel using the `ReceiveCommand` method. Register a handler at startup.
+
+### BotCommand fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `action` | string | What the bot should do. Currently always `"MESSAGE"` (send message to channel). |
+| `user` | string | Username of the web app user who sent the command. |
+| `message` | string | The text to send to the channel. |
+| `channel` | string | The channel the message should be sent to. |
+| `target` | string \| null | Optional target user (for future directed commands). |
+| `timestamp` | string (ISO 8601 UTC) | When the command was issued. |
+| `source` | string | Always `"silzell.net"`. Identifies the origin. |
+| `messageId` | string (GUID) | Unique ID for this command, for future reply correlation. |
+
+### Python handler
 
 ```python
 def on_receive_command(args):
-    command = args[0]
-    params  = args[1] if len(args) > 1 else None
-    print(f"Received command: {command} {params}")
-    # Handle the command here
+    cmd       = args[0]
+    action    = cmd["action"]       # e.g. "MESSAGE"
+    user      = cmd["user"]
+    message   = cmd["message"]
+    channel   = cmd["channel"]
+    target    = cmd.get("target")   # may be None
+    source    = cmd["source"]
+    messageId = cmd["messageId"]
+
+    if action == "MESSAGE":
+        irc_connection.privmsg(channel, f"<{user}@{source}> {message}")
 
 hub.on("ReceiveCommand", on_receive_command)
 ```
-
-The shape of `command` and `params` will be documented here as the feature is built out.
 
 ---
 

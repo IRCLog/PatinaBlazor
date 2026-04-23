@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using PatinaBlazor.Data;
 using PatinaBlazor.Hubs;
 
 namespace PatinaBlazor.Services;
@@ -78,7 +79,7 @@ public class IrcBotService(IHubContext<IrcBotHub> hubContext)
     /// Sends a command to the primary bot for a channel.
     /// Returns false if no bot is registered for that channel.
     /// </summary>
-    public async Task<bool> SendCommandAsync(string network, string channel, string command, string? args = null)
+    public async Task<bool> SendCommandAsync(string network, string channel, BotCommand command)
     {
         string? connectionId;
 
@@ -90,7 +91,7 @@ public class IrcBotService(IHubContext<IrcBotHub> hubContext)
         if (connectionId is null)
             return false;
 
-        await hubContext.Clients.Client(connectionId).SendAsync("ReceiveCommand", command, args);
+        await hubContext.Clients.Client(connectionId).SendAsync("ReceiveCommand", command);
         return true;
     }
 

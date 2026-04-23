@@ -564,6 +564,35 @@ p {
     color: #8080ff !important;
 }
 
+/* Input bar */
+.mirc-input-bar {
+    flex-shrink: 0;
+    border-top: 1px solid #0000cc;
+}
+
+.mirc-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    background: #000000 !important;
+    color: #c0c0c0 !important;
+    border: none;
+    outline: none;
+    padding: 2px 8px;
+    font-family: 'Courier New', Courier, monospace !important;
+    font-size: 12px;
+    caret-color: #ffffff;
+}
+
+.mirc-input:disabled {
+    color: #404040 !important;
+    cursor: not-allowed;
+}
+
+.mirc-input::placeholder {
+    color: #404040 !important;
+}
+
 /* Message lines */
 .mirc-line {
     padding: 0 2px;
