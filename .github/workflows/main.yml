@@ -118,13 +118,10 @@ jobs:
         set net:max-retries 5;
         set net:reconnect-interval-base 5;
         set net:reconnect-interval-max 10;
-        set ftp:list-options -a;
-        set file:charset utf-8;
-        set cmd:fail-exit yes;
         set ftp:passive-mode on;
         set cmd:interactive no;
         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-        mirror -R --no-perms /tmp/offline_upload/ ./;
+        put /tmp/offline_upload/app_offline.htm -o app_offline.htm;
         bye
         "
 
