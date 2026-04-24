@@ -33,7 +33,7 @@ public class IrcEventService : IIrcEventService
             query = query.Where(e => e.Channel == channel);
 
         var events = await query
-            .OrderByDescending(e => e.Timestamp)
+            .OrderByDescending(e => e.CreatedDate)
             .Take(count)
             .ToListAsync();
 
