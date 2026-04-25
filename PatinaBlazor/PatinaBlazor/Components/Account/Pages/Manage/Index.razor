@@ -2,6 +2,7 @@
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
 
 @inject UserManager<ApplicationUser> UserManager
@@ -24,6 +25,11 @@
                 <label for="username" class="form-label">Username</label>
             </div>
             <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.DisplayName" class="form-control" placeholder="YourDisplayName" />
+                <label for="display-name" class="form-label">Display Name</label>
+                <ValidationMessage For="() => Input.DisplayName" class="text-danger" />
+            </div>
+            <div class="form-floating mb-3">
                 <InputText @bind-Value="Input.PhoneNumber" class="form-control" placeholder="Please enter your phone number." />
                 <label for="phone-number" class="form-label">Phone number</label>
                 <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
@@ -37,6 +43,7 @@
     private ApplicationUser user = default!;
     private string? username;
     private string? phoneNumber;
+    private string? displayName;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -49,18 +56,40 @@
         user = await UserAccessor.GetRequiredUserAsync(HttpContext);
         username = await UserManager.GetUserNameAsync(user);
         phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+        displayName = user.DisplayName;
 
         Input.PhoneNumber ??= phoneNumber;
+        Input.DisplayName ??= displayName;
     }
 
     private async Task OnValidSubmitAsync()
     {
+        if (Input.DisplayName != displayName)
+        {
+            var nameTaken = await UserManager.Users
+                .AnyAsync(u => u.Id != user.Id && u.DisplayName == Input.DisplayName);
+            if (nameTaken)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Display name is already taken.", HttpContext);
+                return;
+            }
+
+            user.DisplayName = Input.DisplayName;
+            var updateResult = await UserManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to update display name.", HttpContext);
+                return;
+            }
+        }
+
         if (Input.PhoneNumber != phoneNumber)
         {
             var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
             if (!setPhoneResult.Succeeded)
             {
                 RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
+                return;
             }
         }
 
@@ -70,6 +99,11 @@
 
     private sealed class InputModel
     {
+        [StringLength(50, ErrorMessage = "Display name must be between 3 and 50 characters.", MinimumLength = 3)]
+        [RegularExpression(@"^[a-zA-Z0-9_\-]+$", ErrorMessage = "Display name may only contain letters, numbers, underscores, and hyphens.")]
+        [Display(Name = "Display Name")]
+        public string? DisplayName { get; set; }
+
         [Phone]
         [Display(Name = "Phone number")]
         public string? PhoneNumber { get; set; }

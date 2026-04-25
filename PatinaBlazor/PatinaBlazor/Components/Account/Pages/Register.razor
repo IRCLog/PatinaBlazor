@@ -5,6 +5,7 @@
 @using System.Text.Encodings.Web
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
 
 @inject UserManager<ApplicationUser> UserManager
@@ -32,6 +33,11 @@
                         <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
                         <label for="email">Email</label>
                         <ValidationMessage For="() => Input.Email" class="text-danger" />
+                    </div>
+                    <div class="form-floating mb-3">
+                        <InputText @bind-Value="Input.DisplayName" class="form-control" autocomplete="off" aria-required="true" placeholder="YourDisplayName" />
+                        <label for="display-name">Display Name</label>
+                        <ValidationMessage For="() => Input.DisplayName" class="text-danger" />
                     </div>
                     <div class="form-floating mb-3">
                         <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
@@ -70,7 +76,16 @@
 
     public async Task RegisterUser(EditContext editContext)
     {
+        var displayNameTaken = await UserManager.Users
+            .AnyAsync(u => u.DisplayName == Input.DisplayName);
+        if (displayNameTaken)
+        {
+            identityErrors = [new IdentityError { Description = "Display name is already taken." }];
+            return;
+        }
+
         var user = CreateUser();
+        user.DisplayName = Input.DisplayName;
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
@@ -133,6 +148,12 @@
         [EmailAddress]
         [Display(Name = "Email")]
         public string Email { get; set; } = "";
+
+        [Required]
+        [StringLength(50, ErrorMessage = "Display name must be between 3 and 50 characters.", MinimumLength = 3)]
+        [RegularExpression(@"^[a-zA-Z0-9_\-]+$", ErrorMessage = "Display name may only contain letters, numbers, underscores, and hyphens.")]
+        [Display(Name = "Display Name")]
+        public string DisplayName { get; set; } = "";
 
         [Required]
         [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]

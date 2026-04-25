@@ -33,6 +33,8 @@ namespace PatinaBlazor.Data
                 entity.Property(e => e.Email).HasMaxLength(256);
                 entity.Property(e => e.NormalizedEmail).HasMaxLength(256);
                 entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.DisplayName).HasMaxLength(50);
+                entity.HasIndex(e => e.DisplayName).IsUnique().HasFilter("[DisplayName] IS NOT NULL");
             });
 
             builder.Entity<IdentityUserRole<string>>(entity =>

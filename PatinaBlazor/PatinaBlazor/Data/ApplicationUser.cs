@@ -7,6 +7,7 @@ namespace PatinaBlazor.Data
     {
         public DateTime CreatedDate { get; set; }
         public bool IsLocked { get; set; } = false;
+        public string? DisplayName { get; set; }
     }
 
 }

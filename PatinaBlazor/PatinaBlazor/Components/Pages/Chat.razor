@@ -1,5 +1,6 @@
 @page "/chat"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
 @using PatinaBlazor.Data
 @using PatinaBlazor.Services
 @using System.Text.RegularExpressions
@@ -9,6 +10,7 @@
 @inject IrcChatNotifier Notifier
 @inject IJSRuntime JSRuntime
 @inject IrcBotService BotService
+@inject UserManager<ApplicationUser> UserManager
 @implements IDisposable
 
 <PageTitle>IRC Chat</PageTitle>
@@ -114,7 +116,8 @@
         if (AuthenticationStateTask != null)
         {
             var authState = await AuthenticationStateTask;
-            _currentUsername = authState.User.Identity?.Name ?? "unknown";
+            var appUser = await UserManager.GetUserAsync(authState.User);
+            _currentUsername = appUser?.DisplayName ?? authState.User.Identity?.Name ?? "unknown";
         }
     }
 
