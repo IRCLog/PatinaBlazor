@@ -92,6 +92,7 @@
     private string? selectedChannel;
     private string _messageInput = string.Empty;
     private string _currentUsername = "unknown";
+    private string? _currentUserId;
     private bool CanSend => !string.IsNullOrEmpty(selectedNetwork) && !string.IsNullOrEmpty(selectedChannel);
     private const int MaxEvents = 500;
     private const int InitialLoad = 200;
@@ -118,6 +119,7 @@
             var authState = await AuthenticationStateTask;
             var appUser = await UserManager.GetUserAsync(authState.User);
             _currentUsername = appUser?.DisplayName ?? authState.User.Identity?.Name ?? "unknown";
+            _currentUserId = appUser?.Id;
         }
     }
 
@@ -287,6 +289,7 @@
             Network = selectedNetwork!,
             Channel = selectedChannel,
             Message = command.Message,
+            Sender = _currentUserId,
             User = _currentUsername,
             Timestamp = command.Timestamp,
             CreatedDate = command.Timestamp
