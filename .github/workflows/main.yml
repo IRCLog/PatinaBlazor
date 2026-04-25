@@ -109,22 +109,21 @@ jobs:
     - name: Take site offline
       run: |
         lftp -e "
-         set ftp:ssl-allow no;
-         set ssl:verify-certificate no;
-         set net:timeout 30;
-         set net:max-retries 5;
-         set net:reconnect-interval-base 5;
-         set net:reconnect-interval-max 10;
-         set ftp:passive-mode on;
-         set cmd:interactive no;
-         open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
-         put /dev/null -o app_offline.htm;
-         bye
-         "
-
-          echo "Site taken offline, waiting for process to release locks..."
-          sleep 4
-        shell: bash
+        set ftp:ssl-allow no;
+        set ssl:verify-certificate no;
+        set net:timeout 30;
+        set net:max-retries 5;
+        set net:reconnect-interval-base 5;
+        set net:reconnect-interval-max 10;
+        set ftp:passive-mode on;
+        set cmd:interactive no;
+        open ftp://${{ secrets.FTP_USERNAME }}:${{ secrets.FTP_PASSWORD }}@${{ secrets.FTP_HOST }};
+        put /dev/null -o app_offline.htm;
+        bye
+        "
+        echo "Site taken offline, waiting for process to release locks..."
+        sleep 4
+      shell: bash
 
     - name: Deploy via FTP using lftp
       run: |
