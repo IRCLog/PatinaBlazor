@@ -53,6 +53,15 @@ public class IrcBotHub : Hub
     }
 
     /// <summary>
+    /// Called by a bot in response to a Ping from the heartbeat service.
+    /// </summary>
+    public Task Pong()
+    {
+        _botService.RecordPong(Context.ConnectionId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
     /// Logs an IRC event to the database and notifies the chat UI.
     /// Returns the new event ID.
     /// </summary>

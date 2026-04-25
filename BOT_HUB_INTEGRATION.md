@@ -154,6 +154,23 @@ hub.on("ReceiveCommand", on_receive_command)
 
 ---
 
+## Heartbeat (Ping / Pong)
+
+The hub sends a `Ping` to every registered connection every **30 seconds**. Bots must respond immediately with a `Pong` call. If no `Pong` is received within **75 seconds**, the connection is considered stale, released from the registry, and its channels are handed off to standbys (if any).
+
+Register a `Ping` handler and respond with `Pong`:
+
+```python
+def on_ping(args):
+    hub.send("Pong", [])
+
+hub.on("Ping", on_ping)
+```
+
+Bots that do not implement this handler will be silently dropped from the registry after ~75 seconds of inactivity.
+
+---
+
 ## Reconnection
 
 `signalrcore`'s automatic reconnect will re-establish the connection after a drop. When the connection comes back up, `on_open` fires again — make sure your `on_open` handler re-registers all channels.
@@ -198,8 +215,12 @@ def on_receive_command(args):
     params  = args[1] if len(args) > 1 else None
     # TODO: handle command
 
+def on_ping(args):
+    hub.send("Pong", [])
+
 hub.on_open(on_open)
 hub.on("ReceiveCommand", on_receive_command)
+hub.on("Ping", on_ping)
 hub.start()
 
 # Log an event

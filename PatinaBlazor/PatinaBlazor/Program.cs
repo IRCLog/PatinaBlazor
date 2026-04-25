@@ -63,6 +63,7 @@ builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddSingleton<IrcChatNotifier>();
 builder.Services.AddSingleton<IrcBotService>();
 builder.Services.AddScoped<IIrcEventService, IrcEventService>();
+builder.Services.AddHostedService<IrcBotHeartbeatService>();
 builder.Services.AddSignalR();
 
 // Configure request size limits for file uploads (15MB)

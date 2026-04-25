@@ -16,6 +16,7 @@ public class IrcBotService(IHubContext<IrcBotHub> hubContext)
 {
     private readonly Dictionary<string, string> _channelOwners = new();
     private readonly Dictionary<string, List<string>> _standbys = new();
+    private readonly Dictionary<string, DateTime> _lastPong = new();
     private readonly object _lock = new();
 
     /// <summary>
@@ -29,6 +30,8 @@ public class IrcBotService(IHubContext<IrcBotHub> hubContext)
 
         lock (_lock)
         {
+            _lastPong.TryAdd(connectionId, DateTime.UtcNow);
+
             if (_channelOwners.TryGetValue(key, out var existing) && existing == connectionId)
                 return;
 
@@ -54,6 +57,8 @@ public class IrcBotService(IHubContext<IrcBotHub> hubContext)
     {
         lock (_lock)
         {
+            _lastPong.Remove(connectionId);
+
             foreach (var list in _standbys.Values)
                 list.Remove(connectionId);
 
@@ -72,6 +77,41 @@ public class IrcBotService(IHubContext<IrcBotHub> hubContext)
                     list.RemoveAt(0);
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Records a pong response from a bot, resetting its staleness timer.
+    /// </summary>
+    public void RecordPong(string connectionId)
+    {
+        lock (_lock)
+        {
+            if (_lastPong.ContainsKey(connectionId))
+                _lastPong[connectionId] = DateTime.UtcNow;
+        }
+    }
+
+    /// <summary>
+    /// Returns all currently registered connection IDs (primary and standby).
+    /// </summary>
+    public IReadOnlyList<string> GetAllConnectionIds()
+    {
+        lock (_lock)
+        {
+            return _lastPong.Keys.ToList();
+        }
+    }
+
+    /// <summary>
+    /// Returns connection IDs that have not ponged within the given time window.
+    /// </summary>
+    public IReadOnlyList<string> GetStaleConnectionIds(TimeSpan maxAge)
+    {
+        var cutoff = DateTime.UtcNow - maxAge;
+        lock (_lock)
+        {
+            return _lastPong.Where(kv => kv.Value < cutoff).Select(kv => kv.Key).ToList();
         }
     }
 

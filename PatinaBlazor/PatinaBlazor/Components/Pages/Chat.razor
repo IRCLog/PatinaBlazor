@@ -277,6 +277,18 @@
         );
 
         await BotService.SendCommandAsync(selectedNetwork!, selectedChannel!, command);
+
+        await IrcEventService.LogEventAsync(new IrcEvent
+        {
+            Action = ChatAction.MESSAGE,
+            Network = selectedNetwork!,
+            Channel = selectedChannel,
+            Message = command.Message,
+            User = _currentUsername,
+            Timestamp = command.Timestamp,
+            CreatedDate = command.Timestamp
+        });
+
         _messageInput = string.Empty;
     }
 
