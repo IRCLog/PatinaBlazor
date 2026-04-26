@@ -201,10 +201,29 @@ a:hover, .btn-link:hover {
 
 .form-control:focus {
     border-color: var(--accent-secondary);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.form-control:disabled,
+.form-control[readonly] {
+    background-color: var(--bg-tertiary);
+    color: var(--text-muted);
+    opacity: 1;
 }
 
 .form-control::placeholder {
     color: var(--text-muted);
+}
+
+/* Prevent browser autofill from flashing white */
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px var(--bg-secondary) inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    caret-color: var(--text-primary);
 }
 
 .content {
