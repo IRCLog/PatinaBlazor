@@ -10,8 +10,10 @@
 
 <PageTitle>Confirm email</PageTitle>
 
-<h1>Confirm email</h1>
-<StatusMessage Message="@statusMessage" />
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <MudText Typo="Typo.h4" Class="mb-2">Confirm email</MudText>
+    <StatusMessage Message="@statusMessage" />
+</MudContainer>
 
 @code {
     private string? statusMessage;

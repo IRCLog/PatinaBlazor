@@ -2,26 +2,23 @@
 @using PatinaBlazor.Data
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
-@inject IJSRuntime JSRuntime
 @implements IAsyncDisposable
 
-<div class="hit-counter">
-    <small class="text-muted">
-        <i class="bi bi-eye"></i>
-        @if (isLoading)
-        {
-            <span>Loading...</span>
-        }
-        else
-        {
-            <span>@hitCount @(hitCount == 1 ? "view" : "views")</span>
-        }
-    </small>
-</div>
+<MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+    <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Default" />
+    @if (isLoading)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Loading...</MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">@hitCount @(hitCount == 1 ? "view" : "views")</MudText>
+    }
+</MudStack>
 
 @code {
     [Parameter] public string PagePath { get; set; } = "/";
-    
+
     private long hitCount = 0;
     private bool isLoading = true;
 
@@ -75,7 +72,6 @@
 
     public async ValueTask DisposeAsync()
     {
-        // Clean up resources if needed
         await Task.CompletedTask;
     }
 }

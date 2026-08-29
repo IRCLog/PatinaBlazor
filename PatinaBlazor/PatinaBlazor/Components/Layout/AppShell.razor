@@ -1,0 +1,15 @@
+@using Microsoft.AspNetCore.Components.Authorization
+
+<MudAppBar Elevation="1">
+    <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+    <NavLink href="" Match="NavLinkMatch.All" class="d-flex align-center" style="color: inherit; text-decoration: none;">
+        <img src="/img/SilzellNetLogo.png" alt="SilzellNet" style="height: 32px;" />
+    </NavLink>
+</MudAppBar>
+<MudDrawer @bind-Open="_drawerOpen" Elevation="1" Variant="DrawerVariant.Responsive" ClipMode="DrawerClipMode.Always">
+    <NavMenu OnNavigate="@(() => _drawerOpen = false)" />
+</MudDrawer>
+
+@code {
+    private bool _drawerOpen = true;
+}

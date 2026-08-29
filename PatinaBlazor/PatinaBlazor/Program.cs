@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
 using PatinaBlazor.Components;
 using PatinaBlazor.Components.Account;
 using PatinaBlazor.Data;
@@ -17,6 +18,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
+
+builder.Services.AddMudServices(config =>
+{
+    // MudProviders is rendered as its own interactive island inside MainLayout,
+    // alongside other independent render-mode islands (AppShell, page content).
+    // MudBlazor's duplicate-provider guard fires as a false positive in this
+    // multi-island topology even though only one MudPopoverProvider is declared
+    // (see Components/Layout/MudProviders.razor) — disable the guard rather
+    // than the check finding a real second instance.
+    config.PopoverOptions.ThrowOnDuplicateProvider = false;
+});
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();

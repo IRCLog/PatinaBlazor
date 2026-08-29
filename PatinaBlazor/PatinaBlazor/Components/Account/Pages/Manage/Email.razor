@@ -14,11 +14,11 @@
 
 <PageTitle>Manage email</PageTitle>
 
-<h3>Manage email</h3>
+<MudText Typo="Typo.h5" Class="mb-3">Manage email</MudText>
 
 <StatusMessage Message="@message"/>
-<div class="row">
-    <div class="col-md-6">
+<MudGrid>
+    <MudItem xs="12" md="6">
         <form @onsubmit="OnSendEmailVerificationAsync" @formname="send-verification" id="send-verification-form" method="post">
             <AntiforgeryToken />
         </form>
@@ -48,10 +48,10 @@
                 <label for="new-email" class="form-label">New email</label>
                 <ValidationMessage For="() => Input.NewEmail" class="text-danger" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Change email</button>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true">Change email</MudButton>
         </EditForm>
-    </div>
-</div>
+    </MudItem>
+</MudGrid>
 
 @code {
     private string? message;

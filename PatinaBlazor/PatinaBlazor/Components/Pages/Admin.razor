@@ -4,75 +4,73 @@
 
 <PageTitle>Admin</PageTitle>
 
-<h1>Admin Panel</h1>
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Admin Panel</MudText>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h3>System Statistics</h3>
-            </div>
-            <div class="card-body">
-                <p><strong>Total Users:</strong> 1,234</p>
-                <p><strong>Active Sessions:</strong> 56</p>
-                <p><strong>Database Size:</strong> 2.3 MB</p>
-                <p><strong>Last Backup:</strong> 2025-01-08 10:30 AM</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h3>Quick Actions</h3>
-            </div>
-            <div class="card-body">
-                <a href="/admin/allUsers" class="btn btn-primary mb-2 w-100">Users</a>
-                <button class="btn btn-warning mb-2 w-100">Clear Cache</button>
-                <button class="btn btn-info mb-2 w-100">View Logs</button>
-                <button class="btn btn-danger w-100">System Maintenance</button>
-            </div>
-        </div>
-    </div>
-</div>
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2">
+                <MudToolBar Dense="true" Class="mud-theme-primary">
+                    <MudText Typo="Typo.h6">System Statistics</MudText>
+                </MudToolBar>
+                <div class="pa-4">
+                    <MudText Typo="Typo.body1" Class="mb-2"><strong>Total Users:</strong> 1,234</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-2"><strong>Active Sessions:</strong> 56</MudText>
+                    <MudText Typo="Typo.body1" Class="mb-2"><strong>Database Size:</strong> 2.3 MB</MudText>
+                    <MudText Typo="Typo.body1"><strong>Last Backup:</strong> 2025-01-08 10:30 AM</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="2">
+                <MudToolBar Dense="true" Class="mud-theme-primary">
+                    <MudText Typo="Typo.h6">Quick Actions</MudText>
+                </MudToolBar>
+                <MudStack Spacing="2" Class="pa-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/admin/allUsers">Users</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true">Clear Cache</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Info" FullWidth="true">View Logs</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Error" FullWidth="true">System Maintenance</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
 
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3>Recent Activity</h3>
-            </div>
-            <div class="card-body">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th>User</th>
-                            <th>Action</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>10:45 AM</td>
-                            <td>john.doe@example.com</td>
-                            <td>Login</td>
-                            <td><span class="badge bg-success">Success</span></td>
-                        </tr>
-                        <tr>
-                            <td>10:32 AM</td>
-                            <td>jane.smith@example.com</td>
-                            <td>Password Reset</td>
-                            <td><span class="badge bg-warning">Pending</span></td>
-                        </tr>
-                        <tr>
-                            <td>10:15 AM</td>
-                            <td>admin@example.com</td>
-                            <td>Database Backup</td>
-                            <td><span class="badge bg-success">Completed</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+    <MudGrid Class="mt-4">
+        <MudItem xs="12">
+            <MudPaper Elevation="2">
+                <MudToolBar Dense="true" Class="mud-theme-primary">
+                    <MudText Typo="Typo.h6">Recent Activity</MudText>
+                </MudToolBar>
+                <MudTable Items="_recentActivity" Hover="true" Dense="true" Class="pa-2">
+                    <HeaderContent>
+                        <MudTh>Time</MudTh>
+                        <MudTh>User</MudTh>
+                        <MudTh>Action</MudTh>
+                        <MudTh>Status</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Time">@context.Time</MudTd>
+                        <MudTd DataLabel="User">@context.User</MudTd>
+                        <MudTd DataLabel="Action">@context.Action</MudTd>
+                        <MudTd DataLabel="Status">
+                            <MudChip T="string" Color="@context.StatusColor" Size="Size.Small">@context.Status</MudChip>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    // Mock data — not wired to real telemetry.
+    private record ActivityRow(string Time, string User, string Action, string Status, Color StatusColor);
+
+    private readonly List<ActivityRow> _recentActivity = new()
+    {
+        new("10:45 AM", "john.doe@example.com", "Login", "Success", Color.Success),
+        new("10:32 AM", "jane.smith@example.com", "Password Reset", "Pending", Color.Warning),
+        new("10:15 AM", "admin@example.com", "Database Backup", "Completed", Color.Success),
+    };
+}

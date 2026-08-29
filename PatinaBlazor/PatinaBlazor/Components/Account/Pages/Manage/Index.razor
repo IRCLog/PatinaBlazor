@@ -12,11 +12,11 @@
 
 <PageTitle>Profile</PageTitle>
 
-<h3>Profile</h3>
+<MudText Typo="Typo.h5" Class="mb-3">Profile</MudText>
 <StatusMessage />
 
-<div class="row">
-    <div class="col-md-6">
+<MudGrid>
+    <MudItem xs="12" md="6">
         <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
@@ -34,10 +34,10 @@
                 <label for="phone-number" class="form-label">Phone number</label>
                 <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true">Save</MudButton>
         </EditForm>
-    </div>
-</div>
+    </MudItem>
+</MudGrid>
 
 @code {
     private ApplicationUser user = default!;

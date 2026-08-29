@@ -1,4 +1,4 @@
-﻿@page "/Account/Login"
+@page "/Account/Login"
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
@@ -12,15 +12,14 @@
 
 <PageTitle>Log in</PageTitle>
 
-<h1>Log in</h1>
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <div class="card shadow">
-            <div class="card-body">
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <MudGrid Justify="Justify.Center">
+        <MudItem xs="12" sm="8" md="6">
+            <MudPaper Elevation="2" Class="pa-4">
                 <StatusMessage Message="@errorMessage" />
                 <EditForm Model="Input" method="post" OnValidSubmit="LoginUser" FormName="login">
                     <DataAnnotationsValidator />
-                    <h2 class="text-center mb-4">Welcome Back</h2>
+                    <MudText Typo="Typo.h5" Class="text-center mb-4">Welcome Back</MudText>
                     <ValidationSummary class="text-danger" role="alert" />
                     <div class="form-floating mb-3">
                         <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
@@ -38,9 +37,7 @@
                             Remember me
                         </label>
                     </div>
-                    <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-primary btn-lg">Log in</button>
-                    </div>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Class="mb-3">Log in</MudButton>
                     <div class="text-center">
                         <p class="mb-2">
                             <a href="Account/ForgotPassword">Forgot your password?</a>
@@ -53,10 +50,10 @@
                         </p>
                     </div>
                 </EditForm>
-            </div>
-        </div>
-    </div>
-</div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
 
 @code {
     private string? errorMessage;

@@ -1,210 +1,47 @@
 @implements IDisposable
 @inject NavigationManager Navigation
-@inject IJSRuntime JSRuntime
 
-<!-- Desktop Sidebar -->
-<div class="sidebar-container @(isCollapsed ? "collapsed" : "expanded")">
-    <div class="sidebar-header">
-        <div class="brand @(isCollapsed ? "collapsed" : "")">
-            <NavLink href="" Match="NavLinkMatch.All" class="brand-link">
-                <img src="/img/SilzellNetLogo.png" alt="SilzellNet" class="brand-logo" />
-            </NavLink>
-        </div>
-        <button class="collapse-btn" @onclick="ToggleSidebar" type="button">
-            <i class="bi @(isCollapsed ? "bi-chevron-right" : "bi-chevron-left")"></i>
-        </button>
-    </div>
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" OnClick="NotifyNavigate">Home</MudNavLink>
+    <MudNavLink Href="auth" Icon="@Icons.Material.Filled.Lock" OnClick="NotifyNavigate">Auth Required</MudNavLink>
 
-    <nav class="sidebar-nav">
-        <div class="nav-section">
-            <div class="nav-item">
-                <NavLink class="nav-link custom-nav-link" href="" Match="NavLinkMatch.All" title="Home">
-                    <i class="bi bi-house-door-fill"></i>
-                    <span class="nav-text">Home</span>
-                </NavLink>
-            </div>
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="collectables" Icon="@Icons.Material.Filled.Diamond" OnClick="NotifyNavigate">Collectables</MudNavLink>
 
-
-            <div class="nav-item">
-                <NavLink class="nav-link custom-nav-link" href="auth" title="Auth Required">
-                    <i class="bi bi-lock"></i>
-                    <span class="nav-text">Auth Required</span>
-                </NavLink>
-            </div>
-        </div>
-
-        <AuthorizeView>
-            <Authorized>
-                <div class="nav-section">
-                    <div class="nav-item">
-                        <NavLink class="nav-link custom-nav-link" href="collectables" title="Collectables">
-                            <i class="bi bi-gem"></i>
-                            <span class="nav-text">Collectables</span>
-                        </NavLink>
-                    </div>
-
-                    <AuthorizeView Roles="Admin">
-                        <Authorized Context="adminContext">
-                            <div class="nav-item">
-                                <NavLink class="nav-link custom-nav-link" href="/chat" title="Chat">
-                                    <i class="bi bi-chat-dots-fill"></i>
-                                    <span class="nav-text">Chat</span>
-                                </NavLink>
-                            </div>
-                            <div class="nav-item">
-                                <NavLink class="nav-link custom-nav-link" href="/admin" title="Admin">
-                                    <i class="bi bi-gear-fill"></i>
-                                    <span class="nav-text">Admin</span>
-                                </NavLink>
-                            </div>
-                        </Authorized>
-                    </AuthorizeView>
-                </div>
-
-                <div class="nav-divider"></div>
-
-                <div class="nav-section">
-                    <div class="nav-item">
-                        <NavLink class="nav-link custom-nav-link" href="Account/Manage" title="@context.User.Identity?.Name">
-                            <i class="bi bi-person-fill"></i>
-                            <span class="nav-text">@context.User.Identity?.Name</span>
-                        </NavLink>
-                    </div>
-
-                    <div class="nav-item">
-                        <form action="Account/Logout" method="post">
-                            <AntiforgeryToken />
-                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                            <button type="submit" class="nav-link custom-nav-link logout-btn" title="Logout">
-                                <i class="bi bi-arrow-bar-left"></i>
-                                <span class="nav-text">Logout</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </Authorized>
-            <NotAuthorized>
-                <div class="nav-section">
-                    <div class="nav-item">
-                        <NavLink class="nav-link custom-nav-link" href="Account/Register" title="Register">
-                            <i class="bi bi-person"></i>
-                            <span class="nav-text">Register</span>
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
-                        <NavLink class="nav-link custom-nav-link" href="Account/Login" title="Login">
-                            <i class="bi bi-person-badge"></i>
-                            <span class="nav-text">Login</span>
-                        </NavLink>
-                    </div>
-                </div>
-            </NotAuthorized>
-        </AuthorizeView>
-    </nav>
-</div>
-
-<!-- Mobile Navigation -->
-<div class="mobile-nav">
-    <div class="mobile-header">
-        <NavLink href="" Match="NavLinkMatch.All" class="mobile-brand">
-            <img src="/img/SilzellNetLogo.png" alt="SilzellNet" class="mobile-brand-logo" />
-        </NavLink>
-        <button class="hamburger @(isMobileOpen ? "open" : "")" @onclick="ToggleMobileNav" type="button">
-            <span></span>
-            <span></span>
-            <span></span>
-        </button>
-    </div>
-
-    <div class="mobile-menu @(isMobileOpen ? "open" : "")">
-        <nav class="mobile-nav-content">
-            <div class="mobile-nav-item">
-                <NavLink class="mobile-nav-link custom-mobile-nav-link" href="" Match="NavLinkMatch.All" @onclick="CloseMobileNav">
-                    <i class="bi bi-house-door-fill"></i>
-                    <span>Home</span>
-                </NavLink>
-            </div>
-
-
-            <div class="mobile-nav-item">
-                <NavLink class="mobile-nav-link custom-mobile-nav-link" href="auth" @onclick="CloseMobileNav">
-                    <i class="bi bi-lock"></i>
-                    <span>Auth Required</span>
-                </NavLink>
-            </div>
-
-            <AuthorizeView>
+            <AuthorizeView Roles="Admin" Context="adminContext">
                 <Authorized>
-                    <div class="mobile-nav-divider"></div>
-
-                    <div class="mobile-nav-item">
-                        <NavLink class="mobile-nav-link custom-mobile-nav-link" href="collectables" @onclick="CloseMobileNav">
-                            <i class="bi bi-gem"></i>
-                            <span>Collectables</span>
-                        </NavLink>
-                    </div>
-
-                    <AuthorizeView Roles="Admin">
-                        <Authorized Context="adminContext">
-                            <div class="mobile-nav-item">
-                                <NavLink class="mobile-nav-link custom-mobile-nav-link" href="/chat" @onclick="CloseMobileNav">
-                                    <i class="bi bi-chat-dots-fill"></i>
-                                    <span>Chat</span>
-                                </NavLink>
-                            </div>
-                            <div class="mobile-nav-item">
-                                <NavLink class="mobile-nav-link custom-mobile-nav-link" href="/admin" @onclick="CloseMobileNav">
-                                    <i class="bi bi-gear-fill"></i>
-                                    <span>Admin</span>
-                                </NavLink>
-                            </div>
-                        </Authorized>
-                    </AuthorizeView>
-
-                    <div class="mobile-nav-divider"></div>
-
-                    <div class="mobile-nav-item">
-                        <NavLink class="mobile-nav-link custom-mobile-nav-link" href="Account/Manage" @onclick="CloseMobileNav">
-                            <i class="bi bi-person-fill"></i>
-                            <span>@context.User.Identity?.Name</span>
-                        </NavLink>
-                    </div>
-
-                    <div class="mobile-nav-item">
-                        <form action="Account/Logout" method="post">
-                            <AntiforgeryToken />
-                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                            <button type="submit" class="mobile-nav-link custom-mobile-nav-link logout-btn" @onclick="CloseMobileNav">
-                                <i class="bi bi-arrow-bar-left"></i>
-                                <span>Logout</span>
-                            </button>
-                        </form>
-                    </div>
+                    <MudNavLink Href="/chat" Icon="@Icons.Material.Filled.Chat" OnClick="NotifyNavigate">Chat</MudNavLink>
+                    <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.Settings" OnClick="NotifyNavigate">Admin</MudNavLink>
                 </Authorized>
-                <NotAuthorized>
-                    <div class="mobile-nav-divider"></div>
-
-                    <div class="mobile-nav-item">
-                        <NavLink class="mobile-nav-link custom-mobile-nav-link" href="Account/Register" @onclick="CloseMobileNav">
-                            <i class="bi bi-person"></i>
-                            <span>Register</span>
-                        </NavLink>
-                    </div>
-                    <div class="mobile-nav-item">
-                        <NavLink class="mobile-nav-link custom-mobile-nav-link" href="Account/Login" @onclick="CloseMobileNav">
-                            <i class="bi bi-person-badge"></i>
-                            <span>Login</span>
-                        </NavLink>
-                    </div>
-                </NotAuthorized>
             </AuthorizeView>
-        </nav>
-    </div>
-</div>
+
+            <MudDivider Class="my-2" />
+
+            <MudNavLink Href="Account/Manage" Icon="@Icons.Material.Filled.Person" OnClick="NotifyNavigate">@context.User.Identity?.Name</MudNavLink>
+
+            <li class="mud-nav-item">
+                <form action="Account/Logout" method="post">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                    <button type="submit" class="mud-nav-link mud-ripple">
+                        <MudIcon Icon="@Icons.Material.Filled.Logout" Class="mud-nav-link-icon mud-nav-link-icon-default" />
+                        <MudText Class="mud-nav-link-text">Logout</MudText>
+                    </button>
+                </form>
+            </li>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavLink Href="Account/Register" Icon="@Icons.Material.Filled.PersonAdd" OnClick="NotifyNavigate">Register</MudNavLink>
+            <MudNavLink Href="Account/Login" Icon="@Icons.Material.Filled.Badge" OnClick="NotifyNavigate">Login</MudNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+</MudNavMenu>
 
 @code {
-    private bool isCollapsed = false;
-    private bool isMobileOpen = false;
+    [Parameter]
+    public EventCallback OnNavigate { get; set; }
+
     private string? currentUrl;
 
     protected override void OnInitialized()
@@ -213,43 +50,14 @@
         Navigation.LocationChanged += OnLocationChanged;
     }
 
-    private async Task ToggleSidebar()
+    private void NotifyNavigate()
     {
-        isCollapsed = !isCollapsed;
-
-        // Debug logging
-        await JSRuntime.InvokeVoidAsync("console.log", $"Sidebar toggled: {isCollapsed}");
-
-        // Update the page class to adjust margin
-        if (isCollapsed)
-        {
-            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('.page').style.marginLeft = '80px'");
-        }
-        else
-        {
-            await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('.page').style.marginLeft = '280px'");
-        }
-
-        StateHasChanged();
-    }
-
-    private async Task ToggleMobileNav()
-    {
-        isMobileOpen = !isMobileOpen;
-        await JSRuntime.InvokeVoidAsync("console.log", $"Mobile nav toggled: {isMobileOpen}");
-        StateHasChanged();
-    }
-
-    private void CloseMobileNav()
-    {
-        isMobileOpen = false;
-        StateHasChanged();
+        OnNavigate.InvokeAsync();
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = Navigation.ToBaseRelativePath(e.Location);
-        isMobileOpen = false;
         StateHasChanged();
     }
 

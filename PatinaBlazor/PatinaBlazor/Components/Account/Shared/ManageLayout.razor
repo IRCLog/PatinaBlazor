@@ -1,17 +1,16 @@
 ﻿@inherits LayoutComponentBase
 @layout AccountLayout
 
-<div class="manage-page">
-    <div class="manage-header mb-3">
-        <i class="bi bi-person-gear manage-header-icon"></i>
-        <span class="manage-header-title">Account Settings</span>
-    </div>
-    <div class="row g-3">
-        <div class="col-md-3">
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-2" /> Account Settings
+    </MudText>
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="3">
             <ManageNavMenu />
-        </div>
-        <div class="col-md-9">
+        </MudItem>
+        <MudItem xs="12" md="9">
             @Body
-        </div>
-    </div>
-</div>
+        </MudItem>
+    </MudGrid>
+</MudContainer>

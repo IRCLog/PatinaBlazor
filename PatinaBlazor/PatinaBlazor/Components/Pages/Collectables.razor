@@ -10,149 +10,133 @@
 
 <PageTitle>Collectables</PageTitle>
 
-<div class="container-fluid">
-    <div class="row">
+<MudContainer MaxWidth="MaxWidth.False" Class="py-4">
+    <MudGrid>
         <!-- Left Sidebar - Collections -->
-        <div class="col-12 col-lg-3">
-            <div class="collections-sidebar" style="position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto;">
-                <div class="card shadow">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                        <h2 class="h5 mb-0">
-                            <i class="bi bi-folder"></i> Collections
-                        </h2>
-                        <button class="btn btn-success btn-sm" @onclick="ShowCreateCollectionModal" title="New Collection">
-                            <i class="bi bi-plus-circle"></i>
-                        </button>
-                    </div>
-                    <div class="card-body p-2">
+        <MudItem xs="12" lg="3">
+            <div style="position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto;">
+                <MudPaper Elevation="2">
+                    <MudToolBar Dense="true" Class="mud-theme-primary">
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.Folder" Class="mr-2" /> Collections
+                        </MudText>
+                        <MudSpacer />
+                        <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Color="Color.Inherit" Size="Size.Small" OnClick="ShowCreateCollectionModal" title="New Collection" />
+                    </MudToolBar>
+                    <div class="pa-2">
                         @if (collections == null)
                         {
                             <div class="text-center py-4">
-                                <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
+                                <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
                             </div>
                         }
                         else if (!collections.Any())
                         {
-                            <div class="text-center text-muted py-3 px-2">
-                                <i class="bi bi-folder-x" style="font-size: 2rem;"></i>
-                                <p class="mt-2 mb-1 small">No collections yet.</p>
-                                <p class="small mb-0">Click <i class="bi bi-plus-circle"></i> to create one!</p>
+                            <div class="text-center py-3 px-2">
+                                <MudIcon Icon="@Icons.Material.Filled.FolderOff" Color="Color.Secondary" Style="font-size: 2rem;" />
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2 mb-1">No collections yet.</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Click + to create one!</MudText>
                             </div>
                         }
                         else
                         {
-                            <div class="list-group list-group-flush">
+                            <MudList Clickable="true" DisablePadding="true">
                                 @foreach (var collection in collections)
                                 {
-                                    <a href="/collection/@collection.Id" class="list-group-item list-group-item-action" style="background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary); border-left: none; border-right: none; padding: 0.75rem 0.5rem;">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div class="flex-grow-1" style="min-width: 0;">
-                                                <div class="d-flex align-items-center mb-1">
-                                                    @if (collection.IsSystemCollection)
-                                                    {
-                                                        <i class="bi bi-folder-fill me-2" style="color: #1f6feb; flex-shrink: 0;"></i>
-                                                    }
-                                                    else
-                                                    {
-                                                        <i class="bi bi-folder-fill me-2" style="color: #d29922; flex-shrink: 0;"></i>
-                                                    }
-                                                    <span class="text-truncate" style="color: var(--text-primary); font-size: 0.9rem;">@collection.Name</span>
+                                    <MudListItem Href="@($"/collection/{collection.Id}")">
+                                        <ChildContent>
+                                            <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                                <div style="min-width: 0; flex: 1;">
+                                                    <div class="d-flex align-center mb-1">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Folder"
+                                                                 Class="mr-2"
+                                                                 Style="@($"color: {(collection.IsSystemCollection ? "#1f6feb" : "#d29922")}; flex-shrink: 0;")" />
+                                                        <MudText Typo="Typo.body2" Class="text-truncate">@collection.Name</MudText>
+                                                    </div>
+                                                    <div class="d-flex align-center">
+                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                            @collection.CollectableItems.Count item(s)
+                                                        </MudText>
+                                                        @if (collection.IsSystemCollection)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-2">System</MudChip>
+                                                        }
+                                                    </div>
                                                 </div>
-                                                <div class="d-flex align-items-center">
-                                                    <small style="color: var(--text-secondary); font-size: 0.75rem;">
-                                                        @collection.CollectableItems.Count item(s)
-                                                    </small>
-                                                    @if (collection.IsSystemCollection)
-                                                    {
-                                                        <span class="badge bg-primary ms-2" style="font-size: 0.65rem;">System</span>
-                                                    }
-                                                </div>
+                                                @if (!collection.IsSystemCollection)
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                   Size="Size.Small"
+                                                                   Color="Color.Error"
+                                                                   OnClick="@(() => DeleteCollection(collection.Id))"
+                                                                   title="Delete" />
+                                                }
                                             </div>
-                                            @if (!collection.IsSystemCollection)
-                                            {
-                                                <button class="btn btn-sm btn-link p-0 ms-2" style="color: var(--danger);" @onclick="() => DeleteCollection(collection.Id)" @onclick:stopPropagation="true" title="Delete">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            }
-                                        </div>
-                                    </a>
+                                        </ChildContent>
+                                    </MudListItem>
                                 }
-                            </div>
+                            </MudList>
                         }
                     </div>
-                </div>
+                </MudPaper>
             </div>
-        </div>
+        </MudItem>
 
         <!-- Right Content - Main Actions -->
-        <div class="col-12 col-lg-9">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h1 class="card-title mb-0 text-center">
-                        <i class="bi bi-collection"></i> Collectables
-                    </h1>
-                </div>
-                <div class="card-body text-center py-5">
-                    <div class="mb-4">
-                        <i class="bi bi-collection display-1 text-primary"></i>
-                    </div>
-                    <h3 class="mb-4">Manage Your Collection</h3>
-                    <p class="lead mb-4">
+        <MudItem xs="12" lg="9">
+            <MudPaper Elevation="2">
+                <MudToolBar Class="mud-theme-primary">
+                    <MudText Typo="Typo.h5" Class="mx-auto">
+                        <MudIcon Icon="@Icons.Material.Filled.Collections" Class="mr-2" /> Collectables
+                    </MudText>
+                </MudToolBar>
+                <div class="text-center pa-8">
+                    <MudIcon Icon="@Icons.Material.Filled.Collections" Color="Color.Primary" Style="font-size: 5rem;" Class="mb-4" />
+                    <MudText Typo="Typo.h4" Class="mb-4">Manage Your Collection</MudText>
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-4">
                         Keep track of your valuable collectables, their prices, and important notes all in one place.
-                    </p>
+                    </MudText>
 
-                    <div class="d-grid gap-3 col-lg-6 col-md-8 mx-auto">
-                        <a href="/my-collectables" class="btn btn-primary btn-lg">
-                            <i class="bi bi-list-ul"></i> My Collectables
-                        </a>
-                        <a href="/add-collectable" class="btn btn-success btn-lg">
-                            <i class="bi bi-plus-circle"></i> Add New Collectable
-                        </a>
-                    </div>
+                    <MudStack Row="false" Spacing="3" Style="max-width: 400px; margin: 0 auto;">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Href="/my-collectables" StartIcon="@Icons.Material.Filled.List">My Collectables</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Large" FullWidth="true" Href="/add-collectable" StartIcon="@Icons.Material.Filled.AddCircle">Add New Collectable</MudButton>
+                    </MudStack>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
 
 <!-- Create Collection Modal -->
-@if (showCreateModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.7);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-primary);">
-                <div class="modal-header" style="border-bottom: 1px solid var(--border-primary);">
-                    <h5 class="modal-title">Create New Collection</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="HideCreateCollectionModal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="collectionName" class="form-label">Collection Name</label>
-                        <input type="text" class="form-control" id="collectionName" @bind="newCollectionName" placeholder="e.g., Rare Coins, Vintage Cards" style="background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary);" />
-                    </div>
-                    @if (!string.IsNullOrWhiteSpace(errorMessage))
-                    {
-                        <div class="alert alert-danger">@errorMessage</div>
-                    }
-                </div>
-                <div class="modal-footer" style="border-top: 1px solid var(--border-primary);">
-                    <button type="button" class="btn btn-secondary" @onclick="HideCreateCollectionModal">Cancel</button>
-                    <button type="button" class="btn btn-primary" @onclick="CreateCollection" disabled="@string.IsNullOrWhiteSpace(newCollectionName)">
-                        <i class="bi bi-plus-circle"></i> Create
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<MudDialog @bind-IsVisible="showCreateModal" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Create New Collection</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="newCollectionName" Label="Collection Name" Placeholder="e.g., Rare Coins, Vintage Cards" Variant="Variant.Outlined" />
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@errorMessage</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="HideCreateCollectionModal">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateCollection" Disabled="@string.IsNullOrWhiteSpace(newCollectionName)" StartIcon="@Icons.Material.Filled.AddCircle">Create</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     private List<CollectableCollection>? collections;
     private bool showCreateModal = false;
     private string newCollectionName = string.Empty;
     private string errorMessage = string.Empty;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
 
     protected override async Task OnInitializedAsync()
     {

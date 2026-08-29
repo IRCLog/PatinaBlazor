@@ -13,166 +13,143 @@
 
 <PageTitle>@(collection?.Name ?? "Collection")</PageTitle>
 
-<div class="container-fluid">
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-10 col-lg-8">
-            @if (collection == null)
-            {
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            }
-            else
-            {
-                <div class="card shadow">
-                    <div class="card-header bg-primary text-white">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h1 class="h3 mb-0">
-                                <i class="bi bi-folder-fill"></i> @collection.Name
-                            </h1>
-                            <button class="btn btn-light btn-sm" @onclick="NavigateBack">
-                                <i class="bi bi-arrow-left"></i> Back
-                            </button>
-                        </div>
-                        <div class="mt-2">
-                            <small>
-                                @collection.CollectableItems.Count item(s) •
-                                Created @collection.CreatedDate.ToString("MMM dd, yyyy") •
-                                Modified @collection.ModifiedDate.ToString("MMM dd, yyyy")
-                            </small>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        @if (!collection.IsSystemCollection)
-                        {
-                            <div class="mb-3">
-                                <button class="btn btn-success" @onclick="ShowAddCollectableModal">
-                                    <i class="bi bi-plus-circle"></i> Add Collectable
-                                </button>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="alert alert-info mb-3">
-                                <i class="bi bi-info-circle"></i> This is a system collection that automatically includes all your collectables. Items cannot be manually added or removed.
-                            </div>
-                        }
-
-                        @if (!collection.CollectableItems.Any())
-                        {
-                            <div class="text-center text-muted py-5">
-                                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-                                <p class="mt-2">This collection is empty.</p>
-                                <p class="small">Add collectables to get started!</p>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                                @foreach (var item in collection.CollectableItems.OrderByDescending(i => i.AddedDate))
-                                {
-                                    var collectable = item.Collectable;
-                                    <div class="col">
-                                        <div class="card h-100">
-                                            <div class="card-img-container" style="height: 200px; overflow: hidden;">
-                                                @if (collectable.Images.Any())
-                                                {
-                                                    var mainImage = collectable.Images.FirstOrDefault(img => img.IsMainImage) ?? collectable.Images.First();
-                                                    <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" class="card-img-top" style="width: 100%; height: 100%; object-fit: cover;" />
-                                                }
-                                                else
-                                                {
-                                                    <div class="d-flex align-items-center justify-content-center h-100 bg-light">
-                                                        <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                                                    </div>
-                                                }
-                                            </div>
-                                            <div class="card-body">
-                                                <p class="card-text">@collectable.Description</p>
-                                                @if (collectable.IsForSale && !collectable.IsSold && collectable.AskingPrice.HasValue)
-                                                {
-                                                    <p class="text-success fw-bold">$@collectable.AskingPrice.Value.ToString("N2")</p>
-                                                }
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <small class="text-muted">Added @item.AddedDate.ToString("MMM dd, yyyy")</small>
-                                                    @if (!collection.IsSystemCollection)
-                                                    {
-                                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveCollectable(item.CollectableId)">
-                                                            <i class="bi bi-trash"></i> Remove
-                                                        </button>
-                                                    }
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    @if (collection == null)
+    {
+        <div class="text-center py-8">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
         </div>
-    </div>
-</div>
+    }
+    else
+    {
+        <MudPaper Elevation="2">
+            <MudToolBar Class="mud-theme-primary">
+                <MudText Typo="Typo.h5">
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Class="mr-2" /> @collection.Name
+                </MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Filled" Color="Color.Default" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="NavigateBack">Back</MudButton>
+            </MudToolBar>
+            <div class="px-4 pt-2">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @collection.CollectableItems.Count item(s) &bull;
+                    Created @collection.CreatedDate.ToString("MMM dd, yyyy") &bull;
+                    Modified @collection.ModifiedDate.ToString("MMM dd, yyyy")
+                </MudText>
+            </div>
+            <div class="pa-4">
+                @if (!collection.IsSystemCollection)
+                {
+                    <div class="mb-3">
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.AddCircle" OnClick="ShowAddCollectableModal">Add Collectable</MudButton>
+                    </div>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-3">This is a system collection that automatically includes all your collectables. Items cannot be manually added or removed.</MudAlert>
+                }
 
-<!-- Add Collectable Modal -->
-@if (showAddModal)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Collectable to Collection</h5>
-                    <button type="button" class="btn-close" @onclick="HideAddCollectableModal"></button>
-                </div>
-                <div class="modal-body">
-                    @if (availableCollectables == null)
-                    {
-                        <div class="text-center py-4">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    }
-                    else if (!availableCollectables.Any())
-                    {
-                        <div class="text-center text-muted py-4">
-                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-                            <p class="mt-2">No collectables available to add.</p>
-                            <p class="small">All your collectables are already in this collection or you don't have any collectables yet.</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="list-group" style="max-height: 400px; overflow-y: auto;">
-                            @foreach (var collectable in availableCollectables)
-                            {
-                                <button type="button" class="list-group-item list-group-item-action" @onclick="() => AddCollectable(collectable.Id)">
-                                    <div class="d-flex w-100 justify-content-between align-items-center">
-                                        <div class="flex-grow-1">
-                                            <p class="mb-1">@collectable.Description</p>
-                                            <small class="text-muted">Created @collectable.CreatedDate.ToString("MMM dd, yyyy")</small>
-                                        </div>
+                @if (!collection.CollectableItems.Any())
+                {
+                    <div class="text-center py-8">
+                        <MudIcon Icon="@Icons.Material.Filled.Inbox" Color="Color.Secondary" Style="font-size: 3rem;" />
+                        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">This collection is empty.</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Add collectables to get started!</MudText>
+                    </div>
+                }
+                else
+                {
+                    <MudGrid>
+                        @foreach (var item in collection.CollectableItems.OrderByDescending(i => i.AddedDate))
+                        {
+                            var collectable = item.Collectable;
+                            <MudItem xs="12" md="6" lg="4">
+                                <MudCard Style="height: 100%;">
+                                    <div style="height: 200px; overflow: hidden;">
                                         @if (collectable.Images.Any())
                                         {
                                             var mainImage = collectable.Images.FirstOrDefault(img => img.IsMainImage) ?? collectable.Images.First();
-                                            <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />
+                                            <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" style="width: 100%; height: 100%; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex align-center justify-center" style="height: 100%; background-color: var(--bg-tertiary);">
+                                                <MudIcon Icon="@Icons.Material.Filled.Image" Color="Color.Secondary" Style="font-size: 3rem;" />
+                                            </div>
                                         }
                                     </div>
-                                </button>
-                            }
-                        </div>
-                    }
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="HideAddCollectableModal">Close</button>
-                </div>
+                                    <MudCardContent>
+                                        <MudText Typo="Typo.body2">@collectable.Description</MudText>
+                                        @if (collectable.IsForSale && !collectable.IsSold && collectable.AskingPrice.HasValue)
+                                        {
+                                            <MudText Typo="Typo.subtitle2" Color="Color.Success" Style="font-weight: 700;">$@collectable.AskingPrice.Value.ToString("N2")</MudText>
+                                        }
+                                        <div class="d-flex justify-space-between align-center mt-2">
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">Added @item.AddedDate.ToString("MMM dd, yyyy")</MudText>
+                                            @if (!collection.IsSystemCollection)
+                                            {
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="@(() => RemoveCollectable(item.CollectableId))">Remove</MudButton>
+                                            }
+                                        </div>
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
             </div>
-        </div>
-    </div>
-}
+        </MudPaper>
+    }
+</MudContainer>
+
+<!-- Add Collectable Modal -->
+<MudDialog @bind-IsVisible="showAddModal" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add Collectable to Collection</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (availableCollectables == null)
+        {
+            <div class="text-center py-4">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+        else if (!availableCollectables.Any())
+        {
+            <div class="text-center py-4">
+                <MudIcon Icon="@Icons.Material.Filled.Inbox" Color="Color.Secondary" Style="font-size: 3rem;" />
+                <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">No collectables available to add.</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">All your collectables are already in this collection or you don't have any collectables yet.</MudText>
+            </div>
+        }
+        else
+        {
+            <MudList Clickable="true" Style="max-height: 400px; overflow-y: auto;">
+                @foreach (var collectable in availableCollectables)
+                {
+                    <MudListItem OnClick="@(() => AddCollectable(collectable.Id))">
+                        <ChildContent>
+                            <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                <div style="flex: 1;">
+                                    <MudText Typo="Typo.body2">@collectable.Description</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Created @collectable.CreatedDate.ToString("MMM dd, yyyy")</MudText>
+                                </div>
+                                @if (collectable.Images.Any())
+                                {
+                                    var mainImage = collectable.Images.FirstOrDefault(img => img.IsMainImage) ?? collectable.Images.First();
+                                    <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />
+                                }
+                            </div>
+                        </ChildContent>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="HideAddCollectableModal">Close</MudButton>
+    </DialogActions>
+</MudDialog>
 
 @code {
     [Parameter]
@@ -181,6 +158,13 @@
     private CollectableCollection? collection;
     private List<Collectable>? availableCollectables;
     private bool showAddModal = false;
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
 
     protected override async Task OnInitializedAsync()
     {

@@ -15,6 +15,16 @@
     --warning: #d29922;
 }
 
+/* MudDrawer's ClipMode="Always" is meant to offset the drawer below the
+   app bar via `top: var(--mud-appbar-height)`, but in this layout the
+   drawer computes `top: 0` instead (its clipped-mode CSS rule isn't
+   matching), so it extends full-height behind/over the fixed app bar.
+   Force the correct offset directly rather than depend on that rule. */
+.mud-drawer.mud-drawer-clipped-always {
+    top: var(--mud-appbar-height) !important;
+    height: calc(100% - var(--mud-appbar-height)) !important;
+}
+
 html, body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif !important;
     background-color: var(--bg-primary) !important;
@@ -23,124 +33,6 @@ html, body {
     padding: 0;
     line-height: 1.6;
     font-size: 14px;
-}
-
-/* Bootstrap overrides - only target Bootstrap components */
-.navbar, .nav, .navbar-nav {
-    background-color: var(--bg-secondary) !important;
-}
-
-.navbar-brand {
-    color: var(--text-primary) !important;
-}
-
-/* Only target Bootstrap navbar components, not custom sidebar nav */
-.navbar .nav-link {
-    color: var(--text-secondary) !important;
-}
-
-.navbar .nav-link:hover {
-    color: var(--text-primary) !important;
-}
-
-.navbar .nav-link.active {
-    color: var(--accent-secondary) !important;
-}
-
-/* FORCE OVERRIDE - Custom Navigation Colors - HIGHEST PRIORITY */
-.sidebar-container .nav-item a,
-.sidebar-container .nav-item a:link,
-.sidebar-container .nav-item a:visited,
-.sidebar-container .nav-item button,
-.sidebar-container .nav-link,
-.sidebar-container .custom-nav-link {
-    color: #9ca3af !important;
-    text-decoration: none !important;
-    background-color: transparent !important;
-}
-
-/* Keep brand/logo links with their original styling */
-.sidebar-container .brand a,
-.sidebar-container .brand-link {
-    color: var(--text-primary) !important;
-    background-color: transparent !important;
-}
-
-.sidebar-container .brand a:hover,
-.sidebar-container .brand-link:hover {
-    color: var(--accent-primary) !important;
-    background-color: transparent !important;
-}
-
-/* Ensure icons always have transparent backgrounds */
-.sidebar-container i,
-.sidebar-container .bi,
-.mobile-nav i,
-.mobile-nav .bi {
-    background-color: transparent !important;
-}
-
-.sidebar-container .nav-item a:hover,
-.sidebar-container .nav-item button:hover,
-.sidebar-container .nav-link:hover,
-.sidebar-container .custom-nav-link:hover {
-    color: var(--text-primary) !important;
-    background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-.sidebar-container .nav-item a.active,
-.sidebar-container .nav-item button.active,
-.sidebar-container .nav-link.active,
-.sidebar-container .custom-nav-link.active {
-    color: black !important;
-    background-color: #6c757d !important;
-    font-weight: 600 !important;
-    border-radius: 0.5rem !important;
-    margin: 0 0.5rem !important;
-    width: calc(100% - 1rem) !important;
-}
-
-.mobile-nav .mobile-nav-item a,
-.mobile-nav .mobile-nav-item a:link,
-.mobile-nav .mobile-nav-item a:visited,
-.mobile-nav .mobile-nav-item button,
-.mobile-nav .mobile-nav-link,
-.mobile-nav .custom-mobile-nav-link {
-    color: #9ca3af !important;
-    text-decoration: none !important;
-    background-color: transparent !important;
-}
-
-/* Keep mobile brand/logo links with their original styling */
-.mobile-nav .mobile-brand {
-    color: var(--text-primary) !important;
-    background-color: transparent !important;
-}
-
-.mobile-nav .mobile-brand:hover {
-    color: var(--accent-primary) !important;
-    background-color: transparent !important;
-}
-
-.mobile-nav .mobile-nav-item a:hover,
-.mobile-nav .mobile-nav-item button:hover,
-.mobile-nav .mobile-nav-link:hover,
-.mobile-nav .custom-mobile-nav-link:hover {
-    color: var(--text-primary) !important;
-    background-color: rgba(255, 255, 255, 0.08) !important;
-}
-
-.mobile-nav .mobile-nav-item a.active,
-.mobile-nav .mobile-nav-item button.active,
-.mobile-nav .mobile-nav-link.active,
-.mobile-nav .custom-mobile-nav-link.active {
-    color: black !important;
-    background-color: #6c757d !important;
-    font-weight: 600 !important;
-    border-radius: 0.5rem !important;
-    width: calc(100vw - 2rem) !important;
-    margin: 0 -1rem !important;
-    padding: 1rem !important;
 }
 
 /* Force dark theme on all elements */
@@ -404,6 +296,18 @@ p {
    mIRC-style Chat Page  (/chat)
    ============================================================= */
 
+/* Reset MudBlazor defaults (rounded corners, elevation shadow) on the
+   mIRC shell so MudPaper/MudToolBar render as flat, square-edged panels
+   like the plain divs they replace. */
+.mirc-window,
+.mirc-titlebar,
+.mirc-chat-area,
+.mirc-channel-list,
+.mirc-statusbar {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
 /* Desktop: main padding 2.5rem*2 + article.content padding 1.5rem*2 = 8rem total vertical */
 .mirc-window {
     display: flex !important;
@@ -614,6 +518,8 @@ p {
 
 /* Message lines */
 .mirc-line {
+    display: block;
+    margin: 0 !important;
     padding: 0 2px;
     white-space: pre-wrap;
     font-family: 'Courier New', Courier, monospace !important;

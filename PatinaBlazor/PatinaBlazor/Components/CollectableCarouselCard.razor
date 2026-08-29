@@ -2,7 +2,7 @@
 @using PatinaBlazor.Services
 @inject IImageService ImageService
 
-<div class="card h-100 collectable-carousel-card">
+<MudCard Class="collectable-carousel-card" Style="height: 100%;">
     <div class="card-img-container">
         @if (Collectable.Images.Any())
         {
@@ -16,41 +16,39 @@
         else
         {
             <div class="no-image-placeholder">
-                <i class="bi bi-image" style="font-size: 3rem; color: #dee2e6;"></i>
+                <MudIcon Icon="@Icons.Material.Filled.Image" Style="font-size: 3rem; color: #dee2e6;" />
             </div>
         }
 
         @if (Collectable.IsForSale && !Collectable.IsSold)
         {
             <div class="for-sale-badge">
-                <span class="badge bg-success">For Sale</span>
+                <MudChip T="string" Color="Color.Success" Size="Size.Small">For Sale</MudChip>
             </div>
         }
     </div>
 
-    <div class="card-body d-flex flex-column">
-        <p class="card-text text-muted small mb-2">Added @Collectable.CreatedDate.ToString("MMM dd, yyyy")</p>
+    <MudCardContent Class="d-flex flex-column" Style="flex: 1;">
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-2">Added @Collectable.CreatedDate.ToString("MMM dd, yyyy")</MudText>
 
-        <p class="card-text flex-grow-1">@Collectable.Description</p>
+        <MudText Typo="Typo.body2" Style="flex: 1;">@Collectable.Description</MudText>
 
         @if (Collectable.IsForSale && !Collectable.IsSold && Collectable.AskingPrice.HasValue)
         {
             <div class="mt-auto">
                 <div class="price-tag">
-                    <strong class="text-success">$@Collectable.AskingPrice.Value.ToString("N2")</strong>
+                    <MudText Typo="Typo.subtitle1" Color="Color.Success" Style="font-weight: 700;">$@Collectable.AskingPrice.Value.ToString("N2")</MudText>
                 </div>
             </div>
         }
 
         <AuthorizeView>
             <Authorized>
-                <div class="mt-2">
-                    <small class="text-muted">by @(Collectable.User?.UserName ?? "Unknown")</small>
-                </div>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">by @(Collectable.User?.UserName ?? "Unknown")</MudText>
             </Authorized>
         </AuthorizeView>
-    </div>
-</div>
+    </MudCardContent>
+</MudCard>
 
 @code {
     [Parameter] public Collectable Collectable { get; set; } = null!;

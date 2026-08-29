@@ -3,31 +3,15 @@
 
 @inject SignInManager<ApplicationUser> SignInManager
 
-<ul class="nav flex-column manage-nav">
-    <li class="nav-item">
-        <NavLink class="nav-link manage-nav-link" href="Account/Manage" Match="NavLinkMatch.All">
-            <i class="bi bi-person-fill"></i> Profile
-        </NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link manage-nav-link" href="Account/Manage/Email">
-            <i class="bi bi-envelope-fill"></i> Email
-        </NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link manage-nav-link" href="Account/Manage/ChangePassword">
-            <i class="bi bi-lock-fill"></i> Password
-        </NavLink>
-    </li>
+<MudNavMenu>
+    <MudNavLink Href="Account/Manage" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Person">Profile</MudNavLink>
+    <MudNavLink Href="Account/Manage/Email" Icon="@Icons.Material.Filled.Email">Email</MudNavLink>
+    <MudNavLink Href="Account/Manage/ChangePassword" Icon="@Icons.Material.Filled.Lock">Password</MudNavLink>
     @if (hasExternalLogins)
     {
-        <li class="nav-item">
-            <NavLink class="nav-link manage-nav-link" href="Account/Manage/ExternalLogins">
-                <i class="bi bi-box-arrow-in-right"></i> External logins
-            </NavLink>
-        </li>
+        <MudNavLink Href="Account/Manage/ExternalLogins" Icon="@Icons.Material.Filled.Login">External logins</MudNavLink>
     }
-</ul>
+</MudNavMenu>
 
 @code {
     private bool hasExternalLogins;

@@ -9,7 +9,18 @@
       "Bash(git rm:*)",
       "Bash(git add:*)",
       "Bash(dotnet ef migrations:*)",
-      "Bash(ASPNETCORE_ENVIRONMENT=Production dotnet ef migrations add InitialCreateSqlServer)"
+      "Bash(ASPNETCORE_ENVIRONMENT=Production dotnet ef migrations add InitialCreateSqlServer)",
+      "Bash(dotnet --version)",
+      "Bash(find / -maxdepth 6 -iname \"PatinaBlazor.csproj\")",
+      "Read(//home/adam/repos/PatinaBlazor/**)",
+      "Bash(timeout 12 dotnet bin/Debug/net8.0/PatinaBlazor.dll)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5265 timeout 8 dotnet bin/Debug/net8.0/PatinaBlazor.dll)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5265 timeout 20 dotnet bin/Debug/net8.0/PatinaBlazor.dll)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(docker --version)",
+      "Bash(sg docker *)",
+      "Bash(ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5265 timeout 25 dotnet bin/Debug/net8.0/PatinaBlazor.dll)",
+      "Bash(code --list-extensions)"
     ],
     "deny": []
   }

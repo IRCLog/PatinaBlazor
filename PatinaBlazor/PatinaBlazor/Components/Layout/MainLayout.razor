@@ -1,13 +1,14 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-<NavMenu @rendermode="InteractiveServer" />
+<MudProviders @rendermode="InteractiveServer" />
 
-<div class="page">
-    <main>
+<MudLayout>
+    <AppShell @rendermode="InteractiveServer" />
+    <MudMainContent>
         <article class="content">
             @Body
         </article>
-    </main>
-</div>
+    </MudMainContent>
+</MudLayout>

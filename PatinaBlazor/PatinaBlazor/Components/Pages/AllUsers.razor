@@ -11,177 +11,145 @@
 
 <PageTitle>All Users - Admin</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>All Users</h1>
-    <a href="/admin" class="btn btn-secondary">Back to Admin</a>
-</div>
-
-@if (users == null)
-{
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <p>Loading users...</p>
-    </div>
-}
-else
-{
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <button class="btn btn-success" @onclick="ActivateSelectedUsers" disabled="@(!selectedUsers.Any())">
-                Activate Selected (@selectedUsers.Count)
-            </button>
-        </div>
-        <div class="col-md-6 text-end">
-            <small class="text-muted">Total Users: @users.Count</small>
-        </div>
+<MudContainer MaxWidth="MaxWidth.False" Class="py-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">All Users</MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/admin">Back to Admin</MudButton>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-striped table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <th>
-                        <input type="checkbox" @onchange="ToggleAllUsers" />
-                    </th>
-                    <th>User ID</th>
-                    <th>Email</th>
-                    <th>Username</th>
-                    <th>New Password</th>
-                    <th>Created Date</th>
-                    <th>Account Locked</th>
-                    <th>Email Confirmed</th>
-                    <th>Roles</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in users)
-                {
-                    <tr class="@(selectedUsers.Contains(user.Id) ? "table-info" : "")">
-                        <td>
-                            <input type="checkbox" 
-                                   checked="@selectedUsers.Contains(user.Id)" 
-                                   @onchange="@((e) => ToggleUserSelection(user.Id, (bool)e.Value!))" />
-                        </td>
-                        <td>
-                            <small class="text-muted">@user.Id.Substring(0, 8)...</small>
-                        </td>
-                        <td>
-                            @if (user.Id == editingUserId)
-                            {
-                                <input type="email" class="form-control form-control-sm" @bind="editUserEmail" />
-                            }
-                            else
-                            {
-                                @user.Email
-                            }
-                        </td>
-                        <td>
-                            @if (user.Id == editingUserId)
-                            {
-                                <input type="text" class="form-control form-control-sm" @bind="editUserName" />
-                            }
-                            else
-                            {
-                                @user.UserName
-                            }
-                        </td>
-                        <td>
-                            @if (user.Id == editingUserId)
-                            {
-                                <div class="input-group input-group-sm">
-                                    <input type="@(showPassword ? "text" : "password")" 
-                                           class="form-control form-control-sm" 
-                                           @bind="editPassword" 
-                                           placeholder="Enter new password (current password cannot be displayed for security)"
-                                           autocomplete="new-password"
-                                           data-form="false"
-                                           @key="@($"pwd-{user.Id}")" />
-                                    <button class="btn btn-outline-secondary" 
-                                            type="button"
-                                            @onclick="TogglePasswordVisibility">
-                                        @(showPassword ? "🙈" : "👁️")
-                                    </button>
-                                </div>
-                            }
-                            else
-                            {
-                                
-                            }
-                        </td>
-                        <td>
-                            <small class="text-muted">
-                                @user.CreatedDate.ToString("yyyy-MM-dd HH:mm")
-                            </small>
-                        </td>
-                        <td>
-                            @if (user.Id == editingUserId)
-                            {
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" @bind="editUserLocked" id="locked-@user.Id" />
-                                    <label class="form-check-label" for="locked-@user.Id">
-                                        @(editUserLocked ? "Locked" : "Unlocked")
-                                    </label>
-                                </div>
-                            }
-                            else
-                            {
-                                <span class="badge @(user.IsLocked ? "bg-danger" : "bg-success")">
-                                    @(user.IsLocked ? "Locked" : "Unlocked")
-                                </span>
-                            }
-                        </td>
-                        <td>
-                            <span class="badge @(user.EmailConfirmed ? "bg-success" : "bg-warning")">
-                                @(user.EmailConfirmed ? "Confirmed" : "Pending")
-                            </span>
-                        </td>
-                        <td>
-                            @if (userRoles.ContainsKey(user.Id) && userRoles[user.Id].Any())
-                            {
-                                @foreach (var role in userRoles[user.Id])
-                                {
-                                    <span class="badge bg-primary me-1">@role</span>
-                                }
-                            }
-                            else
-                            {
-                                <span class="text-muted">No roles</span>
-                            }
-                        </td>
-                        <td>
-                            @if (user.Id == editingUserId)
-                            {
-                                <div class="d-flex">
-                                    <button class="btn btn-success btn-sm me-1" @onclick="SaveUser" title="Save">💾</button>
-                                    <button class="btn btn-secondary btn-sm" @onclick="CancelEdit" title="Cancel">❌</button>
-                                </div>
-                            }
-                            else
-                            {
-                                <button class="btn btn-primary btn-sm me-1" @onclick="() => StartEdit(user)">Edit</button>
-                                @if (!user.EmailConfirmed)
-                                {
-                                    <button class="btn btn-success btn-sm" @onclick="() => ActivateUser(user.Id)">Activate</button>
-                                }
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
+    @if (users == null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading users...</MudText>
+        </div>
+    }
+    else
+    {
+        <MudGrid Class="mb-3">
+            <MudItem xs="12" md="6">
+                <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@(!selectedUsers.Any())" OnClick="ActivateSelectedUsers">
+                    Activate Selected (@selectedUsers.Count)
+                </MudButton>
+            </MudItem>
+            <MudItem xs="12" md="6" Style="text-align: right;">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Total Users: @users.Count</MudText>
+            </MudItem>
+        </MudGrid>
 
-@if (!string.IsNullOrEmpty(message))
-{
-    <div class="alert @(isError ? "alert-danger" : "alert-success") alert-dismissible fade show" role="alert">
-        @message
-        <button type="button" class="btn-close" @onclick="ClearMessage"></button>
-    </div>
-}
+        <MudTable Items="users" Hover="true" Dense="true" Class="mb-3" T="ApplicationUser">
+            <HeaderContent>
+                <MudTh><MudCheckBox T="bool" Value="false" ValueChanged="@((bool v) => ToggleAllUsers(v))" /></MudTh>
+                <MudTh>User ID</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Username</MudTh>
+                <MudTh>New Password</MudTh>
+                <MudTh>Created Date</MudTh>
+                <MudTh>Account Locked</MudTh>
+                <MudTh>Email Confirmed</MudTh>
+                <MudTh>Roles</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="user">
+                <MudTd DataLabel="Select">
+                    <MudCheckBox T="bool" Value="@selectedUsers.Contains(user.Id)" ValueChanged="@((bool v) => ToggleUserSelection(user.Id, v))" />
+                </MudTd>
+                <MudTd DataLabel="User ID">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@user.Id.Substring(0, 8)...</MudText>
+                </MudTd>
+                <MudTd DataLabel="Email">
+                    @if (user.Id == editingUserId)
+                    {
+                        <MudTextField T="string" @bind-Value="editUserEmail" Margin="Margin.Dense" />
+                    }
+                    else
+                    {
+                        @user.Email
+                    }
+                </MudTd>
+                <MudTd DataLabel="Username">
+                    @if (user.Id == editingUserId)
+                    {
+                        <MudTextField T="string" @bind-Value="editUserName" Margin="Margin.Dense" />
+                    }
+                    else
+                    {
+                        @user.UserName
+                    }
+                </MudTd>
+                <MudTd DataLabel="New Password">
+                    @if (user.Id == editingUserId)
+                    {
+                        <div class="d-flex align-center" style="gap: 0.25rem;">
+                            <MudTextField T="string"
+                                          @bind-Value="editPassword"
+                                          InputType="@(showPassword ? InputType.Text : InputType.Password)"
+                                          Placeholder="Enter new password (current password cannot be displayed for security)"
+                                          Margin="Margin.Dense"
+                                          @key="@($"pwd-{user.Id}")" />
+                            <MudIconButton Icon="@(showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                           Size="Size.Small"
+                                           OnClick="TogglePasswordVisibility" />
+                        </div>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Created Date">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@user.CreatedDate.ToString("yyyy-MM-dd HH:mm")</MudText>
+                </MudTd>
+                <MudTd DataLabel="Account Locked">
+                    @if (user.Id == editingUserId)
+                    {
+                        <MudCheckBox T="bool" @bind-Value="editUserLocked" Label="@(editUserLocked ? "Locked" : "Unlocked")" />
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="@(user.IsLocked ? Color.Error : Color.Success)">@(user.IsLocked ? "Locked" : "Unlocked")</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Email Confirmed">
+                    <MudChip T="string" Size="Size.Small" Color="@(user.EmailConfirmed ? Color.Success : Color.Warning)">@(user.EmailConfirmed ? "Confirmed" : "Pending")</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Roles">
+                    @if (userRoles.ContainsKey(user.Id) && userRoles[user.Id].Any())
+                    {
+                        @foreach (var role in userRoles[user.Id])
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-1">@role</MudChip>
+                        }
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No roles</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    @if (user.Id == editingUserId)
+                    {
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Success" Size="Size.Small" OnClick="SaveUser" title="Save" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" OnClick="CancelEdit" title="Cancel" />
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <MudStack Row="true" Spacing="1">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEdit(user))">Edit</MudButton>
+                            @if (!user.EmailConfirmed)
+                            {
+                                <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="@(() => ActivateUser(user.Id))">Activate</MudButton>
+                            }
+                        </MudStack>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <MudAlert Severity="@(isError ? Severity.Error : Severity.Success)" ShowCloseIcon="true" CloseIconClicked="ClearMessage">@message</MudAlert>
+    }
+</MudContainer>
 
 @code {
     private List<ApplicationUser> users = null!;
@@ -221,11 +189,10 @@ else
             selectedUsers.Remove(userId);
     }
 
-    private void ToggleAllUsers(ChangeEventArgs e)
+    private void ToggleAllUsers(bool selectAll)
     {
-        bool selectAll = (bool)e.Value!;
         selectedUsers.Clear();
-        
+
         if (selectAll)
         {
             foreach (var user in users)
@@ -238,7 +205,7 @@ else
     private async Task ActivateSelectedUsers()
     {
         int activatedCount = 0;
-        
+
         foreach (var userId in selectedUsers)
         {
             var user = await UserManager.FindByIdAsync(userId);
@@ -275,7 +242,7 @@ else
         editPassword = ""; // Start with empty password field
         editUserLocked = user.IsLocked;
         showPassword = false;
-        
+
         // Debug: Log what we're setting
         Console.WriteLine($"StartEdit: Setting editPassword to empty string for user {user.Email}");
     }
@@ -332,7 +299,7 @@ else
             user.IsLocked = editUserLocked;
 
             var result = await UserManager.UpdateAsync(user);
-            
+
             if (!result.Succeeded)
             {
                 ShowMessage("Error updating user: " + string.Join(", ", result.Errors.Select(e => e.Description)), true);
@@ -343,26 +310,26 @@ else
             if (!string.IsNullOrWhiteSpace(editPassword))
             {
                 Console.WriteLine($"SaveUser: About to check password. editPassword='{editPassword}'");
-                
+
                 // Check if the entered password is different from the current password
                 var isCurrentPassword = await UserManager.CheckPasswordAsync(user, editPassword);
-                
+
                 Console.WriteLine($"SaveUser: CheckPasswordAsync returned {isCurrentPassword}");
-                
+
                 if (!isCurrentPassword)
                 {
                     Console.WriteLine($"SaveUser: Password is different, updating...");
-                    
+
                     // Password is different, so update it
                     var token = await UserManager.GeneratePasswordResetTokenAsync(user);
                     var passwordResult = await UserManager.ResetPasswordAsync(user, token, editPassword);
-                    
+
                     if (!passwordResult.Succeeded)
                     {
                         ShowMessage("User updated but password change failed: " + string.Join(", ", passwordResult.Errors.Select(e => e.Description)), true);
                         return;
                     }
-                    
+
                     Console.WriteLine($"SaveUser: Password updated successfully");
                     ShowMessage($"User {user.Email} and password updated successfully", false);
                 }
@@ -398,7 +365,7 @@ else
         editPassword = "";
         editUserLocked = false;
         showPassword = false;
-        
+
         // Debug: Log what we're clearing
         Console.WriteLine($"CancelEdit: Clearing all edit fields including editPassword");
     }
@@ -418,7 +385,7 @@ else
     private void TogglePasswordVisibility()
     {
         showPassword = !showPassword;
-        
+
         // Debug: Log what we're showing/hiding
         Console.WriteLine($"TogglePasswordVisibility: showPassword={showPassword}, editPassword='{editPassword}'");
     }

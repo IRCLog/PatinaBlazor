@@ -14,372 +14,181 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @inject IImageService ImageService
+@inject ISnackbar Snackbar
 
 <ImageModal @ref="imageModal" Description="@collectable?.Description" />
 
 <PageTitle>Edit Collectable</PageTitle>
 
-@if (collectable == null)
-{
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    @if (collectable == null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading collectable...</MudText>
         </div>
-        <p>Loading collectable...</p>
-    </div>
-}
-else if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger" role="alert">
-        <i class="bi bi-exclamation-circle"></i> @errorMessage
-    </div>
-    <div class="text-center">
-        <a href="/my-collectables" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Back to My Collectables
-        </a>
-    </div>
-}
-else
-{
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1><i class="bi bi-pencil-square"></i> Edit Collectable</h1>
-        <div>
-            <a href="/my-collectables" class="btn btn-secondary me-2">
-                <i class="bi bi-list-ul"></i> My Collectables
-            </a>
-            <a href="/collectables" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Collectables
-            </a>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3">@errorMessage</MudAlert>
+        <div class="text-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Default" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/my-collectables">Back to My Collectables</MudButton>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h4">
+                <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" /> Edit Collectable
+            </MudText>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.List" Href="/my-collectables">My Collectables</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/collectables">Back to Collectables</MudButton>
+            </MudStack>
+        </div>
 
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6">
-            <div class="card shadow">
-                <div class="card-body">
-                    <EditForm Model="@editModel" OnValidSubmit="@HandleValidSubmit" FormName="EditCollectableForm">
-                        <DataAnnotationsValidator />
+        <MudPaper Elevation="2" Class="pa-4">
+            <EditForm Model="@editModel" OnValidSubmit="@HandleValidSubmit" FormName="EditCollectableForm">
+                <DataAnnotationsValidator />
 
-                        <!-- Tab Navigation -->
-                        <ul class="nav nav-tabs mb-4" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link @(activeTab == "general" ? "active" : "")"
-                                        type="button"
-                                        @onclick="@(() => SetActiveTab("general"))">
-                                    <i class="bi bi-info-circle"></i> General Information
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link @(activeTab == "sale" ? "active" : "")"
-                                        type="button"
-                                        @onclick="@(() => SetActiveTab("sale"))">
-                                    <i class="bi bi-currency-dollar"></i> Sale Information
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link @(activeTab == "images" ? "active" : "")"
-                                        type="button"
-                                        @onclick="@(() => SetActiveTab("images"))">
-                                    <i class="bi bi-images"></i> Images
-                                </button>
-                            </li>
-                        </ul>
+                <MudTabs Rounded="true" Color="Color.Primary" Class="mb-4">
+                    <MudTabPanel Text="General Information" Icon="@Icons.Material.Filled.Info">
+                        <MudTextField Label="Description" Required="true" @bind-Value="editModel.Description" For="@(() => editModel.Description)" Placeholder="Enter description of your collectable" Class="mb-4" />
+                        <MudNumericField Label="Price Paid (USD)" Required="true" @bind-Value="editModel.PricePaid" For="@(() => editModel.PricePaid)" Format="F2" Adornment="Adornment.Start" AdornmentText="$" Class="mb-4" />
+                        <MudDatePicker Label="Date Acquired" @bind-Date="editModel.DateAcquired" For="@(() => editModel.DateAcquired)" Class="mb-4" />
+                        <MudTextField Label="Acquired From" @bind-Value="editModel.AcquiredFrom" For="@(() => editModel.AcquiredFrom)" Placeholder="Where or who did you acquire this from?" Class="mb-4" />
+                        <MudTextField Label="Notes" @bind-Value="editModel.Notes" For="@(() => editModel.Notes)" Placeholder="Add any additional notes about this collectable (optional)" Lines="4" Class="mb-4" />
+                    </MudTabPanel>
 
-                        <!-- Tab Content -->
-                        <div class="tab-content">
-                            <!-- General Information Tab -->
-                            <div class="tab-pane @(activeTab == "general" ? "show active" : "d-none")">
-                                <div class="mb-3">
-                                    <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
-                                    <InputText id="description"
-                                               class="form-control"
-                                               @bind-Value="editModel.Description"
-                                               placeholder="Enter description of your collectable" />
-                                    <ValidationMessage For="@(() => editModel.Description)" class="text-danger" />
-                                </div>
+                    <MudTabPanel Text="Sale Information" Icon="@Icons.Material.Filled.AttachMoney">
+                        <MudSwitch T="bool" @bind-Value="editModel.IsForSale" Label="This item is for sale" Color="Color.Primary" Class="mb-3" />
 
-                                <div class="mb-3">
-                                    <label for="pricePaid" class="form-label">Price Paid (USD) <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <InputNumber id="pricePaid"
-                                                     class="form-control"
-                                                     @bind-Value="editModel.PricePaid"
-                                                     placeholder="0.00"
-                                                     step="0.01" />
-                                    </div>
-                                    <ValidationMessage For="@(() => editModel.PricePaid)" class="text-danger" />
-                                </div>
+                        @if (editModel.IsForSale)
+                        {
+                            <MudNumericField Label="Asking Price (USD)" @bind-Value="editModel.AskingPrice" For="@(() => editModel.AskingPrice)" Format="F2" Adornment="Adornment.Start" AdornmentText="$" Class="mb-4" />
+                        }
 
-                                <div class="mb-3">
-                                    <label for="dateAcquired" class="form-label">Date Acquired</label>
-                                    <InputDate id="dateAcquired"
-                                              class="form-control"
-                                              @bind-Value="editModel.DateAcquired" />
-                                    <ValidationMessage For="@(() => editModel.DateAcquired)" class="text-danger" />
-                                </div>
+                        <MudSwitch T="bool" @bind-Value="editModel.IsSold" Label="This item has been sold" Color="Color.Primary" Class="mb-3" />
 
-                                <div class="mb-3">
-                                    <label for="acquiredFrom" class="form-label">Acquired From</label>
-                                    <InputText id="acquiredFrom"
-                                              class="form-control"
-                                              @bind-Value="editModel.AcquiredFrom"
-                                              placeholder="Where or who did you acquire this from?" />
-                                    <ValidationMessage For="@(() => editModel.AcquiredFrom)" class="text-danger" />
-                                </div>
+                        @if (editModel.IsSold)
+                        {
+                            <MudNumericField Label="Sale Price (USD)" @bind-Value="editModel.SalePrice" For="@(() => editModel.SalePrice)" Format="F2" Adornment="Adornment.Start" AdornmentText="$" Class="mb-4" />
+                            <MudDatePicker Label="Date Sold" @bind-Date="editModel.DateSold" For="@(() => editModel.DateSold)" Class="mb-4" />
+                            <MudTextField Label="Sold To" @bind-Value="editModel.SoldTo" For="@(() => editModel.SoldTo)" Placeholder="Who did you sell this to?" Class="mb-4" />
+                        }
+                    </MudTabPanel>
 
-                                <div class="mb-3">
-                                    <label for="notes" class="form-label">Notes</label>
-                                    <InputTextArea id="notes"
-                                                   class="form-control"
-                                                   @bind-Value="editModel.Notes"
-                                                   placeholder="Add any additional notes about this collectable (optional)"
-                                                   rows="4" />
-                                    <ValidationMessage For="@(() => editModel.Notes)" class="text-danger" />
-                                </div>
-                            </div>
-
-                            <!-- Sale Information Tab -->
-                            <div class="tab-pane @(activeTab == "sale" ? "show active" : "d-none")">
-                                <div class="mb-3">
-                                    <div class="form-check form-switch">
-                                        <InputCheckbox id="isForSale"
-                                                      class="form-check-input"
-                                                      @bind-Value="editModel.IsForSale" />
-                                        <label class="form-check-label" for="isForSale">
-                                            <i class="bi bi-tag"></i> This item is for sale
-                                        </label>
-                                    </div>
-                                </div>
-
-                                @if (editModel.IsForSale)
+                    <MudTabPanel Text="Images" Icon="@Icons.Material.Filled.Image">
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Current Images</MudText>
+                        @if (collectable.Images != null && collectable.Images.Any())
+                        {
+                            <MudGrid Class="mb-4">
+                                @foreach (var image in collectable.Images.OrderBy(i => i.DisplayOrder))
                                 {
-                                    <div class="mb-3">
-                                        <label for="askingPrice" class="form-label">Asking Price (USD)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">$</span>
-                                            <InputNumber id="askingPrice"
-                                                         class="form-control"
-                                                         @bind-Value="editModel.AskingPrice"
-                                                         placeholder="0.00"
-                                                         step="0.01" />
-                                        </div>
-                                        <ValidationMessage For="@(() => editModel.AskingPrice)" class="text-danger" />
-                                    </div>
-                                }
-
-                                <div class="mb-3">
-                                    <div class="form-check form-switch">
-                                        <InputCheckbox id="isSold"
-                                                      class="form-check-input"
-                                                      @bind-Value="editModel.IsSold" />
-                                        <label class="form-check-label" for="isSold">
-                                            <i class="bi bi-check-circle"></i> This item has been sold
-                                        </label>
-                                    </div>
-                                </div>
-
-                                @if (editModel.IsSold)
-                                {
-                                    <div class="mb-3">
-                                        <label for="salePrice" class="form-label">Sale Price (USD)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text">$</span>
-                                            <InputNumber id="salePrice"
-                                                         class="form-control"
-                                                         @bind-Value="editModel.SalePrice"
-                                                         placeholder="0.00"
-                                                         step="0.01" />
-                                        </div>
-                                        <ValidationMessage For="@(() => editModel.SalePrice)" class="text-danger" />
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="dateSold" class="form-label">Date Sold</label>
-                                        <InputDate id="dateSold"
-                                                  class="form-control"
-                                                  @bind-Value="editModel.DateSold" />
-                                        <ValidationMessage For="@(() => editModel.DateSold)" class="text-danger" />
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <label for="soldTo" class="form-label">Sold To</label>
-                                        <InputText id="soldTo"
-                                                  class="form-control"
-                                                  @bind-Value="editModel.SoldTo"
-                                                  placeholder="Who did you sell this to?" />
-                                        <ValidationMessage For="@(() => editModel.SoldTo)" class="text-danger" />
-                                    </div>
-                                }
-                            </div>
-
-                            <!-- Images Tab -->
-                            <div class="tab-pane @(activeTab == "images" ? "show active" : "d-none")">
-                                <div class="mb-4">
-                                    <label class="form-label">Current Images</label>
-                                    @if (collectable.Images != null && collectable.Images.Any())
-                                    {
-                                        <div class="row">
-                                            @foreach (var image in collectable.Images.OrderBy(i => i.DisplayOrder))
-                                            {
-                                                <div class="col-md-6 mb-3">
-                                                    <div class="card">
-                                                        <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
-                                                            <img src="@ImageService.GetImageUrl(image)"
-                                                                 alt="@collectable.Description"
-                                                                 class="card-img-top"
-                                                                 style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
-                                                                 @onclick="(() => ShowImageModal(image))" />
-                                                        </div>
-                                                        <div class="card-body">
-                                                            @if (image.IsMainImage)
-                                                            {
-                                                                <span class="badge bg-primary mb-2">Main Image</span>
-                                                            }
-                                                            <div class="d-flex gap-2">
-                                                                @if (!image.IsMainImage)
-                                                                {
-                                                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="(() => SetAsMainImage(image))">
-                                                                        <i class="bi bi-star"></i> Set as Main
-                                                                    </button>
-                                                                }
-                                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveImage(image))">
-                                                                    <i class="bi bi-trash"></i> Remove
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <p class="text-muted">No images currently set.</p>
-                                    }
-
-                                    <label for="images" class="form-label">Upload New Images</label>
-                                    <InputFile id="images"
-                                               class="form-control"
-                                               OnChange="OnImagesSelected"
-                                               accept="image/*"
-                                               multiple />
-                                    <div class="form-text">
-                                        <small>Upload up to 10 new images for your collectable (max 15MB each). Supported formats: JPG, PNG, GIF, WebP. Large images will be automatically compressed to improve upload speed.</small>
-                                    </div>
-
-                                    @if (imageUploadErrors.Any())
-                                    {
-                                        <div class="alert alert-danger mt-2">
-                                            <i class="bi bi-exclamation-circle"></i> Image Upload Errors:
-                                            <ul class="mb-0 mt-2">
-                                                @foreach (var error in imageUploadErrors)
-                                                {
-                                                    <li>@error</li>
-                                                }
-                                            </ul>
-                                        </div>
-                                    }
-
-                                    @if (selectedImageFiles.Any())
-                                    {
-                                        <div class="mt-3">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <h6 class="mb-0">
-                                                    <i class="bi bi-images"></i> New Images Selected (@selectedImageFiles.Count)
-                                                </h6>
-                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearSelectedImages">
-                                                    <i class="bi bi-x-circle"></i> Clear All
-                                                </button>
+                                    <MudItem xs="12" md="6">
+                                        <MudCard>
+                                            <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary);">
+                                                <img src="@ImageService.GetImageUrl(image)"
+                                                     alt="@collectable.Description"
+                                                     style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
+                                                     @onclick="(() => ShowImageModal(image))" />
                                             </div>
-                                            <div class="row">
-                                                @for (int i = 0; i < selectedImageFiles.Count; i++)
+                                            <MudCardContent>
+                                                @if (image.IsMainImage)
                                                 {
-                                                    var index = i;
-                                                    var file = selectedImageFiles[i];
-                                                    <div class="col-md-6 col-lg-4 mb-3">
-                                                        <div class="card">
-                                                            @if (index < imagePreviewUrls.Count)
-                                                            {
-                                                                <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
-                                                                    <img src="@imagePreviewUrls[index]"
-                                                                         alt="@file.Name"
-                                                                         class="card-img-top"
-                                                                         style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
-                                                                         @onclick="(() => ShowSelectedImageModal(index))" />
-                                                                </div>
-                                                            }
-                                                            <div class="card-body">
-                                                                <h6 class="card-title">@file.Name</h6>
-                                                                <p class="card-text mb-1">
-                                                                    <strong>Size:</strong> @FormatFileSize(file.Size)
-                                                                </p>
-                                                                <p class="card-text mb-2">
-                                                                    <strong>Type:</strong> @file.ContentType
-                                                                </p>
-                                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="(() => RemoveSelectedImage(index))">
-                                                                    <i class="bi bi-x-circle"></i> Remove
-                                                                </button>
-                                                            </div>
-                                                        </div>
+                                                    <MudChip T="string" Color="Color.Primary" Size="Size.Small" Class="mb-2">Main Image</MudChip>
+                                                }
+                                                <MudStack Row="true" Spacing="2">
+                                                    @if (!image.IsMainImage)
+                                                    {
+                                                        <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Star" OnClick="(() => SetAsMainImage(image))">Set as Main</MudButton>
+                                                    }
+                                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="(() => RemoveImage(image))">Remove</MudButton>
+                                                </MudStack>
+                                            </MudCardContent>
+                                        </MudCard>
+                                    </MudItem>
+                                }
+                            </MudGrid>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">No images currently set.</MudText>
+                        }
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Upload New Images</MudText>
+                        <InputFile id="images" OnChange="OnImagesSelected" accept="image/*" multiple class="mud-input-file" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-3" Style="display: block;">
+                            Upload up to 10 new images for your collectable (max 15MB each). Supported formats: JPG, PNG, GIF, WebP. Large images will be automatically compressed to improve upload speed.
+                        </MudText>
+
+                        @if (imageUploadErrors.Any())
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mt-2">
+                                Image Upload Errors:
+                                <ul class="mb-0 mt-2">
+                                    @foreach (var error in imageUploadErrors)
+                                    {
+                                        <li>@error</li>
+                                    }
+                                </ul>
+                            </MudAlert>
+                        }
+
+                        @if (selectedImageFiles.Any())
+                        {
+                            <div class="mt-3">
+                                <div class="d-flex justify-space-between align-center mb-2">
+                                    <MudText Typo="Typo.subtitle1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Image" Class="mr-1" /> New Images Selected (@selectedImageFiles.Count)
+                                    </MudText>
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Cancel" OnClick="ClearSelectedImages">Clear All</MudButton>
+                                </div>
+                                <MudGrid>
+                                    @for (int i = 0; i < selectedImageFiles.Count; i++)
+                                    {
+                                        var index = i;
+                                        var file = selectedImageFiles[i];
+                                        <MudItem xs="12" md="6" lg="4">
+                                            <MudCard>
+                                                @if (index < imagePreviewUrls.Count)
+                                                {
+                                                    <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary);">
+                                                        <img src="@imagePreviewUrls[index]"
+                                                             alt="@file.Name"
+                                                             style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
+                                                             @onclick="(() => ShowSelectedImageModal(index))" />
                                                     </div>
                                                 }
-                                            </div>
-                                        </div>
+                                                <MudCardContent>
+                                                    <MudText Typo="Typo.subtitle2">@file.Name</MudText>
+                                                    <MudText Typo="Typo.body2">Size: @FormatFileSize(file.Size)</MudText>
+                                                    <MudText Typo="Typo.body2" Class="mb-2">Type: @file.ContentType</MudText>
+                                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Cancel" OnClick="(() => RemoveSelectedImage(index))">Remove</MudButton>
+                                                </MudCardContent>
+                                            </MudCard>
+                                        </MudItem>
                                     }
-                                </div>
+                                </MudGrid>
                             </div>
-                        </div>
+                        }
+                    </MudTabPanel>
+                </MudTabs>
 
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="/my-collectables" class="btn btn-secondary me-md-2">
-                                <i class="bi bi-x-circle"></i> Cancel
-                            </a>
-                            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
-                                @if (isSubmitting)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                }
-                                <i class="bi bi-save"></i> Update Collectable
-                            </button>
-                        </div>
-                    </EditForm>
+                <div class="d-flex justify-end" style="gap: 0.5rem;">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.Cancel" Href="/my-collectables">Cancel</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" Disabled="@isSubmitting" StartIcon="@Icons.Material.Filled.Save">
+                        @if (isSubmitting)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                        }
+                        Update Collectable
+                    </MudButton>
                 </div>
-            </div>
-        </div>
-    </div>
-}
-
-<!-- Toast Container -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
-    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="bi bi-check-circle me-2"></i>
-                @toastMessage
-                @if (!string.IsNullOrEmpty(collectableLink))
-                {
-                    <div class="mt-2">
-                        <a href="@collectableLink" class="btn btn-light btn-sm">
-                            <i class="bi bi-eye"></i> View My Collectables
-                        </a>
-                    </div>
-                }
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-
-    <div id="errorToast" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="bi bi-exclamation-circle me-2"></i>
-                @toastMessage
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>
-</div>
+            </EditForm>
+        </MudPaper>
+    }
+</MudContainer>
 
 @code {
     [Parameter] public Guid Id { get; set; }
@@ -388,13 +197,10 @@ else
     private CollectableEditModel editModel = new();
     private string currentUserId = string.Empty;
     private bool isSubmitting = false;
-    private string toastMessage = string.Empty;
-    private string collectableLink = string.Empty;
     private string errorMessage = string.Empty;
     private List<IBrowserFile> selectedImageFiles = new();
     private List<string> imageUploadErrors = new();
     private ImageModal imageModal = default!;
-    private string activeTab = "general";
     private List<string> imagePreviewUrls = new();
 
     protected override async Task OnInitializedAsync()
@@ -439,7 +245,7 @@ else
     {
         if (collectable == null || string.IsNullOrEmpty(currentUserId))
         {
-            await ShowErrorToast("Invalid collectable or user session. Please refresh and try again.");
+            Snackbar.Add("Invalid collectable or user session. Please refresh and try again.", Severity.Error);
             return;
         }
 
@@ -472,7 +278,7 @@ else
                 if (failedUploads.Any())
                 {
                     var errorMessage = string.Join(", ", failedUploads.Select(f => f.ErrorMessage));
-                    await ShowErrorToast($"Failed to upload some images: {errorMessage}");
+                    Snackbar.Add($"Failed to upload some images: {errorMessage}", Severity.Error);
 
                     // Clean up successful uploads if any failed
                     foreach (var successResult in successfulUploads)
@@ -504,8 +310,7 @@ else
 
             await DbContext.SaveChangesAsync();
 
-            collectableLink = "/my-collectables";
-            await ShowSuccessToast($"Successfully updated '{collectable.Description}'!");
+            Snackbar.Add($"Successfully updated '{collectable.Description}'!", Severity.Success);
 
             // Navigate back after a short delay
             await Task.Delay(2000);
@@ -513,7 +318,7 @@ else
         }
         catch (Exception ex)
         {
-            await ShowErrorToast($"Failed to update collectable: {ex.Message}");
+            Snackbar.Add($"Failed to update collectable: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -621,22 +426,6 @@ else
         return $"{number:n1}{suffixes[counter]}";
     }
 
-    private async Task ShowSuccessToast(string message)
-    {
-        toastMessage = message;
-        StateHasChanged();
-
-        await JSRuntime.InvokeVoidAsync("showToast", "successToast");
-    }
-
-    private async Task ShowErrorToast(string message)
-    {
-        toastMessage = message;
-        StateHasChanged();
-
-        await JSRuntime.InvokeVoidAsync("showToast", "errorToast");
-    }
-
     private async Task ShowImageModal(CollectableImage selectedImage)
     {
         if (collectable?.Images != null && collectable.Images.Any())
@@ -645,12 +434,6 @@ else
             var startIndex = images.FindIndex(i => i.Id == selectedImage.Id);
             await imageModal.ShowModal(images, Math.Max(0, startIndex));
         }
-    }
-
-    private void SetActiveTab(string tab)
-    {
-        activeTab = tab;
-        StateHasChanged();
     }
 
     private async Task CreateImagePreviewUrls()
@@ -717,26 +500,6 @@ else
 }
 
 <script>
-    window.showToast = (toastId) => {
-        const toastElement = document.getElementById(toastId);
-        if (toastElement) {
-            // Check if Bootstrap is loaded
-            if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-                const toast = new bootstrap.Toast(toastElement, {
-                    autohide: true,
-                    delay: 5000
-                });
-                toast.show();
-            } else {
-                // Fallback: show toast manually
-                toastElement.classList.add('show');
-                setTimeout(() => {
-                    toastElement.classList.remove('show');
-                }, 5000);
-            }
-        }
-    };
-
     window.createObjectURL = (file) => {
         return URL.createObjectURL(file);
     };

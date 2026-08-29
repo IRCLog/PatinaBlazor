@@ -18,19 +18,18 @@
 
 <PageTitle>Register</PageTitle>
 
-<StatusMessage Message="@message" />
-<h1>Register</h1>
-<h2>Associate your @ProviderDisplayName account.</h2>
-<hr />
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <StatusMessage Message="@message" />
+    <MudText Typo="Typo.h4" Class="mb-1">Register</MudText>
+    <MudText Typo="Typo.subtitle1" Class="mb-4">Associate your @ProviderDisplayName account.</MudText>
 
-<div  class="alert alert-info">
-    You've successfully authenticated with <strong>@ProviderDisplayName</strong>.
-    Please enter an email address for this site below and click the Register button to finish
-    logging in.
-</div>
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        You've successfully authenticated with <strong>@ProviderDisplayName</strong>.
+        Please enter an email address for this site below and click the Register button to finish
+        logging in.
+    </MudAlert>
 
-<div class="row">
-    <div class="col-md-4">
+    <MudPaper Elevation="2" Class="pa-4">
         <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync" FormName="confirmation" method="post">
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
@@ -39,10 +38,10 @@
                 <label for="email" class="form-label">Email</label>
                 <ValidationMessage For="() => Input.Email" />
             </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true">Register</MudButton>
         </EditForm>
-    </div>
-</div>
+    </MudPaper>
+</MudContainer>
 
 @code {
     public const string LoginCallbackAction = "LoginCallback";

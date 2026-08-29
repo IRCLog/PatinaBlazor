@@ -15,24 +15,24 @@
 
 <PageTitle>IRC Chat</PageTitle>
 
-<div class="mirc-window">
-    <div class="mirc-titlebar">
+<MudPaper Class="mirc-window" Elevation="0">
+    <MudToolBar Class="mirc-titlebar" Dense="true">
         <span class="mirc-title-text">mIRC - [@selectedNetwork@(selectedChannel != null ? $" / {selectedChannel}" : "")]</span>
-    </div>
+    </MudToolBar>
 
     <div class="mirc-body">
-        <div class="mirc-chat-area" id="chatArea">
+        <MudPaper Class="mirc-chat-area" Elevation="0" id="chatArea">
             @if (events.Count == 0)
             {
-                <div class="mirc-line mirc-system">[No events to display]</div>
+                <MudText Class="mirc-line mirc-system">[No events to display]</MudText>
             }
             @foreach (var evt in events)
             {
-                <div class="mirc-line @GetLineClass(evt.Action)">@FormatEvent(evt)</div>
+                <MudText Class="@($"mirc-line {GetLineClass(evt.Action)}")">@FormatEvent(evt)</MudText>
             }
-        </div>
+        </MudPaper>
 
-        <div class="mirc-channel-list">
+        <MudPaper Class="mirc-channel-list" Elevation="0">
             <select class="mirc-select mirc-network-select" @onchange="OnNetworkChanged" value="@selectedNetwork">
                 @foreach (var net in networks)
                 {
@@ -51,10 +51,10 @@
             {
                 <div class="mirc-channel-item-empty">—</div>
             }
-        </div>
+        </MudPaper>
     </div>
 
-    <div class="mirc-statusbar">
+    <MudPaper Class="mirc-statusbar" Elevation="0">
         <span>@selectedNetwork</span>
         <span class="mirc-status-sep">|</span>
         @if (string.IsNullOrEmpty(selectedChannel))
@@ -67,7 +67,7 @@
         }
         <span class="mirc-status-sep">|</span>
         <span>@events.Count messages</span>
-    </div>
+    </MudPaper>
 
     <div class="mirc-input-bar">
         <input type="text"
@@ -78,7 +78,7 @@
                @bind:event="oninput"
                @onkeydown="OnInputKeyDown" />
     </div>
-</div>
+</MudPaper>
 
 @code {
     [CascadingParameter]
