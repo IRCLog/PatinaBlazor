@@ -5,9 +5,6 @@
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 @inject UserManager<ApplicationUser> UserManager
-@inject RoleManager<IdentityRole> RoleManager
-@inject SignInManager<ApplicationUser> SignInManager
-@inject IJSRuntime JSRuntime
 
 <PageTitle>All Users - Admin</PageTitle>
 
@@ -43,7 +40,6 @@
                 <MudTh>User ID</MudTh>
                 <MudTh>Email</MudTh>
                 <MudTh>Username</MudTh>
-                <MudTh>New Password</MudTh>
                 <MudTh>Created Date</MudTh>
                 <MudTh>Account Locked</MudTh>
                 <MudTh>Email Confirmed</MudTh>
@@ -57,54 +53,13 @@
                 <MudTd DataLabel="User ID">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">@user.Id.Substring(0, 8)...</MudText>
                 </MudTd>
-                <MudTd DataLabel="Email">
-                    @if (user.Id == editingUserId)
-                    {
-                        <MudTextField T="string" @bind-Value="editUserEmail" Margin="Margin.Dense" />
-                    }
-                    else
-                    {
-                        @user.Email
-                    }
-                </MudTd>
-                <MudTd DataLabel="Username">
-                    @if (user.Id == editingUserId)
-                    {
-                        <MudTextField T="string" @bind-Value="editUserName" Margin="Margin.Dense" />
-                    }
-                    else
-                    {
-                        @user.UserName
-                    }
-                </MudTd>
-                <MudTd DataLabel="New Password">
-                    @if (user.Id == editingUserId)
-                    {
-                        <div class="d-flex align-center" style="gap: 0.25rem;">
-                            <MudTextField T="string"
-                                          @bind-Value="editPassword"
-                                          InputType="@(showPassword ? InputType.Text : InputType.Password)"
-                                          Placeholder="Enter new password (current password cannot be displayed for security)"
-                                          Margin="Margin.Dense"
-                                          @key="@($"pwd-{user.Id}")" />
-                            <MudIconButton Icon="@(showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                           Size="Size.Small"
-                                           OnClick="TogglePasswordVisibility" />
-                        </div>
-                    }
-                </MudTd>
+                <MudTd DataLabel="Email">@user.Email</MudTd>
+                <MudTd DataLabel="Username">@user.UserName</MudTd>
                 <MudTd DataLabel="Created Date">
                     <MudText Typo="Typo.caption" Color="Color.Secondary">@user.CreatedDate.ToString("yyyy-MM-dd HH:mm")</MudText>
                 </MudTd>
                 <MudTd DataLabel="Account Locked">
-                    @if (user.Id == editingUserId)
-                    {
-                        <MudCheckBox T="bool" @bind-Value="editUserLocked" Label="@(editUserLocked ? "Locked" : "Unlocked")" />
-                    }
-                    else
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="@(user.IsLocked ? Color.Error : Color.Success)">@(user.IsLocked ? "Locked" : "Unlocked")</MudChip>
-                    }
+                    <MudChip T="string" Size="Size.Small" Color="@(user.IsLocked ? Color.Error : Color.Success)">@(user.IsLocked ? "Locked" : "Unlocked")</MudChip>
                 </MudTd>
                 <MudTd DataLabel="Email Confirmed">
                     <MudChip T="string" Size="Size.Small" Color="@(user.EmailConfirmed ? Color.Success : Color.Warning)">@(user.EmailConfirmed ? "Confirmed" : "Pending")</MudChip>
@@ -123,23 +78,13 @@
                     }
                 </MudTd>
                 <MudTd DataLabel="Actions">
-                    @if (user.Id == editingUserId)
-                    {
-                        <MudStack Row="true" Spacing="1">
-                            <MudIconButton Icon="@Icons.Material.Filled.Save" Color="Color.Success" Size="Size.Small" OnClick="SaveUser" title="Save" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Cancel" Size="Size.Small" OnClick="CancelEdit" title="Cancel" />
-                        </MudStack>
-                    }
-                    else
-                    {
-                        <MudStack Row="true" Spacing="1">
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => StartEdit(user))">Edit</MudButton>
-                            @if (!user.EmailConfirmed)
-                            {
-                                <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="@(() => ActivateUser(user.Id))">Activate</MudButton>
-                            }
-                        </MudStack>
-                    }
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _editDialog!.ShowModal(user))">Edit</MudButton>
+                        @if (!user.EmailConfirmed)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="@(() => ActivateUser(user.Id))">Activate</MudButton>
+                        }
+                    </MudStack>
                 </MudTd>
             </RowTemplate>
         </MudTable>
@@ -151,18 +96,15 @@
     }
 </MudContainer>
 
+<EditUserDialog @ref="_editDialog" OnSaved="HandleUserSaved" />
+
 @code {
     private List<ApplicationUser> users = null!;
     private Dictionary<string, List<string>> userRoles = new();
     private HashSet<string> selectedUsers = new();
-    private string? editingUserId;
-    private string editUserEmail = "";
-    private string editUserName = "";
-    private string editPassword = "";
-    private bool editUserLocked = false;
     private string message = "";
     private bool isError = false;
-    private bool showPassword = false;
+    private EditUserDialog? _editDialog;
 
     protected override async Task OnInitializedAsync()
     {
@@ -179,6 +121,12 @@
             var roles = await UserManager.GetRolesAsync(user);
             userRoles[user.Id] = roles.ToList();
         }
+    }
+
+    private async Task HandleUserSaved()
+    {
+        await LoadUsers();
+        ShowMessage("User updated successfully.", false);
     }
 
     private void ToggleUserSelection(string userId, bool isSelected)
@@ -234,142 +182,6 @@
         }
     }
 
-    private void StartEdit(ApplicationUser user)
-    {
-        editingUserId = user.Id;
-        editUserEmail = user.Email ?? "";
-        editUserName = user.UserName ?? "";
-        editPassword = ""; // Start with empty password field
-        editUserLocked = user.IsLocked;
-        showPassword = false;
-
-        // Debug: Log what we're setting
-        Console.WriteLine($"StartEdit: Setting editPassword to empty string for user {user.Email}");
-    }
-
-    private async Task SaveUser()
-    {
-        if (string.IsNullOrEmpty(editingUserId))
-            return;
-
-        var user = await UserManager.FindByIdAsync(editingUserId);
-        if (user == null)
-        {
-            ShowMessage("User not found", true);
-            return;
-        }
-
-        try
-        {
-            // Validate email format
-            if (string.IsNullOrWhiteSpace(editUserEmail) || !editUserEmail.Contains("@"))
-            {
-                ShowMessage("Please enter a valid email address", true);
-                return;
-            }
-
-            // Validate username
-            if (string.IsNullOrWhiteSpace(editUserName))
-            {
-                ShowMessage("Username cannot be empty", true);
-                return;
-            }
-
-            // Check if email already exists for another user
-            var existingEmailUser = await UserManager.FindByEmailAsync(editUserEmail);
-            if (existingEmailUser != null && existingEmailUser.Id != user.Id)
-            {
-                ShowMessage("Email address is already in use by another user", true);
-                return;
-            }
-
-            // Check if username already exists for another user
-            var existingUsernameUser = await UserManager.FindByNameAsync(editUserName);
-            if (existingUsernameUser != null && existingUsernameUser.Id != user.Id)
-            {
-                ShowMessage("Username is already taken by another user", true);
-                return;
-            }
-
-            // Update user properties
-            user.Email = editUserEmail;
-            user.UserName = editUserName;
-            user.NormalizedEmail = editUserEmail.ToUpper();
-            user.NormalizedUserName = editUserName.ToUpper();
-            user.IsLocked = editUserLocked;
-
-            var result = await UserManager.UpdateAsync(user);
-
-            if (!result.Succeeded)
-            {
-                ShowMessage("Error updating user: " + string.Join(", ", result.Errors.Select(e => e.Description)), true);
-                return;
-            }
-
-            // Handle password change if provided and not empty/whitespace
-            if (!string.IsNullOrWhiteSpace(editPassword))
-            {
-                Console.WriteLine($"SaveUser: About to check password. editPassword='{editPassword}'");
-
-                // Check if the entered password is different from the current password
-                var isCurrentPassword = await UserManager.CheckPasswordAsync(user, editPassword);
-
-                Console.WriteLine($"SaveUser: CheckPasswordAsync returned {isCurrentPassword}");
-
-                if (!isCurrentPassword)
-                {
-                    Console.WriteLine($"SaveUser: Password is different, updating...");
-
-                    // Password is different, so update it
-                    var token = await UserManager.GeneratePasswordResetTokenAsync(user);
-                    var passwordResult = await UserManager.ResetPasswordAsync(user, token, editPassword);
-
-                    if (!passwordResult.Succeeded)
-                    {
-                        ShowMessage("User updated but password change failed: " + string.Join(", ", passwordResult.Errors.Select(e => e.Description)), true);
-                        return;
-                    }
-
-                    Console.WriteLine($"SaveUser: Password updated successfully");
-                    ShowMessage($"User {user.Email} and password updated successfully", false);
-                }
-                else
-                {
-                    Console.WriteLine($"SaveUser: Password is same as current, skipping update");
-                    // Password is the same as current, no need to update
-                    ShowMessage($"User {user.Email} updated successfully (password unchanged)", false);
-                }
-            }
-            else
-            {
-                Console.WriteLine($"SaveUser: No password provided (empty/whitespace)");
-                ShowMessage($"User {user.Email} updated successfully", false);
-            }
-
-            // Success - clear all edit state and refresh data
-            CancelEdit();
-            await LoadUsers();
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            ShowMessage($"Error updating user: {ex.Message}", true);
-        }
-    }
-
-    private void CancelEdit()
-    {
-        editingUserId = null;
-        editUserEmail = "";
-        editUserName = "";
-        editPassword = "";
-        editUserLocked = false;
-        showPassword = false;
-
-        // Debug: Log what we're clearing
-        Console.WriteLine($"CancelEdit: Clearing all edit fields including editPassword");
-    }
-
     private void ShowMessage(string msg, bool error)
     {
         message = msg;
@@ -380,13 +192,5 @@
     private void ClearMessage()
     {
         message = "";
-    }
-
-    private void TogglePasswordVisibility()
-    {
-        showPassword = !showPassword;
-
-        // Debug: Log what we're showing/hiding
-        Console.WriteLine($"TogglePasswordVisibility: showPassword={showPassword}, editPassword='{editPassword}'");
     }
 }

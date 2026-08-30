@@ -1,0 +1,214 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using PatinaBlazor.Data
+@using System.ComponentModel.DataAnnotations
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+
+<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Edit User</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="HandleSave" id="editUserForm">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+            }
+
+            <MudTabs Rounded="true" Color="Color.Primary" Class="mb-2">
+                <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Person">
+                    <MudTextField Label="Email" @bind-Value="_model.Email" For="@(() => _model.Email)" Class="mb-4" />
+                    <MudTextField Label="Username" @bind-Value="_model.UserName" For="@(() => _model.UserName)" Class="mb-4" />
+
+                    <div class="d-flex align-center mb-4" style="gap: 0.5rem;">
+                        <MudTextField @bind-Value="_model.Password"
+                                      For="@(() => _model.Password)"
+                                      Label="New Password"
+                                      InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                                      Placeholder="Leave blank to keep current password"
+                                      Class="flex-grow-1" />
+                        <MudIconButton Icon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                       Size="Size.Small"
+                                       OnClick="@(() => _showPassword = !_showPassword)" />
+                    </div>
+
+                    <MudSwitch T="bool" @bind-Value="_model.IsLocked" Label="Account Locked" Color="Color.Primary" />
+                </MudTabPanel>
+
+                <MudTabPanel Text="Roles" Icon="@Icons.Material.Filled.Badge">
+                    @if (!_roleMembership.Any())
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No roles are configured in the system.</MudText>
+                    }
+                    else
+                    {
+                        @foreach (var roleName in _roleMembership.Keys.ToList())
+                        {
+                            <div class="mb-2">
+                                <MudSwitch T="bool"
+                                           Value="@_roleMembership[roleName]"
+                                           ValueChanged="@((bool v) => _roleMembership[roleName] = v)"
+                                           Label="@roleName"
+                                           Color="Color.Primary" />
+                            </div>
+                        }
+                    }
+                </MudTabPanel>
+            </MudTabs>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" form="editUserForm" Variant="Variant.Filled" Color="Color.Primary" Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
+
+    private bool _isVisible;
+    private bool _isSaving;
+    private bool _showPassword;
+    private string? _errorMessage;
+
+    private ApplicationUser? _user;
+    private UserEditModel _model = new();
+    private Dictionary<string, bool> _roleMembership = new();
+    private HashSet<string> _originalRoles = new();
+
+    public async Task ShowModal(ApplicationUser user)
+    {
+        _user = user;
+        _model = new UserEditModel
+        {
+            Email = user.Email ?? "",
+            UserName = user.UserName ?? "",
+            Password = "",
+            IsLocked = user.IsLocked,
+        };
+        _errorMessage = null;
+        _showPassword = false;
+
+        var allRoleNames = await RoleManager.Roles.Select(r => r.Name!).ToListAsync();
+        var userRoles = await UserManager.GetRolesAsync(user);
+        _originalRoles = userRoles.ToHashSet();
+        _roleMembership = allRoleNames.ToDictionary(r => r, r => _originalRoles.Contains(r));
+
+        _isVisible = true;
+        StateHasChanged();
+    }
+
+    private void Close()
+    {
+        _isVisible = false;
+    }
+
+    private async Task HandleSave()
+    {
+        if (_user == null)
+            return;
+
+        _errorMessage = null;
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var existingEmailUser = await UserManager.FindByEmailAsync(_model.Email);
+            if (existingEmailUser != null && existingEmailUser.Id != _user.Id)
+            {
+                _errorMessage = "Email address is already in use by another user";
+                return;
+            }
+
+            var existingUsernameUser = await UserManager.FindByNameAsync(_model.UserName);
+            if (existingUsernameUser != null && existingUsernameUser.Id != _user.Id)
+            {
+                _errorMessage = "Username is already taken by another user";
+                return;
+            }
+
+            _user.Email = _model.Email;
+            _user.UserName = _model.UserName;
+            _user.NormalizedEmail = _model.Email.ToUpperInvariant();
+            _user.NormalizedUserName = _model.UserName.ToUpperInvariant();
+            _user.IsLocked = _model.IsLocked;
+
+            var result = await UserManager.UpdateAsync(_user);
+            if (!result.Succeeded)
+            {
+                _errorMessage = "Error updating user: " + string.Join(", ", result.Errors.Select(e => e.Description));
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_model.Password))
+            {
+                var isCurrentPassword = await UserManager.CheckPasswordAsync(_user, _model.Password);
+                if (!isCurrentPassword)
+                {
+                    var token = await UserManager.GeneratePasswordResetTokenAsync(_user);
+                    var passwordResult = await UserManager.ResetPasswordAsync(_user, token, _model.Password);
+                    if (!passwordResult.Succeeded)
+                    {
+                        _errorMessage = "User updated but password change failed: " + string.Join(", ", passwordResult.Errors.Select(e => e.Description));
+                        return;
+                    }
+                }
+            }
+
+            foreach (var (roleName, isChecked) in _roleMembership)
+            {
+                var wasInRole = _originalRoles.Contains(roleName);
+                if (isChecked && !wasInRole)
+                {
+                    await UserManager.AddToRoleAsync(_user, roleName);
+                }
+                else if (!isChecked && wasInRole)
+                {
+                    await UserManager.RemoveFromRoleAsync(_user, roleName);
+                }
+            }
+
+            _isVisible = false;
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error updating user: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    public class UserEditModel
+    {
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Enter a valid email address")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "Username is required")]
+        public string UserName { get; set; } = "";
+
+        public string Password { get; set; } = "";
+
+        public bool IsLocked { get; set; }
+    }
+}
