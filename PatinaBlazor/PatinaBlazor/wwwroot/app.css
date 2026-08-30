@@ -157,7 +157,7 @@ input:-webkit-autofill:active {
 
 .page-footer {
     margin-top: auto;
-    padding: 1.5rem 0;
+    padding: 0.75rem 0;
     border-top: 1px solid var(--border-primary);
 }
 
@@ -165,6 +165,14 @@ input:-webkit-autofill:active {
     padding: 1.5rem;
     max-width: 1200px;
     margin: 0 auto;
+}
+
+/* .content's own bottom padding stacks with .page-footer's padding below
+   the footer's border line, pushing it further from the bottom edge than
+   intended. Halve just that bottom padding on footer-having pages, leaving
+   top/left/right (and non-footer pages) unaffected. */
+.content:has(> .page-footer) {
+    padding-bottom: 0.75rem;
 }
 
 h1, h2, h3, h4, h5, h6 {
