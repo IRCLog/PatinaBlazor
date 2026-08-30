@@ -33,6 +33,12 @@ html, body {
     padding: 0;
     line-height: 1.6;
     font-size: 14px;
+    /* MudLayout sets height:100%, which only resolves to the real
+       viewport height if this ancestor chain has a definite height —
+       without it, short-content pages leave the drawer/background
+       only as tall as the content instead of reaching the bottom of
+       the viewport. */
+    height: 100%;
 }
 
 /* Force dark theme on all elements */
@@ -116,6 +122,30 @@ input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 1000px var(--bg-secondary) inset !important;
     -webkit-text-fill-color: var(--text-primary) !important;
     caret-color: var(--text-primary);
+}
+
+/* MudMainContent/.content are plain block boxes by default, sized to
+   their own content — they don't stretch to fill the viewport. Turning
+   them into a flex column that fills the available height lets a page
+   place a <footer> as its last root element and have it stick to the
+   bottom via margin-top:auto, regardless of how short the page is. */
+.mud-main-content {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--mud-appbar-height));
+}
+
+.mud-main-content > .content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    width: 100%;
+}
+
+.page-footer {
+    margin-top: auto;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border-primary);
 }
 
 .content {
