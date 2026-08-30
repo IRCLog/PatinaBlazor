@@ -25,6 +25,19 @@
     height: calc(100% - var(--mud-appbar-height)) !important;
 }
 
+/* On mobile the drawer opens as a temporary overlay with a full-viewport
+   backdrop/scrim (.mud-overlay-drawer) that MudBlazor deliberately renders
+   above the app bar (z-index appbar+1), so the app bar visually disappears
+   under it while the drawer is open. MudBlazor also bumps the open drawer's
+   own z-index above its scrim (observed at appbar+2, i.e. overlay+1), so a
+   small margin over the app bar's base z-index isn't reliably above the
+   drawer too (verified: appbar+2 ties exactly with the drawer's own
+   dynamic z-index). Use a larger margin so the app bar always wins clearly,
+   regardless of exactly how high MudBlazor pushes the drawer/scrim. */
+.mud-appbar {
+    z-index: calc(var(--mud-zindex-appbar) + 10) !important;
+}
+
 html, body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif !important;
     background-color: var(--bg-primary) !important;

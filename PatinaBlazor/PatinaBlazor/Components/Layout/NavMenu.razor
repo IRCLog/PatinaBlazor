@@ -57,6 +57,11 @@
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = Navigation.ToBaseRelativePath(e.Location);
+        // The OnClick-based close (NotifyNavigate) fires over a SignalR round-trip that
+        // can race against the actual navigation, so it isn't a reliable signal on its
+        // own. LocationChanged only fires once navigation has actually completed, so use
+        // it as the authoritative trigger to close the drawer.
+        OnNavigate.InvokeAsync();
         StateHasChanged();
     }
 
