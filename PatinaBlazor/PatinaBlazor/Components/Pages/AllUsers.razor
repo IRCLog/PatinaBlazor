@@ -44,26 +44,26 @@
         <MudGrid>
             @foreach (var user in FilteredUsers)
             {
-                <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudItem xs="12" sm="6" md="4" lg="4">
                     <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
                         <MudCardHeader Class="user-card-header">
                             <CardHeaderAvatar>
-                                <MudAvatar Color="Color.Primary">@GetInitial(user)</MudAvatar>
+                                @if (IsAdmin(user))
+                                {
+                                    <MudTooltip Text="Admin">
+                                        <MudBadge Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Warning" Origin="Origin.TopLeft" Overlap="true">
+                                            <MudAvatar Color="Color.Primary">@GetInitial(user)</MudAvatar>
+                                        </MudBadge>
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudAvatar Color="Color.Primary">@GetInitial(user)</MudAvatar>
+                                }
                             </CardHeaderAvatar>
                             <CardHeaderContent>
                                 <div style="min-width: 0;">
-                                    @if (IsAdmin(user))
-                                    {
-                                        <MudTooltip Text="Admin">
-                                            <MudBadge Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Warning" Origin="Origin.TopLeft" Overlap="true" Class="pt-3 ps-4">
-                                                <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.UserName</MudText>
-                                            </MudBadge>
-                                        </MudTooltip>
-                                    }
-                                    else
-                                    {
-                                        <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.UserName</MudText>
-                                    }
+                                    <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.UserName</MudText>
                                     @if (!string.IsNullOrWhiteSpace(user.DisplayName))
                                     {
                                         <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.DisplayName</MudText>
