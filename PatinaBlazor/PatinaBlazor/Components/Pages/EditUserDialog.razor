@@ -40,22 +40,29 @@
                 </MudTabPanel>
 
                 <MudTabPanel Text="Roles" Icon="@Icons.Material.Filled.Badge">
-                    @if (!_roleMembership.Any())
+                    @if (!_roleItems.Any())
                     {
                         <MudText Typo="Typo.body2" Color="Color.Secondary">No roles are configured in the system.</MudText>
                     }
                     else
                     {
-                        @foreach (var roleName in _roleMembership.Keys.ToList())
-                        {
-                            <div class="mb-2">
-                                <MudSwitch T="bool"
-                                           Value="@_roleMembership[roleName]"
-                                           ValueChanged="@((bool v) => _roleMembership[roleName] = v)"
-                                           Label="@roleName"
-                                           Color="Color.Primary" />
-                            </div>
-                        }
+                        <MudDropContainer T="RoleDropItem"
+                                          Items="_roleItems"
+                                          ItemsSelector="@((item, zone) => item.Identifier == zone)"
+                                          ItemDropped="RoleItemUpdated"
+                                          Class="d-flex flex-wrap flex-grow-1">
+                            <ChildContent>
+                                <MudDropZone T="RoleDropItem" Identifier="Available" Class="rounded mud-background-gray pa-4 ma-2 flex-grow-1">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Available</MudText>
+                                </MudDropZone>
+                                <MudDropZone T="RoleDropItem" Identifier="Assigned" Class="rounded mud-background-gray pa-4 ma-2 flex-grow-1">
+                                    <MudText Typo="Typo.subtitle2" Class="mb-2">Assigned</MudText>
+                                </MudDropZone>
+                            </ChildContent>
+                            <ItemRenderer Context="roleItem">
+                                <MudPaper Elevation="25" Class="pa-2 my-2">@roleItem.Name</MudPaper>
+                            </ItemRenderer>
+                        </MudDropContainer>
                     }
                 </MudTabPanel>
             </MudTabs>
@@ -90,7 +97,7 @@
 
     private ApplicationUser? _user;
     private UserEditModel _model = new();
-    private Dictionary<string, bool> _roleMembership = new();
+    private List<RoleDropItem> _roleItems = new();
     private HashSet<string> _originalRoles = new();
 
     public async Task ShowModal(ApplicationUser user)
@@ -110,7 +117,9 @@
         var allRoleNames = await RoleManager.Roles.Select(r => r.Name!).ToListAsync();
         var userRoles = await UserManager.GetRolesAsync(user);
         _originalRoles = userRoles.ToHashSet();
-        _roleMembership = allRoleNames.ToDictionary(r => r, r => _originalRoles.Contains(r));
+        _roleItems = allRoleNames
+            .Select(r => new RoleDropItem { Name = r, Identifier = _originalRoles.Contains(r) ? "Assigned" : "Available" })
+            .ToList();
 
         _isVisible = true;
         StateHasChanged();
@@ -119,6 +128,14 @@
     private void Close()
     {
         _isVisible = false;
+    }
+
+    private void RoleItemUpdated(MudItemDropInfo<RoleDropItem> dropItem)
+    {
+        if (dropItem.Item is null)
+            return;
+
+        dropItem.Item.Identifier = dropItem.DropzoneIdentifier;
     }
 
     private async Task HandleSave()
@@ -175,16 +192,17 @@
                 }
             }
 
-            foreach (var (roleName, isChecked) in _roleMembership)
+            foreach (var item in _roleItems)
             {
-                var wasInRole = _originalRoles.Contains(roleName);
-                if (isChecked && !wasInRole)
+                var wasInRole = _originalRoles.Contains(item.Name);
+                var isNowAssigned = item.Identifier == "Assigned";
+                if (isNowAssigned && !wasInRole)
                 {
-                    await UserManager.AddToRoleAsync(_user, roleName);
+                    await UserManager.AddToRoleAsync(_user, item.Name);
                 }
-                else if (!isChecked && wasInRole)
+                else if (!isNowAssigned && wasInRole)
                 {
-                    await UserManager.RemoveFromRoleAsync(_user, roleName);
+                    await UserManager.RemoveFromRoleAsync(_user, item.Name);
                 }
             }
 
@@ -215,5 +233,11 @@
         public bool IsLocked { get; set; }
 
         public bool EmailConfirmed { get; set; }
+    }
+
+    public class RoleDropItem
+    {
+        public string Name { get; set; } = "";
+        public string Identifier { get; set; } = "";
     }
 }
