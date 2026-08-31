@@ -183,6 +183,17 @@ input:-webkit-autofill:active {
     min-width: 0;
 }
 
+/* MudBlazor's default 16px padding on both .mud-card-header (bottom) and
+   .mud-card-content (top) stack into a large empty gap in the middle of
+   each user card. Cut both by more than half. */
+.user-card-header {
+    padding-bottom: 6px;
+}
+
+.user-card-content {
+    padding-top: 6px;
+}
+
 /* .content's own bottom padding stacks with .page-footer's padding below
    the footer's border line, pushing it further from the bottom edge than
    intended. Halve just that bottom padding on footer-having pages, leaving

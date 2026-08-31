@@ -80,7 +80,7 @@
                                 </MudTooltip>
                             </CardHeaderActions>
                         </MudCardHeader>
-                        <MudCardContent Class="flex-grow-1">
+                        <MudCardContent Class="flex-grow-1 user-card-content">
                             <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-2">
                                 <MudChip T="string" Size="Size.Small" Color="@(user.IsLocked ? Color.Error : Color.Success)">@(user.IsLocked ? "Locked" : "Unlocked")</MudChip>
                                 <MudChip T="string" Size="Size.Small" Color="@(user.EmailConfirmed ? Color.Success : Color.Warning)">@(user.EmailConfirmed ? "Confirmed" : "Pending")</MudChip>
