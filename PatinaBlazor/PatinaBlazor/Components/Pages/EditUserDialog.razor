@@ -18,7 +18,7 @@
                 <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
             }
 
-            <MudTabs Rounded="true" Color="Color.Primary" Class="mb-2">
+            <MudTabs Rounded="true" Color="Color.Primary" Class="mb-2" PanelClass="edit-user-tab-panel">
                 <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Person">
                     <MudTextField Label="Email" @bind-Value="_model.Email" For="@(() => _model.Email)" Class="mb-4" />
                     <MudTextField Label="Username" @bind-Value="_model.UserName" For="@(() => _model.UserName)" Class="mb-4" />
@@ -35,7 +35,8 @@
                                        OnClick="@(() => _showPassword = !_showPassword)" />
                     </div>
 
-                    <MudSwitch T="bool" @bind-Value="_model.IsLocked" Label="Account Locked" Color="Color.Primary" />
+                    <MudSwitch T="bool" @bind-Value="_model.IsLocked" Label="Account Locked" Color="Color.Primary" Class="mb-2" />
+                    <MudSwitch T="bool" @bind-Value="_model.EmailConfirmed" Label="Email Confirmed" Color="Color.Primary" />
                 </MudTabPanel>
 
                 <MudTabPanel Text="Roles" Icon="@Icons.Material.Filled.Badge">
@@ -101,6 +102,7 @@
             UserName = user.UserName ?? "",
             Password = "",
             IsLocked = user.IsLocked,
+            EmailConfirmed = user.EmailConfirmed,
         };
         _errorMessage = null;
         _showPassword = false;
@@ -149,6 +151,7 @@
             _user.NormalizedEmail = _model.Email.ToUpperInvariant();
             _user.NormalizedUserName = _model.UserName.ToUpperInvariant();
             _user.IsLocked = _model.IsLocked;
+            _user.EmailConfirmed = _model.EmailConfirmed;
 
             var result = await UserManager.UpdateAsync(_user);
             if (!result.Succeeded)
@@ -210,5 +213,7 @@
         public string Password { get; set; } = "";
 
         public bool IsLocked { get; set; }
+
+        public bool EmailConfirmed { get; set; }
     }
 }

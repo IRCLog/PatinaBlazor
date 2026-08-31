@@ -167,6 +167,13 @@ input:-webkit-autofill:active {
     margin: 0 auto;
 }
 
+/* Keep the EditUserDialog the same height on every tab (matching the
+   tallest tab's content, currently "General") so the dialog doesn't
+   resize when switching to a shorter tab like "Roles". */
+.edit-user-tab-panel {
+    min-height: 281px;
+}
+
 /* .content's own bottom padding stacks with .page-footer's padding below
    the footer's border line, pushing it further from the bottom edge than
    intended. Halve just that bottom padding on footer-having pages, leaving
