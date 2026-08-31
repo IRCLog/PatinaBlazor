@@ -23,88 +23,100 @@
     }
     else
     {
-        <MudGrid Class="mb-3">
+        <MudGrid Class="mb-3" AlignItems="AlignItems.Center">
             <MudItem xs="12" md="6">
-                <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="@(!selectedUsers.Any())" OnClick="ActivateSelectedUsers">
-                    Activate Selected (@selectedUsers.Count)
-                </MudButton>
+                <MudTextField T="string"
+                              Value="_searchText"
+                              ValueChanged="@((string v) => _searchText = v)"
+                              Immediate="true"
+                              Placeholder="Search by name or email..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Clearable="true" />
             </MudItem>
             <MudItem xs="12" md="6" Style="text-align: right;">
-                <MudText Typo="Typo.body2" Color="Color.Secondary">Total Users: @users.Count</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Showing @FilteredUsers.Count() of @users.Count users
+                </MudText>
             </MudItem>
         </MudGrid>
 
-        <MudTable Items="users" Hover="true" Dense="true" Class="mb-3" T="ApplicationUser">
-            <HeaderContent>
-                <MudTh><MudCheckBox T="bool" Value="false" ValueChanged="@((bool v) => ToggleAllUsers(v))" /></MudTh>
-                <MudTh>User ID</MudTh>
-                <MudTh>Email</MudTh>
-                <MudTh>Username</MudTh>
-                <MudTh>Created Date</MudTh>
-                <MudTh>Account Locked</MudTh>
-                <MudTh>Email Confirmed</MudTh>
-                <MudTh>Roles</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate Context="user">
-                <MudTd DataLabel="Select">
-                    <MudCheckBox T="bool" Value="@selectedUsers.Contains(user.Id)" ValueChanged="@((bool v) => ToggleUserSelection(user.Id, v))" />
-                </MudTd>
-                <MudTd DataLabel="User ID">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@user.Id.Substring(0, 8)...</MudText>
-                </MudTd>
-                <MudTd DataLabel="Email">@user.Email</MudTd>
-                <MudTd DataLabel="Username">@user.UserName</MudTd>
-                <MudTd DataLabel="Created Date">
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@user.CreatedDate.ToString("yyyy-MM-dd HH:mm")</MudText>
-                </MudTd>
-                <MudTd DataLabel="Account Locked">
-                    <MudChip T="string" Size="Size.Small" Color="@(user.IsLocked ? Color.Error : Color.Success)">@(user.IsLocked ? "Locked" : "Unlocked")</MudChip>
-                </MudTd>
-                <MudTd DataLabel="Email Confirmed">
-                    <MudChip T="string" Size="Size.Small" Color="@(user.EmailConfirmed ? Color.Success : Color.Warning)">@(user.EmailConfirmed ? "Confirmed" : "Pending")</MudChip>
-                </MudTd>
-                <MudTd DataLabel="Roles">
-                    @if (userRoles.ContainsKey(user.Id) && userRoles[user.Id].Any())
-                    {
-                        @foreach (var role in userRoles[user.Id])
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-1">@role</MudChip>
-                        }
-                    }
-                    else
-                    {
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">No roles</MudText>
-                    }
-                </MudTd>
-                <MudTd DataLabel="Actions">
-                    <MudStack Row="true" Spacing="1">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _editDialog!.ShowModal(user))">Edit</MudButton>
-                        @if (!user.EmailConfirmed)
-                        {
-                            <MudButton Variant="Variant.Filled" Color="Color.Success" Size="Size.Small" OnClick="@(() => ActivateUser(user.Id))">Activate</MudButton>
-                        }
-                    </MudStack>
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudGrid>
+            @foreach (var user in FilteredUsers)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                        <MudCardHeader>
+                            <CardHeaderAvatar>
+                                <MudAvatar Color="Color.Primary">@GetInitial(user)</MudAvatar>
+                            </CardHeaderAvatar>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.subtitle1">@GetDisplayName(user)</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@user.Email</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent Class="flex-grow-1">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-2">
+                                Created @user.CreatedDate.ToString("yyyy-MM-dd HH:mm")
+                            </MudText>
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1" Class="mb-2">
+                                <MudChip T="string" Size="Size.Small" Color="@(user.IsLocked ? Color.Error : Color.Success)">@(user.IsLocked ? "Locked" : "Unlocked")</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="@(user.EmailConfirmed ? Color.Success : Color.Warning)">@(user.EmailConfirmed ? "Confirmed" : "Pending")</MudChip>
+                            </MudStack>
+                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                                @if (userRoles.ContainsKey(user.Id) && userRoles[user.Id].Any())
+                                {
+                                    @foreach (var role in userRoles[user.Id])
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@role</MudChip>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">No roles</MudText>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudTooltip Text="Edit">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" OnClick="@(() => _editDialog!.ShowModal(user))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" OnClick="@(() => PromptDelete(user))" />
+                            </MudTooltip>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
     }
 
     @if (!string.IsNullOrEmpty(message))
     {
-        <MudAlert Severity="@(isError ? Severity.Error : Severity.Success)" ShowCloseIcon="true" CloseIconClicked="ClearMessage">@message</MudAlert>
+        <MudAlert Severity="@(isError ? Severity.Error : Severity.Success)" ShowCloseIcon="true" CloseIconClicked="ClearMessage" Class="mt-3">@message</MudAlert>
     }
 </MudContainer>
 
 <EditUserDialog @ref="_editDialog" OnSaved="HandleUserSaved" />
+<ConfirmDialog @ref="_confirmDialog" OnConfirmed="HandleDeleteConfirmed" />
 
 @code {
     private List<ApplicationUser> users = null!;
     private Dictionary<string, List<string>> userRoles = new();
-    private HashSet<string> selectedUsers = new();
+    private string _searchText = "";
     private string message = "";
     private bool isError = false;
     private EditUserDialog? _editDialog;
+    private ConfirmDialog? _confirmDialog;
+    private ApplicationUser? _userPendingDelete;
+
+    private IEnumerable<ApplicationUser> FilteredUsers =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? users
+            : users.Where(u =>
+                (u.DisplayName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.UserName?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (u.Email?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false));
 
     protected override async Task OnInitializedAsync()
     {
@@ -129,56 +141,42 @@
         ShowMessage("User updated successfully.", false);
     }
 
-    private void ToggleUserSelection(string userId, bool isSelected)
+    private static string GetDisplayName(ApplicationUser user) =>
+        !string.IsNullOrWhiteSpace(user.DisplayName) ? user.DisplayName! : (user.UserName ?? user.Email ?? "");
+
+    private static string GetInitial(ApplicationUser user)
     {
-        if (isSelected)
-            selectedUsers.Add(userId);
-        else
-            selectedUsers.Remove(userId);
+        var name = GetDisplayName(user);
+        return name.Length > 0 ? name[..1].ToUpperInvariant() : "?";
     }
 
-    private void ToggleAllUsers(bool selectAll)
+    private Task PromptDelete(ApplicationUser user)
     {
-        selectedUsers.Clear();
-
-        if (selectAll)
-        {
-            foreach (var user in users)
-            {
-                selectedUsers.Add(user.Id);
-            }
-        }
+        _userPendingDelete = user;
+        return _confirmDialog!.ShowModal(
+            "Delete User",
+            $"Are you sure you want to delete {GetDisplayName(user)} ({user.Email})? This will also permanently delete all of their collections and collectables. This cannot be undone.",
+            "Delete",
+            Color.Error);
     }
 
-    private async Task ActivateSelectedUsers()
+    private async Task HandleDeleteConfirmed()
     {
-        int activatedCount = 0;
+        if (_userPendingDelete == null)
+            return;
 
-        foreach (var userId in selectedUsers)
+        var email = _userPendingDelete.Email;
+        var result = await UserManager.DeleteAsync(_userPendingDelete);
+        _userPendingDelete = null;
+
+        if (result.Succeeded)
         {
-            var user = await UserManager.FindByIdAsync(userId);
-            if (user != null && !user.EmailConfirmed)
-            {
-                user.EmailConfirmed = true;
-                await UserManager.UpdateAsync(user);
-                activatedCount++;
-            }
-        }
-
-        selectedUsers.Clear();
-        await LoadUsers();
-        ShowMessage($"Activated {activatedCount} user(s)", false);
-    }
-
-    private async Task ActivateUser(string userId)
-    {
-        var user = await UserManager.FindByIdAsync(userId);
-        if (user != null)
-        {
-            user.EmailConfirmed = true;
-            await UserManager.UpdateAsync(user);
             await LoadUsers();
-            ShowMessage($"User {user.Email} activated successfully", false);
+            ShowMessage($"User {email} deleted successfully", false);
+        }
+        else
+        {
+            ShowMessage("Error deleting user: " + string.Join(", ", result.Errors.Select(e => e.Description)), true);
         }
     }
 

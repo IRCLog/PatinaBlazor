@@ -1,0 +1,53 @@
+@using MudBlazor
+
+<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@_title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1">@_message</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="_confirmColor" OnClick="Confirm">@_confirmText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.ExtraSmall,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
+
+    private bool _isVisible;
+    private string _title = "";
+    private string _message = "";
+    private string _confirmText = "Confirm";
+    private Color _confirmColor = Color.Primary;
+
+    public Task ShowModal(string title, string message, string confirmText = "Confirm", Color confirmColor = Color.Primary)
+    {
+        _title = title;
+        _message = message;
+        _confirmText = confirmText;
+        _confirmColor = confirmColor;
+        _isVisible = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void Cancel()
+    {
+        _isVisible = false;
+    }
+
+    private async Task Confirm()
+    {
+        _isVisible = false;
+        await OnConfirmed.InvokeAsync();
+    }
+}
