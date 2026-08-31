@@ -46,25 +46,30 @@
             {
                 <MudItem xs="12" sm="6" md="4" lg="3">
                     <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
-                        <MudCardHeader>
+                        <MudCardHeader Class="user-card-header">
                             <CardHeaderAvatar>
                                 <MudAvatar Color="Color.Primary">@GetInitial(user)</MudAvatar>
                             </CardHeaderAvatar>
                             <CardHeaderContent>
-                                <div class="d-flex align-center" style="gap: 4px;">
-                                    <MudText Typo="Typo.subtitle1">@user.UserName</MudText>
+                                <div style="min-width: 0;">
                                     @if (IsAdmin(user))
                                     {
                                         <MudTooltip Text="Admin">
-                                            <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Small" Color="Color.Warning" />
+                                            <MudBadge Icon="@Icons.Material.Filled.AdminPanelSettings" Color="Color.Warning" Origin="Origin.TopLeft" Overlap="true" Class="pt-3 ps-4">
+                                                <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.UserName</MudText>
+                                            </MudBadge>
                                         </MudTooltip>
                                     }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.subtitle1" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.UserName</MudText>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(user.DisplayName))
+                                    {
+                                        <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.DisplayName</MudText>
+                                    }
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@user.Email</MudText>
                                 </div>
-                                @if (!string.IsNullOrWhiteSpace(user.DisplayName))
-                                {
-                                    <MudText Typo="Typo.body2">@user.DisplayName</MudText>
-                                }
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">@user.Email</MudText>
                             </CardHeaderContent>
                             <CardHeaderActions>
                                 <MudTooltip Text="Edit">
@@ -80,22 +85,9 @@
                                 <MudChip T="string" Size="Size.Small" Color="@(user.IsLocked ? Color.Error : Color.Success)">@(user.IsLocked ? "Locked" : "Unlocked")</MudChip>
                                 <MudChip T="string" Size="Size.Small" Color="@(user.EmailConfirmed ? Color.Success : Color.Warning)">@(user.EmailConfirmed ? "Confirmed" : "Pending")</MudChip>
                             </MudStack>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block mb-2">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="d-block">
                                 Created @user.CreatedDate.ToString("yyyy-MM-dd HH:mm")
                             </MudText>
-                            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
-                                @if (userRoles.ContainsKey(user.Id) && userRoles[user.Id].Any())
-                                {
-                                    @foreach (var role in userRoles[user.Id])
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">@role</MudChip>
-                                    }
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary">No roles</MudText>
-                                }
-                            </MudStack>
                         </MudCardContent>
                     </MudCard>
                 </MudItem>
