@@ -130,31 +130,47 @@ namespace PatinaBlazor.Services
 
             using (var inputStream = openStream())
             using (var skData = SKData.Create(inputStream))
-            using (var skBitmap = SKBitmap.Decode(skData))
+            using (var codec = SKCodec.Create(skData))
+            using (var rawBitmap = codec != null ? SKBitmap.Decode(codec) : SKBitmap.Decode(skData))
             {
-                if (skBitmap != null)
+                if (rawBitmap != null)
                 {
-                    var fileName = $"{baseId}.jpg";
-                    var mediumFileName = $"{baseId}_medium.jpg";
-                    var thumbFileName = $"{baseId}_thumb.jpg";
-                    var filePath = Path.Combine(uploadsPath, fileName);
-
-                    ResizeAndEncodeJpeg(skBitmap, LargeMaxDimension, filePath);
-                    ResizeAndEncodeJpeg(skBitmap, MediumMaxDimension, Path.Combine(uploadsPath, mediumFileName));
-                    ResizeAndEncodeJpeg(skBitmap, ThumbnailMaxDimension, Path.Combine(uploadsPath, thumbFileName));
-
-                    _logger.LogInformation("Image saved with responsive sizes: {FileName}", fileName);
-
-                    return new ImageUploadResult
+                    var origin = codec?.EncodedOrigin ?? SKEncodedOrigin.TopLeft;
+                    var skBitmap = ApplyExifOrientation(rawBitmap, origin);
+                    try
                     {
-                        Success = true,
-                        FileName = fileName,
-                        RelativePath = $"/uploads/{subfolder}/{fileName}",
-                        ThumbnailRelativePath = $"/uploads/{subfolder}/{thumbFileName}",
-                        MediumRelativePath = $"/uploads/{subfolder}/{mediumFileName}",
-                        ContentType = "image/jpeg",
-                        FileSize = new FileInfo(filePath).Length
-                    };
+                        var fileName = $"{baseId}.jpg";
+                        var mediumFileName = $"{baseId}_medium.jpg";
+                        var thumbFileName = $"{baseId}_thumb.jpg";
+                        var filePath = Path.Combine(uploadsPath, fileName);
+
+                        ResizeAndEncodeJpeg(skBitmap, LargeMaxDimension, filePath);
+                        ResizeAndEncodeJpeg(skBitmap, MediumMaxDimension, Path.Combine(uploadsPath, mediumFileName));
+                        ResizeAndEncodeJpeg(skBitmap, ThumbnailMaxDimension, Path.Combine(uploadsPath, thumbFileName));
+
+                        _logger.LogInformation("Image saved with responsive sizes: {FileName}", fileName);
+
+                        return new ImageUploadResult
+                        {
+                            Success = true,
+                            FileName = fileName,
+                            RelativePath = $"/uploads/{subfolder}/{fileName}",
+                            ThumbnailRelativePath = $"/uploads/{subfolder}/{thumbFileName}",
+                            MediumRelativePath = $"/uploads/{subfolder}/{mediumFileName}",
+                            ContentType = "image/jpeg",
+                            FileSize = new FileInfo(filePath).Length
+                        };
+                    }
+                    finally
+                    {
+                        // ApplyExifOrientation returns the same instance for the (most common)
+                        // already-correctly-oriented case - only dispose it separately when it's
+                        // actually a different bitmap, so rawBitmap's own `using` doesn't double-dispose it.
+                        if (!ReferenceEquals(skBitmap, rawBitmap))
+                        {
+                            skBitmap.Dispose();
+                        }
+                    }
                 }
             }
 
@@ -179,6 +195,68 @@ namespace PatinaBlazor.Services
                 ContentType = string.IsNullOrEmpty(contentType) ? "application/octet-stream" : contentType,
                 FileSize = originalFileSize
             };
+        }
+
+        // Cameras/phones commonly store pixels in the sensor's native orientation and record how
+        // to display them correctly via an EXIF Orientation tag - SKBitmap.Decode ignores that tag
+        // entirely, and it isn't carried over when we re-encode, so without this every rotated
+        // upload would silently bake in the wrong orientation. Bakes the correction into the pixel
+        // data itself (via SKCodec.EncodedOrigin) so the output needs no orientation metadata at all.
+        // Verified against all 6 orientations real cameras/phones actually produce (1,2,3,4,6,8) by
+        // comparing pixel-for-pixel against Pillow's trusted ImageOps.exif_transpose as ground truth.
+        private static SKBitmap ApplyExifOrientation(SKBitmap source, SKEncodedOrigin origin)
+        {
+            if (origin == SKEncodedOrigin.TopLeft)
+            {
+                return source; // already correctly oriented, no-op
+            }
+
+            var swapDimensions = origin is SKEncodedOrigin.LeftTop or SKEncodedOrigin.RightTop
+                or SKEncodedOrigin.RightBottom or SKEncodedOrigin.LeftBottom;
+
+            var width = swapDimensions ? source.Height : source.Width;
+            var height = swapDimensions ? source.Width : source.Height;
+
+            var oriented = new SKBitmap(width, height);
+            using (var canvas = new SKCanvas(oriented))
+            {
+                switch (origin)
+                {
+                    case SKEncodedOrigin.TopRight: // 2: mirror horizontal
+                        canvas.Translate(width, 0);
+                        canvas.Scale(-1, 1);
+                        break;
+                    case SKEncodedOrigin.BottomRight: // 3: rotate 180
+                        canvas.Translate(width, height);
+                        canvas.RotateDegrees(180);
+                        break;
+                    case SKEncodedOrigin.BottomLeft: // 4: mirror vertical
+                        canvas.Translate(0, height);
+                        canvas.Scale(1, -1);
+                        break;
+                    case SKEncodedOrigin.LeftTop: // 5: transpose
+                        canvas.RotateDegrees(90);
+                        canvas.Scale(1, -1);
+                        break;
+                    case SKEncodedOrigin.RightTop: // 6: rotate 90 CW
+                        canvas.Translate(width, 0);
+                        canvas.RotateDegrees(90);
+                        break;
+                    case SKEncodedOrigin.RightBottom: // 7: transverse
+                        canvas.Translate(width, height);
+                        canvas.RotateDegrees(90);
+                        canvas.Scale(1, -1);
+                        break;
+                    case SKEncodedOrigin.LeftBottom: // 8: rotate 270 CW
+                        canvas.Translate(0, height);
+                        canvas.RotateDegrees(270);
+                        break;
+                }
+
+                canvas.DrawBitmap(source, 0, 0);
+            }
+
+            return oriented;
         }
 
         private static void ResizeAndEncodeJpeg(SKBitmap sourceBitmap, int maxDimension, string outputPath, int quality = 82)
