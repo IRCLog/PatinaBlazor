@@ -64,7 +64,7 @@
 
                 <MudTabPanel Text="Images" Icon="@Icons.Material.Filled.Image">
                     <MudText Typo="Typo.subtitle2" Class="mb-2">Images</MudText>
-                    <InputFile id="images" OnChange="OnImagesSelected" accept="image/*" multiple class="mud-input-file" />
+                    <InputFile @ref="imagesInput" id="images" OnChange="OnImagesSelected" accept="image/*" multiple class="mud-input-file" />
                     <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-3" Style="display: block;">
                         Upload up to 10 images for your collectable (max 15MB each). Supported formats: JPG, PNG, GIF, WebP. Large images will be automatically compressed to improve upload speed. The first image will be set as the main image.
                     </MudText>
@@ -151,6 +151,7 @@
     private string currentUserId = string.Empty;
     private bool isSubmitting = false;
     private List<IBrowserFile> selectedImageFiles = new();
+    private InputFile? imagesInput;
     private List<string> imageUploadErrors = new();
     private ImageModal imageModal = default!;
     private List<string> imagePreviewUrls = new();
@@ -361,10 +362,17 @@
     {
         await ClearImagePreviewUrls();
 
-        foreach (var file in selectedImageFiles)
+        // Passing an IBrowserFile itself through JS interop only serializes its metadata, not a
+        // real File/Blob - URL.createObjectURL needs the actual browser File object, which is only
+        // reachable via the underlying <input> element's own .files list, indexed the same way
+        // selectedImageFiles was just built from e.GetMultipleFiles() a moment ago in OnImagesSelected.
+        if (imagesInput?.Element is { } inputElement)
         {
-            var url = await JSRuntime.InvokeAsync<string>("createObjectURL", file);
-            imagePreviewUrls.Add(url);
+            for (var i = 0; i < selectedImageFiles.Count; i++)
+            {
+                var url = await JSRuntime.InvokeAsync<string>("createObjectURLFromInput", inputElement, i);
+                imagePreviewUrls.Add(url);
+            }
         }
     }
 
@@ -421,7 +429,7 @@
 }
 
 <script>
-    window.createObjectURL = (file) => {
-        return URL.createObjectURL(file);
+    window.createObjectURLFromInput = (inputElement, index) => {
+        return URL.createObjectURL(inputElement.files[index]);
     };
 </script>

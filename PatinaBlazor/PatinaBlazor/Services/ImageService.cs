@@ -128,8 +128,18 @@ namespace PatinaBlazor.Services
 
             var baseId = Guid.NewGuid().ToString();
 
+            // SKData.Create(Stream) reads synchronously under the hood, which Blazor Server's
+            // BrowserFileStream flatly rejects ("Synchronous reads are not supported") since it's
+            // backed by an async-only SignalR stream. Buffer into memory first via CopyToAsync
+            // (which is async-safe), then hand SkiaSharp the fully in-memory, sync-read-safe copy.
+            using var bufferStream = new MemoryStream();
             using (var inputStream = openStream())
-            using (var skData = SKData.Create(inputStream))
+            {
+                await inputStream.CopyToAsync(bufferStream);
+            }
+            bufferStream.Position = 0;
+
+            using (var skData = SKData.Create(bufferStream))
             using (var codec = SKCodec.Create(skData))
             using (var rawBitmap = codec != null ? SKBitmap.Decode(codec) : SKBitmap.Decode(skData))
             {
