@@ -6,12 +6,11 @@ namespace PatinaBlazor.Services
 {
     public interface IImageService
     {
-        Task<ImageUploadResult> SaveImageAsync(IBrowserFile file, string subfolder = "collectables");
-        Task<List<ImageUploadResult>> SaveMultipleImagesAsync(IReadOnlyList<IBrowserFile> files, string subfolder = "collectables");
-        Task<bool> DeleteImageAsync(string fileName, string subfolder = "collectables");
-        Task<bool> DeleteCollectableImageAsync(CollectableImage image);
-        string GetImageUrl(string fileName, string subfolder = "collectables");
-        string GetImageUrl(CollectableImage image);
+        Task<ImageUploadResult> SaveImageAsync(IBrowserFile file, string subfolder);
+        Task<List<ImageUploadResult>> SaveMultipleImagesAsync(IReadOnlyList<IBrowserFile> files, string subfolder);
+        Task<ImageUploadResult> SaveImageFromDiskAsync(string sourceFilePath, string subfolder);
+        Task<bool> DeleteImageAsync(ImageAttachment image);
+        Task<bool> DeleteImageAsync(ImageUploadResult uploadResult);
         bool IsValidImageFile(IBrowserFile file);
         List<string> ValidateImageFiles(IReadOnlyList<IBrowserFile> files);
     }
@@ -22,6 +21,11 @@ namespace PatinaBlazor.Services
         private readonly ILogger<ImageService> _logger;
         private readonly long _maxFileSize = 15 * 1024 * 1024; // 15MB
         private readonly string[] _allowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+
+        // Every uploaded image gets these three JPEG variants, sharing one GUID base name.
+        private const int LargeMaxDimension = 2048;
+        private const int MediumMaxDimension = 1000;
+        private const int ThumbnailMaxDimension = 400;
 
         public ImageService(IWebHostEnvironment environment, ILogger<ImageService> logger)
         {
@@ -44,41 +48,20 @@ namespace PatinaBlazor.Services
             return _allowedExtensions.Contains(extension);
         }
 
-        public async Task<ImageUploadResult> SaveImageAsync(IBrowserFile file, string subfolder = "collectables")
+        public async Task<ImageUploadResult> SaveImageAsync(IBrowserFile file, string subfolder)
         {
-            try
+            if (!IsValidImageFile(file))
             {
-                if (!IsValidImageFile(file))
-                {
-                    return new ImageUploadResult
-                    {
-                        Success = false,
-                        ErrorMessage = "Invalid file. Please upload a valid image file (max 15MB)."
-                    };
-                }
-
-                // Create unique filename
-                var extension = Path.GetExtension(file.Name).ToLowerInvariant();
-                var fileName = $"{Guid.NewGuid()}{extension}";
-
-                // Create directory path
-                var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads", subfolder);
-                Directory.CreateDirectory(uploadsPath);
-
-                // Save file with optional compression
-                var filePath = Path.Combine(uploadsPath, fileName);
-                await SaveImageWithCompressionAsync(file, filePath);
-
-                _logger.LogInformation("Image saved successfully: {FileName}", fileName);
-
                 return new ImageUploadResult
                 {
-                    Success = true,
-                    FileName = fileName,
-                    FilePath = filePath,
-                    ContentType = file.ContentType,
-                    FileSize = file.Size
+                    Success = false,
+                    ErrorMessage = "Invalid file. Please upload a valid image file (max 15MB)."
                 };
+            }
+
+            try
+            {
+                return await SaveFromStreamAsync(() => file.OpenReadStream(_maxFileSize), file.Name, file.ContentType, file.Size, subfolder);
             }
             catch (Exception ex)
             {
@@ -91,102 +74,7 @@ namespace PatinaBlazor.Services
             }
         }
 
-        private async Task SaveImageWithCompressionAsync(IBrowserFile file, string filePath)
-        {
-            const long compressionThreshold = 3 * 1024 * 1024; // 3MB
-
-            // If file is smaller than threshold, save directly
-            if (file.Size <= compressionThreshold)
-            {
-                using var stream = File.Create(filePath);
-                await file.OpenReadStream(_maxFileSize).CopyToAsync(stream);
-                return;
-            }
-
-            // Compress the image
-            try
-            {
-                using var inputStream = file.OpenReadStream(_maxFileSize);
-                using var skData = SKData.Create(inputStream);
-                using var skBitmap = SKBitmap.Decode(skData);
-
-                if (skBitmap == null)
-                {
-                    // If we can't decode as image, save as-is
-                    using var stream = File.Create(filePath);
-                    inputStream.Position = 0;
-                    await inputStream.CopyToAsync(stream);
-                    return;
-                }
-
-                // Calculate new dimensions (max 2048px on either side)
-                var maxDimension = 2048;
-                var scale = Math.Min((float)maxDimension / skBitmap.Width, (float)maxDimension / skBitmap.Height);
-                scale = Math.Min(scale, 1.0f); // Don't upscale
-
-                var newWidth = (int)(skBitmap.Width * scale);
-                var newHeight = (int)(skBitmap.Height * scale);
-
-                // Resize and compress
-                using var resizedBitmap = skBitmap.Resize(new SKImageInfo(newWidth, newHeight), SKFilterQuality.High);
-                using var image = SKImage.FromBitmap(resizedBitmap);
-                using var data = image.Encode(SKEncodedImageFormat.Jpeg, 80); // 80% quality
-
-                // Save compressed image
-                using var outputStream = File.Create(filePath);
-                data.SaveTo(outputStream);
-
-                _logger.LogInformation("Image compressed from {OriginalSize} bytes to {CompressedSize} bytes",
-                    file.Size, data.Size);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to compress image {FileName}, saving original", file.Name);
-                // If compression fails, save original
-                using var stream = File.Create(filePath);
-                using var inputStream = file.OpenReadStream(_maxFileSize);
-                await inputStream.CopyToAsync(stream);
-            }
-        }
-
-        public Task<bool> DeleteImageAsync(string fileName, string subfolder = "collectables")
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(fileName)) return Task.FromResult(true);
-
-                var filePath = Path.Combine(_environment.WebRootPath, "uploads", subfolder, fileName);
-                if (File.Exists(filePath))
-                {
-                    File.Delete(filePath);
-                    _logger.LogInformation("Image deleted successfully: {FileName}", fileName);
-                }
-                return Task.FromResult(true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting image file: {FileName}", fileName);
-                return Task.FromResult(false);
-            }
-        }
-
-        public async Task<bool> DeleteCollectableImageAsync(CollectableImage image)
-        {
-            return await DeleteImageAsync(image.FileName);
-        }
-
-        public string GetImageUrl(string fileName, string subfolder = "collectables")
-        {
-            if (string.IsNullOrEmpty(fileName)) return string.Empty;
-            return $"/uploads/{subfolder}/{fileName}";
-        }
-
-        public string GetImageUrl(CollectableImage image)
-        {
-            return GetImageUrl(image.FileName);
-        }
-
-        public async Task<List<ImageUploadResult>> SaveMultipleImagesAsync(IReadOnlyList<IBrowserFile> files, string subfolder = "collectables")
+        public async Task<List<ImageUploadResult>> SaveMultipleImagesAsync(IReadOnlyList<IBrowserFile> files, string subfolder)
         {
             var results = new List<ImageUploadResult>();
 
@@ -203,6 +91,151 @@ namespace PatinaBlazor.Services
             }
 
             return results;
+        }
+
+        // Used by ImageAttachmentMigrationService to re-run an already-on-disk legacy image
+        // (from the pre-unification CollectableImages/StoragePropertyImages tables) through the
+        // exact same decode/resize/encode pipeline a fresh browser upload gets, so every image
+        // in the app - old or new - ends up with the same large/medium/thumb variants.
+        public async Task<ImageUploadResult> SaveImageFromDiskAsync(string sourceFilePath, string subfolder)
+        {
+            try
+            {
+                if (!File.Exists(sourceFilePath))
+                {
+                    return new ImageUploadResult { Success = false, ErrorMessage = $"Source file not found: {sourceFilePath}" };
+                }
+
+                var fileInfo = new FileInfo(sourceFilePath);
+                return await SaveFromStreamAsync(() => File.OpenRead(sourceFilePath), fileInfo.Name, contentType: string.Empty, fileInfo.Length, subfolder);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error migrating image file from disk: {SourceFilePath}", sourceFilePath);
+                return new ImageUploadResult { Success = false, ErrorMessage = "An error occurred while migrating the image." };
+            }
+        }
+
+        // Decodes once and derives thumbnail/medium/large JPEG variants from the same bitmap,
+        // sharing one GUID base name (_thumb/_medium suffixes, no suffix = large/primary).
+        // Everything is normalized to JPEG regardless of the source format, since the variants
+        // are re-encoded anyway. Shared by both a fresh browser upload and a from-disk migration
+        // of a pre-existing legacy image.
+        private async Task<ImageUploadResult> SaveFromStreamAsync(Func<Stream> openStream, string originalFileName, string contentType, long originalFileSize, string subfolder)
+        {
+            var uploadsPath = Path.Combine(_environment.WebRootPath, "uploads", subfolder);
+            Directory.CreateDirectory(uploadsPath);
+
+            var baseId = Guid.NewGuid().ToString();
+
+            using (var inputStream = openStream())
+            using (var skData = SKData.Create(inputStream))
+            using (var skBitmap = SKBitmap.Decode(skData))
+            {
+                if (skBitmap != null)
+                {
+                    var fileName = $"{baseId}.jpg";
+                    var mediumFileName = $"{baseId}_medium.jpg";
+                    var thumbFileName = $"{baseId}_thumb.jpg";
+                    var filePath = Path.Combine(uploadsPath, fileName);
+
+                    ResizeAndEncodeJpeg(skBitmap, LargeMaxDimension, filePath);
+                    ResizeAndEncodeJpeg(skBitmap, MediumMaxDimension, Path.Combine(uploadsPath, mediumFileName));
+                    ResizeAndEncodeJpeg(skBitmap, ThumbnailMaxDimension, Path.Combine(uploadsPath, thumbFileName));
+
+                    _logger.LogInformation("Image saved with responsive sizes: {FileName}", fileName);
+
+                    return new ImageUploadResult
+                    {
+                        Success = true,
+                        FileName = fileName,
+                        RelativePath = $"/uploads/{subfolder}/{fileName}",
+                        ThumbnailRelativePath = $"/uploads/{subfolder}/{thumbFileName}",
+                        MediumRelativePath = $"/uploads/{subfolder}/{mediumFileName}",
+                        ContentType = "image/jpeg",
+                        FileSize = new FileInfo(filePath).Length
+                    };
+                }
+            }
+
+            // Not decodable as an image despite passing validation - fall back to a plain copy
+            // under the original extension (no thumbnail/medium variants) rather than failing.
+            var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+            var fallbackFileName = $"{baseId}{extension}";
+            var fallbackPath = Path.Combine(uploadsPath, fallbackFileName);
+            using (var freshStream = openStream())
+            using (var outStream = File.Create(fallbackPath))
+            {
+                await freshStream.CopyToAsync(outStream);
+            }
+
+            _logger.LogWarning("Could not decode image for responsive sizing, saved as-is: {FileName}", fallbackFileName);
+
+            return new ImageUploadResult
+            {
+                Success = true,
+                FileName = fallbackFileName,
+                RelativePath = $"/uploads/{subfolder}/{fallbackFileName}",
+                ContentType = string.IsNullOrEmpty(contentType) ? "application/octet-stream" : contentType,
+                FileSize = originalFileSize
+            };
+        }
+
+        private static void ResizeAndEncodeJpeg(SKBitmap sourceBitmap, int maxDimension, string outputPath, int quality = 82)
+        {
+            var scale = Math.Min((float)maxDimension / sourceBitmap.Width, (float)maxDimension / sourceBitmap.Height);
+            scale = Math.Min(scale, 1.0f); // never upscale
+
+            var newWidth = Math.Max(1, (int)(sourceBitmap.Width * scale));
+            var newHeight = Math.Max(1, (int)(sourceBitmap.Height * scale));
+
+            using var resizedBitmap = sourceBitmap.Resize(new SKImageInfo(newWidth, newHeight), SKFilterQuality.High);
+            using var image = SKImage.FromBitmap(resizedBitmap ?? sourceBitmap);
+            using var data = image.Encode(SKEncodedImageFormat.Jpeg, quality);
+            using var outputStream = File.Create(outputPath);
+            data.SaveTo(outputStream);
+        }
+
+        public Task<bool> DeleteImageAsync(ImageAttachment image)
+        {
+            return DeletePathsAsync(image.RelativePath, image.ThumbnailRelativePath, image.MediumRelativePath, image.FileName);
+        }
+
+        public Task<bool> DeleteImageAsync(ImageUploadResult uploadResult)
+        {
+            return DeletePathsAsync(uploadResult.RelativePath, uploadResult.ThumbnailRelativePath, uploadResult.MediumRelativePath, uploadResult.FileName);
+        }
+
+        private Task<bool> DeletePathsAsync(string relativePath, string? thumbnailRelativePath, string? mediumRelativePath, string fileNameForLogging)
+        {
+            try
+            {
+                DeleteFileIfExists(ResolvePhysicalPath(relativePath));
+                if (!string.IsNullOrEmpty(thumbnailRelativePath)) DeleteFileIfExists(ResolvePhysicalPath(thumbnailRelativePath));
+                if (!string.IsNullOrEmpty(mediumRelativePath)) DeleteFileIfExists(ResolvePhysicalPath(mediumRelativePath));
+
+                _logger.LogInformation("Image deleted successfully: {FileName}", fileNameForLogging);
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting image file: {FileName}", fileNameForLogging);
+                return Task.FromResult(false);
+            }
+        }
+
+        private string ResolvePhysicalPath(string relativePath)
+        {
+            var trimmed = relativePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+            return Path.Combine(_environment.WebRootPath, trimmed);
+        }
+
+        private static void DeleteFileIfExists(string path)
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
         }
 
         public List<string> ValidateImageFiles(IReadOnlyList<IBrowserFile> files)
@@ -236,7 +269,9 @@ namespace PatinaBlazor.Services
     {
         public bool Success { get; set; }
         public string FileName { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
+        public string RelativePath { get; set; } = string.Empty;
+        public string? ThumbnailRelativePath { get; set; }
+        public string? MediumRelativePath { get; set; }
         public string ContentType { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public string ErrorMessage { get; set; } = string.Empty;

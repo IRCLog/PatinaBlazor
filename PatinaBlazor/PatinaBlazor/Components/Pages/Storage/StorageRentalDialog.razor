@@ -1,0 +1,178 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@inject IStorageService StorageService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_mode == RentalDialogMode.Start ? "Start Rental" : "End Rental")</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+        }
+
+        @if (_mode == RentalDialogMode.Start)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">Unit @(_unit?.UnitNumber)</MudText>
+            <MudAutocomplete T="ApplicationUser"
+                              Label="Customer"
+                              @bind-Value="_selectedCustomer"
+                              SearchFunc="SearchCustomersAsync"
+                              ToStringFunc="@(u => u == null ? "" : $"{(string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName)} ({u.Email})")"
+                              Clearable="true"
+                              Class="mb-4" />
+            <MudDatePicker Label="Start Date" @bind-Date="_startDate" Class="mb-4" />
+            <MudNumericField Label="Monthly Rate (USD)" @bind-Value="_monthlyRate" Format="F2" Adornment="Adornment.Start" AdornmentText="$" Class="mb-4" />
+        }
+        else
+        {
+            <MudText Typo="Typo.body1" Class="mb-4">Ending rental for unit @_endingUnitNumber.</MudText>
+            <MudDatePicker Label="End Date" @bind-Date="_endDate" Class="mb-4" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_isSaving" OnClick="HandleSave">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            }
+            @(_mode == RentalDialogMode.Start ? "Start Rental" : "End Rental")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private enum RentalDialogMode { Start, End }
+
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
+
+    private bool _isVisible;
+    private bool _isSaving;
+    private string? _errorMessage;
+    private RentalDialogMode _mode;
+
+    private StorageUnit? _unit;
+    private ApplicationUser? _selectedCustomer;
+    private DateTime? _startDate = DateTime.Today;
+    private decimal _monthlyRate;
+
+    private StorageRental? _rental;
+    private string _endingUnitNumber = "";
+    private DateTime? _endDate = DateTime.Today;
+
+    public Task ShowStartModal(StorageUnit unit)
+    {
+        _mode = RentalDialogMode.Start;
+        _unit = unit;
+        _selectedCustomer = null;
+        _startDate = DateTime.Today;
+        _monthlyRate = unit.MonthlyRate;
+        _errorMessage = null;
+        _isVisible = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public Task ShowEndModal(StorageRental rental, string unitNumber)
+    {
+        _mode = RentalDialogMode.End;
+        _rental = rental;
+        _endingUnitNumber = unitNumber;
+        _endDate = DateTime.Today;
+        _errorMessage = null;
+        _isVisible = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void Close()
+    {
+        _isVisible = false;
+    }
+
+    private async Task<IEnumerable<ApplicationUser>> SearchCustomersAsync(string search)
+    {
+        var query = UserManager.Users.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(u =>
+                (u.Email != null && u.Email.Contains(search)) ||
+                (u.UserName != null && u.UserName.Contains(search)) ||
+                (u.DisplayName != null && u.DisplayName.Contains(search)));
+        }
+
+        return await query.OrderBy(u => u.Email).Take(20).ToListAsync();
+    }
+
+    private async Task<string> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        return user?.Id ?? string.Empty;
+    }
+
+    private async Task HandleSave()
+    {
+        _errorMessage = null;
+
+        if (_mode == RentalDialogMode.Start && (_selectedCustomer == null || _startDate == null))
+        {
+            _errorMessage = "Please select a customer and a start date.";
+            return;
+        }
+
+        if (_mode == RentalDialogMode.End && _endDate == null)
+        {
+            _errorMessage = "Please select an end date.";
+            return;
+        }
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var currentUserId = await GetCurrentUserIdAsync();
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                _errorMessage = "Unable to determine the current user. Please refresh and log in again.";
+                return;
+            }
+
+            if (_mode == RentalDialogMode.Start && _unit != null && _selectedCustomer != null && _startDate != null)
+            {
+                await StorageService.StartRentalAsync(_unit.Id, _selectedCustomer.Id, _monthlyRate, _startDate.Value, currentUserId);
+            }
+            else if (_mode == RentalDialogMode.End && _rental != null && _endDate != null)
+            {
+                await StorageService.EndRentalAsync(_rental.Id, _endDate.Value, currentUserId);
+            }
+
+            _isVisible = false;
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

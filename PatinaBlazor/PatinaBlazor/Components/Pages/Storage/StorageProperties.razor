@@ -1,0 +1,160 @@
+@page "/storage/admin/properties"
+@using Microsoft.AspNetCore.Authorization
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize(Roles = "Admin,Storage Admin")]
+@rendermode InteractiveServer
+@inject IStorageService StorageService
+@inject IImageService ImageService
+@inject ISnackbar Snackbar
+
+<PageTitle>Storage Properties</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="py-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">Storage Properties</MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/storage/admin">Back to Dashboard</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _propertyDialog!.ShowModal(null))">Add Property</MudButton>
+        </MudStack>
+    </div>
+
+    @if (_properties == null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading properties...</MudText>
+        </div>
+    }
+    else
+    {
+        <MudGrid Class="mb-3" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Value="_searchText"
+                              ValueChanged="@((string v) => _searchText = v)"
+                              Immediate="true"
+                              Placeholder="Search by name or city..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" md="6" Style="text-align: right;">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Showing @FilteredProperties.Count() of @_properties.Count properties
+                </MudText>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            @foreach (var property in FilteredProperties)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="4">
+                    <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                        @{
+                            var mainImage = property.GetMainImage();
+                        }
+                        <div style="height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-background-grey, #161b22);">
+                            @if (mainImage != null)
+                            {
+                                <img src="@mainImage.MediumUrl"
+                                     srcset="@($"{mainImage.ThumbnailUrl} 400w, {mainImage.MediumUrl} 1000w")"
+                                     sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
+                                     alt="@property.Name" style="max-height: 100%; max-width: 100%; object-fit: cover; width: 100%;" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Warehouse" Size="Size.Large" Color="Color.Secondary" />
+                            }
+                        </div>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.subtitle1">@property.Name</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@property.City, @property.State</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _propertyDialog!.ShowModal(property))" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => PromptDelete(property))" />
+                                </MudTooltip>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent Class="flex-grow-1">
+                            @if (!string.IsNullOrWhiteSpace(property.Description))
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-2">@property.Description</MudText>
+                            }
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@property.Units.Count unit(s)</MudText>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton FullWidth="true" Variant="Variant.Outlined" Href="@($"/storage/admin/properties/{property.Id}")">View Units</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+<StoragePropertyDialog @ref="_propertyDialog" OnSaved="HandlePropertySaved" />
+<ConfirmDialog @ref="_confirmDialog" OnConfirmed="HandleDeleteConfirmed" />
+
+@code {
+    private List<StorageProperty>? _properties;
+    private string _searchText = "";
+    private StoragePropertyDialog? _propertyDialog;
+    private ConfirmDialog? _confirmDialog;
+    private StorageProperty? _propertyPendingDelete;
+
+    private IEnumerable<StorageProperty> FilteredProperties =>
+        _properties == null
+            ? Enumerable.Empty<StorageProperty>()
+            : string.IsNullOrWhiteSpace(_searchText)
+                ? _properties
+                : _properties.Where(p =>
+                    p.Name.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    p.City.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProperties();
+    }
+
+    private async Task LoadProperties()
+    {
+        _properties = await StorageService.GetPropertiesAsync();
+    }
+
+    private async Task HandlePropertySaved()
+    {
+        await LoadProperties();
+        Snackbar.Add("Property saved successfully.", Severity.Success);
+    }
+
+    private Task PromptDelete(StorageProperty property)
+    {
+        _propertyPendingDelete = property;
+        return _confirmDialog!.ShowModal(
+            "Delete Property",
+            $"Are you sure you want to delete '{property.Name}'? This will also permanently delete all of its units, images, and rental history. This cannot be undone.",
+            "Delete",
+            Color.Error);
+    }
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (_propertyPendingDelete == null)
+        {
+            return;
+        }
+
+        var name = _propertyPendingDelete.Name;
+        await StorageService.DeletePropertyAsync(_propertyPendingDelete.Id);
+        _propertyPendingDelete = null;
+
+        await LoadProperties();
+        Snackbar.Add($"Property '{name}' deleted.", Severity.Success);
+    }
+}

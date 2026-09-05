@@ -8,6 +8,12 @@
         <Authorized>
             <MudNavLink Href="collectables" Icon="@Icons.Material.Filled.Diamond" OnClick="NotifyNavigate">Collectables</MudNavLink>
 
+            <AuthorizeView Roles="Admin,Storage Admin" Context="storageAdminContext">
+                <Authorized>
+                    <MudNavLink Href="/storage/admin" Icon="@Icons.Material.Filled.Warehouse" OnClick="NotifyNavigate">Storage</MudNavLink>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Roles="Admin" Context="adminContext">
                 <Authorized>
                     <MudNavLink Href="/chat" Icon="@Icons.Material.Filled.Chat" OnClick="NotifyNavigate">Chat</MudNavLink>

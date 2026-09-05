@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PatinaBlazor.Data;
 
@@ -11,9 +12,11 @@ using PatinaBlazor.Data;
 namespace PatinaBlazor.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260905053225_AddStorageFeature")]
+    partial class AddStorageFeature
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -371,6 +374,48 @@ namespace PatinaBlazor.Migrations
                     b.ToTable("CollectableCollectionItems");
                 });
 
+            modelBuilder.Entity("PatinaBlazor.Data.CollectableImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("CollectableId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsMainImage")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CollectableId");
+
+                    b.ToTable("CollectableImages");
+                });
+
             modelBuilder.Entity("PatinaBlazor.Data.HitCounter", b =>
                 {
                     b.Property<int>("Id")
@@ -403,69 +448,6 @@ namespace PatinaBlazor.Migrations
                         .IsUnique();
 
                     b.ToTable("HitCounters");
-                });
-
-            modelBuilder.Entity("PatinaBlazor.Data.ImageAttachment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<Guid?>("CollectableId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<long>("FileSize")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("IsMainImage")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("MediumRelativePath")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("RelativePath")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int?>("StoragePropertyId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ThumbnailRelativePath")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CollectableId");
-
-                    b.HasIndex("StoragePropertyId");
-
-                    b.ToTable("ImageAttachments", t =>
-                        {
-                            t.HasCheckConstraint("CK_ImageAttachment_ExactlyOneOwner", "([CollectableId] IS NOT NULL AND [StoragePropertyId] IS NULL) OR ([CollectableId] IS NULL AND [StoragePropertyId] IS NOT NULL)");
-                        });
                 });
 
             modelBuilder.Entity("PatinaBlazor.Data.IrcEvent", b =>
@@ -586,6 +568,48 @@ namespace PatinaBlazor.Migrations
                     b.HasIndex("ModifiedByUserId");
 
                     b.ToTable("StorageProperties");
+                });
+
+            modelBuilder.Entity("PatinaBlazor.Data.StoragePropertyImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsMainImage")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("StoragePropertyId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoragePropertyId");
+
+                    b.ToTable("StoragePropertyImages");
                 });
 
             modelBuilder.Entity("PatinaBlazor.Data.StorageRental", b =>
@@ -801,21 +825,15 @@ namespace PatinaBlazor.Migrations
                     b.Navigation("Collection");
                 });
 
-            modelBuilder.Entity("PatinaBlazor.Data.ImageAttachment", b =>
+            modelBuilder.Entity("PatinaBlazor.Data.CollectableImage", b =>
                 {
                     b.HasOne("PatinaBlazor.Data.Collectable", "Collectable")
                         .WithMany("Images")
                         .HasForeignKey("CollectableId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("PatinaBlazor.Data.StorageProperty", "StorageProperty")
-                        .WithMany("Images")
-                        .HasForeignKey("StoragePropertyId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Collectable");
-
-                    b.Navigation("StorageProperty");
                 });
 
             modelBuilder.Entity("PatinaBlazor.Data.StorageProperty", b =>
@@ -833,6 +851,17 @@ namespace PatinaBlazor.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("ModifiedByUser");
+                });
+
+            modelBuilder.Entity("PatinaBlazor.Data.StoragePropertyImage", b =>
+                {
+                    b.HasOne("PatinaBlazor.Data.StorageProperty", "Property")
+                        .WithMany("Images")
+                        .HasForeignKey("StoragePropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
                 });
 
             modelBuilder.Entity("PatinaBlazor.Data.StorageRental", b =>

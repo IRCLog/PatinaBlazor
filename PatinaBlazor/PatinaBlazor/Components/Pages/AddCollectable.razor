@@ -203,7 +203,7 @@
             // Handle multiple image uploads if present
             if (selectedImageFiles.Any())
             {
-                var uploadResults = await ImageService.SaveMultipleImagesAsync(selectedImageFiles);
+                var uploadResults = await ImageService.SaveMultipleImagesAsync(selectedImageFiles, collectable.ImageSubfolder);
 
                 var successfulUploads = uploadResults.Where(r => r.Success).ToList();
                 var failedUploads = uploadResults.Where(r => !r.Success).ToList();
@@ -216,19 +216,22 @@
                     // Clean up successful uploads if any failed
                     foreach (var successResult in successfulUploads)
                     {
-                        await ImageService.DeleteImageAsync(successResult.FileName);
+                        await ImageService.DeleteImageAsync(successResult);
                     }
                     return;
                 }
 
-                // Create CollectableImage records for successful uploads
+                // Create ImageAttachment records for successful uploads
                 for (int i = 0; i < successfulUploads.Count; i++)
                 {
                     var result = successfulUploads[i];
-                    var collectableImage = new CollectableImage
+                    var collectableImage = new ImageAttachment
                     {
                         CollectableId = collectable.Id,
                         FileName = result.FileName,
+                        RelativePath = result.RelativePath,
+                        ThumbnailRelativePath = result.ThumbnailRelativePath,
+                        MediumRelativePath = result.MediumRelativePath,
                         ContentType = result.ContentType,
                         FileSize = result.FileSize,
                         IsMainImage = i == 0, // First image is main
@@ -236,7 +239,7 @@
                         CreatedDate = DateTime.UtcNow
                     };
 
-                    DbContext.CollectableImages.Add(collectableImage);
+                    DbContext.ImageAttachments.Add(collectableImage);
                 }
 
                 await DbContext.SaveChangesAsync();

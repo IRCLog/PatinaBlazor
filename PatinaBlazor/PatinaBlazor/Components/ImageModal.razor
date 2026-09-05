@@ -1,6 +1,4 @@
 @using PatinaBlazor.Data
-@using PatinaBlazor.Services
-@inject IImageService ImageService
 
 <MudDialog @bind-IsVisible="isVisible" Options="_dialogOptions">
     <TitleContent>
@@ -32,11 +30,11 @@
         }
     </DialogContent>
     <DialogActions>
-        @if (currentImage != null && ShowImageInfo && currentImage is CollectableImage collectableImage)
+        @if (currentImage != null && ShowImageInfo && currentImage is ImageAttachment imageAttachment)
         {
-            <MudText Typo="Typo.caption">Size: @FormatFileSize(collectableImage.FileSize)</MudText>
-            <MudText Typo="Typo.caption" Class="ml-3">Type: @collectableImage.ContentType</MudText>
-            @if (collectableImage.IsMainImage)
+            <MudText Typo="Typo.caption">Size: @FormatFileSize(imageAttachment.FileSize)</MudText>
+            <MudText Typo="Typo.caption" Class="ml-3">Type: @imageAttachment.ContentType</MudText>
+            @if (imageAttachment.IsMainImage)
             {
                 <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-3">Main Image</MudChip>
             }
@@ -61,9 +59,9 @@
     private int imageCount => images.Count;
     private bool isVisible = false;
 
-    public async Task ShowModal(List<CollectableImage> collectableImages, int startIndex = 0)
+    public async Task ShowModal(List<ImageAttachment> imageAttachments, int startIndex = 0)
     {
-        images = collectableImages.Cast<object>().ToList();
+        images = imageAttachments.Cast<object>().ToList();
         currentIndex = Math.Max(0, Math.Min(startIndex, images.Count - 1));
         currentImage = images.Count > 0 ? images[currentIndex] : null;
         isVisible = true;
@@ -105,7 +103,7 @@
     {
         return currentImage switch
         {
-            CollectableImage collectableImage => ImageService.GetImageUrl(collectableImage),
+            ImageAttachment imageAttachment => imageAttachment.RelativePath,
             string imageUrl => imageUrl,
             _ => string.Empty
         };

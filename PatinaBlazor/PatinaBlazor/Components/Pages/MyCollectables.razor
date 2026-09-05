@@ -67,7 +67,7 @@
                         @if (mainImage != null)
                         {
                             <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary);">
-                                <img src="@ImageService.GetImageUrl(mainImage)"
+                                <img src="@mainImage.ThumbnailUrl"
                                      alt="@collectable.Description"
                                      style="max-height: 100%; max-width: 100%; object-fit: contain;" />
                             </div>
@@ -158,11 +158,11 @@
             {
                 foreach (var image in collectable.Images)
                 {
-                    await ImageService.DeleteCollectableImageAsync(image);
+                    await ImageService.DeleteImageAsync(image);
                 }
             }
 
-            // Remove from database (cascading delete will handle CollectableImages)
+            // Remove from database (cascading delete will handle its ImageAttachments)
             DbContext.Collectables.Remove(collectable);
             await DbContext.SaveChangesAsync();
 

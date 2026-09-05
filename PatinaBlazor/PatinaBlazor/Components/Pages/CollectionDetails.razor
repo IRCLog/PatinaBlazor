@@ -6,7 +6,6 @@
 @attribute [Authorize]
 @inject ICollectionService CollectionService
 @inject ICollectableService CollectableService
-@inject IImageService ImageService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
@@ -69,7 +68,7 @@
                                         @if (collectable.Images.Any())
                                         {
                                             var mainImage = collectable.Images.FirstOrDefault(img => img.IsMainImage) ?? collectable.Images.First();
-                                            <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" style="width: 100%; height: 100%; object-fit: cover;" />
+                                            <img src="@mainImage.ThumbnailUrl" alt="@collectable.Description" style="width: 100%; height: 100%; object-fit: cover;" />
                                         }
                                         else
                                         {
@@ -137,7 +136,7 @@
                                 @if (collectable.Images.Any())
                                 {
                                     var mainImage = collectable.Images.FirstOrDefault(img => img.IsMainImage) ?? collectable.Images.First();
-                                    <img src="@GetImageUrl(mainImage)" alt="@collectable.Description" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />
+                                    <img src="@mainImage.ThumbnailUrl" alt="@collectable.Description" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;" />
                                 }
                             </div>
                         </ChildContent>
@@ -221,11 +220,6 @@
     private async Task<List<Collectable>> GetUserCollectablesAsync(string userId)
     {
         return await CollectableService.GetUserCollectablesAsync(userId);
-    }
-
-    private string GetImageUrl(CollectableImage image)
-    {
-        return ImageService.GetImageUrl(image);
     }
 
     private void NavigateBack()

@@ -1,0 +1,199 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@using System.ComponentModel.DataAnnotations
+@inject IStorageService StorageService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+
+<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_isEditMode ? "Edit Unit" : "Add Unit")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="HandleSave" id="storageUnitForm">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+            }
+
+            <MudTextField Label="Unit Number" @bind-Value="_model.UnitNumber" For="@(() => _model.UnitNumber)" Class="mb-4" />
+
+            <MudGrid>
+                <MudItem xs="4">
+                    <MudNumericField Label="Length (ft)" @bind-Value="_model.LengthFeet" For="@(() => _model.LengthFeet)" Format="F1" Class="mb-4" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField Label="Width (ft)" @bind-Value="_model.WidthFeet" For="@(() => _model.WidthFeet)" Format="F1" Class="mb-4" />
+                </MudItem>
+                <MudItem xs="4">
+                    <MudNumericField Label="Height (ft)" @bind-Value="_model.HeightFeet" For="@(() => _model.HeightFeet)" Format="F1" Class="mb-4" />
+                </MudItem>
+            </MudGrid>
+
+            <MudNumericField Label="Monthly Rate (USD)" @bind-Value="_model.MonthlyRate" For="@(() => _model.MonthlyRate)" Format="F2" Adornment="Adornment.Start" AdornmentText="$" Class="mb-4" />
+
+            @if (_currentStatus == StorageUnitStatus.Occupied)
+            {
+                <MudTextField Label="Status" Value="@("Occupied (has an active rental)")" ReadOnly="true" Disabled="true" Class="mb-4" />
+            }
+            else
+            {
+                <MudSelect T="StorageUnitStatus" Label="Status" @bind-Value="_model.Status" For="@(() => _model.Status)" Class="mb-4">
+                    <MudSelectItem Value="StorageUnitStatus.Available">Available</MudSelectItem>
+                    <MudSelectItem Value="StorageUnitStatus.Reserved">Reserved</MudSelectItem>
+                    <MudSelectItem Value="StorageUnitStatus.Maintenance">Maintenance</MudSelectItem>
+                </MudSelect>
+            }
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" form="storageUnitForm" Variant="Variant.Filled" Color="Color.Primary" Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
+
+    private bool _isVisible;
+    private bool _isSaving;
+    private bool _isEditMode;
+    private string? _errorMessage;
+
+    private int _propertyId;
+    private StorageUnit? _unit;
+    private StorageUnitStatus _currentStatus;
+    private UnitEditModel _model = new();
+
+    public Task ShowModal(int propertyId, StorageUnit? existing)
+    {
+        _propertyId = propertyId;
+        _unit = existing;
+        _isEditMode = existing != null;
+        _errorMessage = null;
+        _currentStatus = existing?.Status ?? StorageUnitStatus.Available;
+
+        _model = existing == null
+            ? new UnitEditModel { Status = StorageUnitStatus.Available }
+            : new UnitEditModel
+            {
+                UnitNumber = existing.UnitNumber,
+                LengthFeet = existing.LengthFeet,
+                WidthFeet = existing.WidthFeet,
+                HeightFeet = existing.HeightFeet,
+                MonthlyRate = existing.MonthlyRate,
+                Status = existing.Status == StorageUnitStatus.Occupied ? StorageUnitStatus.Available : existing.Status
+            };
+
+        _isVisible = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void Close()
+    {
+        _isVisible = false;
+    }
+
+    private async Task<string> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        return user?.Id ?? string.Empty;
+    }
+
+    private async Task HandleSave()
+    {
+        _errorMessage = null;
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var currentUserId = await GetCurrentUserIdAsync();
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                _errorMessage = "Unable to determine the current user. Please refresh and log in again.";
+                return;
+            }
+
+            if (_isEditMode && _unit != null)
+            {
+                _unit.UnitNumber = _model.UnitNumber;
+                _unit.LengthFeet = _model.LengthFeet;
+                _unit.WidthFeet = _model.WidthFeet;
+                _unit.HeightFeet = _model.HeightFeet;
+                _unit.MonthlyRate = _model.MonthlyRate;
+                if (_currentStatus != StorageUnitStatus.Occupied)
+                {
+                    _unit.Status = _model.Status;
+                }
+
+                await StorageService.UpdateUnitAsync(_unit, currentUserId);
+            }
+            else
+            {
+                var unit = new StorageUnit
+                {
+                    StoragePropertyId = _propertyId,
+                    UnitNumber = _model.UnitNumber,
+                    LengthFeet = _model.LengthFeet,
+                    WidthFeet = _model.WidthFeet,
+                    HeightFeet = _model.HeightFeet,
+                    MonthlyRate = _model.MonthlyRate
+                };
+
+                await StorageService.CreateUnitAsync(unit, currentUserId);
+            }
+
+            _isVisible = false;
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error saving unit: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    public class UnitEditModel
+    {
+        [Required(ErrorMessage = "Unit number is required")]
+        [StringLength(50)]
+        public string UnitNumber { get; set; } = "";
+
+        [Range(0.1, 1000, ErrorMessage = "Length must be a positive value")]
+        public decimal LengthFeet { get; set; }
+
+        [Range(0.1, 1000, ErrorMessage = "Width must be a positive value")]
+        public decimal WidthFeet { get; set; }
+
+        [Range(0.1, 1000, ErrorMessage = "Height must be a positive value")]
+        public decimal HeightFeet { get; set; }
+
+        [Range(0.01, double.MaxValue, ErrorMessage = "Monthly rate must be greater than $0.00")]
+        public decimal MonthlyRate { get; set; }
+
+        public StorageUnitStatus Status { get; set; } = StorageUnitStatus.Available;
+    }
+}

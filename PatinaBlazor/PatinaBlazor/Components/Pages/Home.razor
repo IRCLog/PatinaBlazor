@@ -1,7 +1,10 @@
 @page "/"
+@using Microsoft.AspNetCore.Components.Authorization
 @using PatinaBlazor.Services
 @inject ICollectableService CollectableService
 @inject ILogger<Home> Logger
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>Welcome to Silzell.net</PageTitle>
@@ -22,4 +25,15 @@
     private int itemsPerSlide = 3; // Number of items to show per carousel slide on desktop
     private int currentSlide = 0; // For desktop carousel
     private int currentMobileSlide = 0; // For mobile carousel
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true
+            && authState.User.IsInRole("Storage Admin")
+            && !authState.User.IsInRole("Admin"))
+        {
+            Navigation.NavigateTo("/storage/admin");
+        }
+    }
 }

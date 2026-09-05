@@ -69,9 +69,11 @@ builder.Services.Configure<IrcApiSettings>(builder.Configuration.GetSection("Irc
 builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentitySmtpEmailSender>();
 builder.Services.AddScoped<DatabaseSeeder>();
+builder.Services.AddScoped<ImageAttachmentMigrationService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICollectableService, CollectableService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
+builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddSingleton<IrcChatNotifier>();
 builder.Services.AddSingleton<IrcBotService>();
 builder.Services.AddScoped<IIrcEventService, IrcEventService>();
@@ -103,6 +105,13 @@ using (var scope = app.Services.CreateScope())
         // Apply database migrations for SQL Server
         logger.LogInformation("Applying database migrations...");
         await context.Database.MigrateAsync();
+
+        // Convert any pre-unification CollectableImages/StoragePropertyImages rows into
+        // ImageAttachments (re-processed through IImageService) and drop those legacy tables
+        // once every row converts successfully. No-op once both tables are gone.
+        logger.LogInformation("Checking for legacy image tables to migrate...");
+        var imageMigration = scope.ServiceProvider.GetRequiredService<ImageAttachmentMigrationService>();
+        await imageMigration.MigrateLegacyImagesAsync();
 
         // Seed the database with default user
         logger.LogInformation("Starting database seeding...");

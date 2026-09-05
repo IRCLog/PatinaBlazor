@@ -1,0 +1,125 @@
+@page "/storage/admin"
+@using Microsoft.AspNetCore.Authorization
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize(Roles = "Admin,Storage Admin")]
+@rendermode InteractiveServer
+@inject IStorageService StorageService
+
+<PageTitle>Storage Dashboard</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">Storage Dashboard</MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/storage/admin/properties" StartIcon="@Icons.Material.Filled.Warehouse">Manage Properties</MudButton>
+    </div>
+
+    @if (_summary == null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading dashboard...</MudText>
+        </div>
+    }
+    else
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Properties</MudText>
+                    <MudText Typo="Typo.h4">@_summary.TotalProperties</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total Units</MudText>
+                    <MudText Typo="Typo.h4">@_summary.TotalUnits</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Occupancy</MudText>
+                    <MudText Typo="Typo.h4">@_summary.OccupancyPercent.ToString("0.#")%</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_summary.OccupiedUnits of @_summary.TotalUnits units</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Current MRR</MudText>
+                    <MudText Typo="Typo.h4">@_summary.CurrentMrr.ToString("C0")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem xs="12" md="5">
+                <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                    <MudText Typo="Typo.h6" Class="mb-2">Unit Occupancy</MudText>
+                    @if (_summary.TotalUnits == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No units yet.</MudText>
+                    }
+                    else
+                    {
+                        <MudChart ChartType="ChartType.Donut"
+                                  InputData="@_occupancyData"
+                                  InputLabels="@_occupancyLabels"
+                                  ChartOptions="@_donutOptions"
+                                  Width="100%"
+                                  Height="280px"
+                                  LegendPosition="Position.Bottom" />
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="7">
+                <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
+                    <MudText Typo="Typo.h6" Class="mb-2">Monthly Revenue</MudText>
+                    <MudChart ChartType="ChartType.Bar"
+                              ChartSeries="@_revenueSeries"
+                              XAxisLabels="@_revenueLabels"
+                              ChartOptions="@_barOptions"
+                              Width="100%"
+                              Height="280px" />
+                    <MudAlert Severity="Severity.Info" Class="mt-3" Dense="true">
+                        The projected months assume current monthly recurring revenue stays flat — a simple placeholder, not a real forecast.
+                    </MudAlert>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private StorageDashboardSummary? _summary;
+    private double[] _occupancyData = Array.Empty<double>();
+    private string[] _occupancyLabels = Array.Empty<string>();
+    private List<ChartSeries> _revenueSeries = new();
+    private string[] _revenueLabels = Array.Empty<string>();
+
+    // Occupied/Available/Reserved/Maintenance, in the theme's Primary/Success/Warning/Secondary colors.
+    private readonly ChartOptions _donutOptions = new() { ChartPalette = new[] { "#1f6feb", "#3fb950", "#d29922", "#8b949e" } };
+    // Actual revenue vs. the flat-line projection, in Primary/Warning.
+    private readonly ChartOptions _barOptions = new() { ChartPalette = new[] { "#1f6feb", "#d29922" } };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _summary = await StorageService.GetDashboardSummaryAsync();
+
+        _occupancyLabels = new[] { "Occupied", "Available", "Reserved", "Maintenance" };
+        _occupancyData = new double[]
+        {
+            _summary.OccupiedUnits,
+            _summary.AvailableUnits,
+            _summary.ReservedUnits,
+            _summary.MaintenanceUnits
+        };
+
+        var revenuePoints = await StorageService.GetMonthlyRevenueAsync();
+        _revenueLabels = revenuePoints.Select(p => p.MonthLabel).ToArray();
+        _revenueSeries = new List<ChartSeries>
+        {
+            new() { Name = "Revenue", Data = revenuePoints.Select(p => p.IsProjected ? 0 : (double)p.Revenue).ToArray() },
+            new() { Name = "Projected (flat MRR)", Data = revenuePoints.Select(p => p.IsProjected ? (double)p.Revenue : 0).ToArray() }
+        };
+    }
+}

@@ -1,0 +1,289 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@using System.ComponentModel.DataAnnotations
+@inject IStorageService StorageService
+@inject IImageService ImageService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+
+<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_isEditMode ? "Edit Property" : "Add Property")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="HandleSave" id="storagePropertyForm">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+            }
+
+            <MudTextField Label="Name" @bind-Value="_model.Name" For="@(() => _model.Name)" Class="mb-4" />
+            <MudTextField Label="Address Line 1" @bind-Value="_model.AddressLine1" For="@(() => _model.AddressLine1)" Class="mb-4" />
+            <MudTextField Label="Address Line 2" @bind-Value="_model.AddressLine2" For="@(() => _model.AddressLine2)" Class="mb-4" />
+            <MudGrid>
+                <MudItem xs="12" sm="5">
+                    <MudTextField Label="City" @bind-Value="_model.City" For="@(() => _model.City)" Class="mb-4" />
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudTextField Label="State" @bind-Value="_model.State" For="@(() => _model.State)" Class="mb-4" />
+                </MudItem>
+                <MudItem xs="6" sm="4">
+                    <MudTextField Label="Postal Code" @bind-Value="_model.PostalCode" For="@(() => _model.PostalCode)" Class="mb-4" />
+                </MudItem>
+            </MudGrid>
+            <MudTextField Label="Description" @bind-Value="_model.Description" For="@(() => _model.Description)" Lines="3" Class="mb-4" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Photos</MudText>
+            <InputFile id="propertyImages" OnChange="OnImagesSelected" accept="image/*" multiple class="mud-input-file" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-3" Style="display: block;">
+                Upload photos of the property (max 15MB each, JPG/PNG/GIF/WebP).
+            </MudText>
+
+            @if (_imageUploadErrors.Any())
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">
+                    <ul class="mb-0">
+                        @foreach (var error in _imageUploadErrors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                </MudAlert>
+            }
+
+            @if (_existingImages.Any() || _selectedImageFiles.Any())
+            {
+                <MudGrid Class="mb-2">
+                    @foreach (var image in _existingImages)
+                    {
+                        <MudItem xs="4">
+                            <div style="position: relative;">
+                                <img src="@image.ThumbnailUrl" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px;" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" Style="position: absolute; top: 0; right: 0;" OnClick="@(() => RemoveExistingImage(image))" />
+                            </div>
+                        </MudItem>
+                    }
+                    @foreach (var file in _selectedImageFiles)
+                    {
+                        <MudItem xs="4">
+                            <MudPaper Class="pa-2" Style="height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <MudText Typo="Typo.caption" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@file.Name</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" form="storagePropertyForm" Variant="Variant.Filled" Color="Color.Primary" Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
+
+    private bool _isVisible;
+    private bool _isSaving;
+    private bool _isEditMode;
+    private string? _errorMessage;
+
+    private StorageProperty? _property;
+    private PropertyEditModel _model = new();
+    private List<ImageAttachment> _existingImages = new();
+    private List<int> _removedImageIds = new();
+    private List<IBrowserFile> _selectedImageFiles = new();
+    private List<string> _imageUploadErrors = new();
+
+    public Task ShowModal(StorageProperty? existing)
+    {
+        _property = existing;
+        _isEditMode = existing != null;
+        _errorMessage = null;
+        _selectedImageFiles.Clear();
+        _imageUploadErrors.Clear();
+        _removedImageIds.Clear();
+        _existingImages = existing?.Images.OrderBy(i => i.DisplayOrder).ToList() ?? new List<ImageAttachment>();
+
+        _model = existing == null
+            ? new PropertyEditModel()
+            : new PropertyEditModel
+            {
+                Name = existing.Name,
+                AddressLine1 = existing.AddressLine1,
+                AddressLine2 = existing.AddressLine2,
+                City = existing.City,
+                State = existing.State,
+                PostalCode = existing.PostalCode,
+                Description = existing.Description
+            };
+
+        _isVisible = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void Close()
+    {
+        _isVisible = false;
+    }
+
+    private void OnImagesSelected(InputFileChangeEventArgs e)
+    {
+        _imageUploadErrors.Clear();
+        if (e.FileCount > 0)
+        {
+            _selectedImageFiles.AddRange(e.GetMultipleFiles());
+            _imageUploadErrors = ImageService.ValidateImageFiles(_selectedImageFiles);
+        }
+        StateHasChanged();
+    }
+
+    private void RemoveExistingImage(ImageAttachment image)
+    {
+        _removedImageIds.Add(image.Id);
+        _existingImages.Remove(image);
+    }
+
+    private async Task<string> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        return user?.Id ?? string.Empty;
+    }
+
+    private async Task HandleSave()
+    {
+        _errorMessage = null;
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var currentUserId = await GetCurrentUserIdAsync();
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                _errorMessage = "Unable to determine the current user. Please refresh and log in again.";
+                return;
+            }
+
+            if (_isEditMode && _property != null)
+            {
+                _property.Name = _model.Name;
+                _property.AddressLine1 = _model.AddressLine1;
+                _property.AddressLine2 = _model.AddressLine2;
+                _property.City = _model.City;
+                _property.State = _model.State;
+                _property.PostalCode = _model.PostalCode;
+                _property.Description = _model.Description;
+
+                await StorageService.UpdatePropertyAsync(_property, currentUserId);
+
+                foreach (var imageId in _removedImageIds)
+                {
+                    var image = await StorageService.GetPropertyImageAsync(imageId);
+                    if (image != null)
+                    {
+                        await ImageService.DeleteImageAsync(image);
+                        await StorageService.DeletePropertyImageAsync(imageId);
+                    }
+                }
+
+                await UploadSelectedImagesAsync(_property);
+            }
+            else
+            {
+                var property = new StorageProperty
+                {
+                    Name = _model.Name,
+                    AddressLine1 = _model.AddressLine1,
+                    AddressLine2 = _model.AddressLine2,
+                    City = _model.City,
+                    State = _model.State,
+                    PostalCode = _model.PostalCode,
+                    Description = _model.Description
+                };
+
+                property = await StorageService.CreatePropertyAsync(property, currentUserId);
+                await UploadSelectedImagesAsync(property);
+            }
+
+            _isVisible = false;
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error saving property: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task UploadSelectedImagesAsync(StorageProperty property)
+    {
+        if (!_selectedImageFiles.Any())
+        {
+            return;
+        }
+
+        var hasExistingImages = _existingImages.Any();
+        for (var i = 0; i < _selectedImageFiles.Count; i++)
+        {
+            var result = await ImageService.SaveImageAsync(_selectedImageFiles[i], property.ImageSubfolder);
+            if (result.Success)
+            {
+                await StorageService.AddPropertyImageAsync(property.Id, result, isMainImage: !hasExistingImages && i == 0);
+            }
+        }
+    }
+
+    public class PropertyEditModel
+    {
+        [Required(ErrorMessage = "Name is required")]
+        [StringLength(200)]
+        public string Name { get; set; } = "";
+
+        [Required(ErrorMessage = "Address is required")]
+        [StringLength(200)]
+        public string AddressLine1 { get; set; } = "";
+
+        [StringLength(200)]
+        public string? AddressLine2 { get; set; }
+
+        [Required(ErrorMessage = "City is required")]
+        [StringLength(100)]
+        public string City { get; set; } = "";
+
+        [Required(ErrorMessage = "State is required")]
+        [StringLength(50)]
+        public string State { get; set; } = "";
+
+        [Required(ErrorMessage = "Postal code is required")]
+        [StringLength(20)]
+        public string PostalCode { get; set; } = "";
+
+        [StringLength(1000)]
+        public string? Description { get; set; }
+    }
+}

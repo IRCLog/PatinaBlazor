@@ -1,0 +1,158 @@
+@page "/storage/admin/properties/{PropertyId:int}"
+@using Microsoft.AspNetCore.Authorization
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize(Roles = "Admin,Storage Admin")]
+@rendermode InteractiveServer
+@inject IStorageService StorageService
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_property?.Name ?? "Property") - Units</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="py-4">
+    @if (_property == null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading property...</MudText>
+        </div>
+    }
+    else
+    {
+        <div class="d-flex justify-space-between align-center mb-2">
+            <MudText Typo="Typo.h4">@_property.Name</MudText>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/storage/admin/properties">Back to Properties</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _unitDialog!.ShowModal(_property.Id, null))">Add Unit</MudButton>
+            </MudStack>
+        </div>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            @_property.AddressLine1@(string.IsNullOrWhiteSpace(_property.AddressLine2) ? "" : ", " + _property.AddressLine2), @_property.City, @_property.State @_property.PostalCode
+        </MudText>
+
+        <MudTable Items="_property.Units.OrderBy(u => u.UnitNumber)" Hover="true">
+            <HeaderContent>
+                <MudTh>Unit #</MudTh>
+                <MudTh>Dimensions (L x W x H)</MudTh>
+                <MudTh>Monthly Rate</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Current Renter</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Unit #">@context.UnitNumber</MudTd>
+                <MudTd DataLabel="Dimensions">@context.LengthFeet' x @context.WidthFeet' x @context.HeightFeet'</MudTd>
+                <MudTd DataLabel="Monthly Rate">@context.MonthlyRate.ToString("C0")</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
+                </MudTd>
+                <MudTd DataLabel="Current Renter">
+                    @if (_activeRentals.TryGetValue(context.Id, out var rental) && rental != null)
+                    {
+                        @(rental.Customer?.DisplayName ?? rental.Customer?.Email ?? "Unknown")
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudTooltip Text="Edit">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="@(() => _unitDialog!.ShowModal(_property.Id, context))" />
+                    </MudTooltip>
+                    @if (context.Status == StorageUnitStatus.Occupied && _activeRentals.TryGetValue(context.Id, out var activeRental) && activeRental != null)
+                    {
+                        <MudTooltip Text="End Rental">
+                            <MudIconButton Icon="@Icons.Material.Filled.EventBusy" Size="Size.Small" Color="Color.Warning" OnClick="@(() => _rentalDialog!.ShowEndModal(activeRental, context.UnitNumber))" />
+                        </MudTooltip>
+                    }
+                    else if (context.Status == StorageUnitStatus.Available)
+                    {
+                        <MudTooltip Text="Start Rental">
+                            <MudIconButton Icon="@Icons.Material.Filled.EventAvailable" Size="Size.Small" Color="Color.Success" OnClick="@(() => _rentalDialog!.ShowStartModal(context))" />
+                        </MudTooltip>
+                    }
+                    <MudTooltip Text="Delete">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => PromptDelete(context))" />
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+<StorageUnitDialog @ref="_unitDialog" OnSaved="ReloadAsync" />
+<StorageRentalDialog @ref="_rentalDialog" OnSaved="ReloadAsync" />
+<ConfirmDialog @ref="_confirmDialog" OnConfirmed="HandleDeleteConfirmed" />
+
+@code {
+    [Parameter] public int PropertyId { get; set; }
+
+    private StorageProperty? _property;
+    private Dictionary<int, StorageRental?> _activeRentals = new();
+    private StorageUnitDialog? _unitDialog;
+    private StorageRentalDialog? _rentalDialog;
+    private ConfirmDialog? _confirmDialog;
+    private StorageUnit? _unitPendingDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPropertyAsync();
+    }
+
+    private async Task LoadPropertyAsync()
+    {
+        _property = await StorageService.GetPropertyByIdAsync(PropertyId);
+        _activeRentals.Clear();
+
+        if (_property != null)
+        {
+            foreach (var unit in _property.Units)
+            {
+                if (unit.Status == StorageUnitStatus.Occupied)
+                {
+                    _activeRentals[unit.Id] = await StorageService.GetActiveRentalForUnitAsync(unit.Id);
+                }
+            }
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        await LoadPropertyAsync();
+    }
+
+    private static Color StatusColor(StorageUnitStatus status) => status switch
+    {
+        StorageUnitStatus.Occupied => Color.Primary,
+        StorageUnitStatus.Available => Color.Success,
+        StorageUnitStatus.Reserved => Color.Warning,
+        StorageUnitStatus.Maintenance => Color.Secondary,
+        _ => Color.Default
+    };
+
+    private Task PromptDelete(StorageUnit unit)
+    {
+        _unitPendingDelete = unit;
+        return _confirmDialog!.ShowModal(
+            "Delete Unit",
+            $"Are you sure you want to delete unit '{unit.UnitNumber}'? This will also permanently delete its rental history. This cannot be undone.",
+            "Delete",
+            Color.Error);
+    }
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (_unitPendingDelete == null)
+        {
+            return;
+        }
+
+        var unitNumber = _unitPendingDelete.UnitNumber;
+        await StorageService.DeleteUnitAsync(_unitPendingDelete.Id);
+        _unitPendingDelete = null;
+
+        await LoadPropertyAsync();
+        Snackbar.Add($"Unit '{unitNumber}' deleted.", Severity.Success);
+    }
+}

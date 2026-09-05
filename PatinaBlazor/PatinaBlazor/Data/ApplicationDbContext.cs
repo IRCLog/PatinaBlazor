@@ -8,10 +8,13 @@ namespace PatinaBlazor.Data
     {
         public DbSet<HitCounter> HitCounters { get; set; }
         public DbSet<Collectable> Collectables { get; set; }
-        public DbSet<CollectableImage> CollectableImages { get; set; }
         public DbSet<CollectableCollection> CollectableCollections { get; set; }
         public DbSet<CollectableCollectionItem> CollectableCollectionItems { get; set; }
         public DbSet<IrcEvent> IrcEvents { get; set; }
+        public DbSet<StorageProperty> StorageProperties { get; set; }
+        public DbSet<StorageUnit> StorageUnits { get; set; }
+        public DbSet<StorageRental> StorageRentals { get; set; }
+        public DbSet<ImageAttachment> ImageAttachments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -84,20 +87,6 @@ namespace PatinaBlazor.Data
                       .WithMany()
                       .HasForeignKey(e => e.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
-                entity.HasMany(e => e.Images)
-                      .WithOne(e => e.Collectable)
-                      .HasForeignKey(e => e.CollectableId)
-                      .OnDelete(DeleteBehavior.Cascade);
-            });
-
-            builder.Entity<CollectableImage>(entity =>
-            {
-                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
-
-                entity.HasOne(e => e.Collectable)
-                      .WithMany(e => e.Images)
-                      .HasForeignKey(e => e.CollectableId)
-                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<CollectableCollection>(entity =>
@@ -137,6 +126,113 @@ namespace PatinaBlazor.Data
                 entity.Property(e => e.Action).HasConversion<string>();
                 entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
                 entity.HasIndex(e => new { e.Network, e.Timestamp });
+            });
+
+            builder.Entity<StorageProperty>(entity =>
+            {
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.CreatedByUserId).HasMaxLength(128);
+                entity.Property(e => e.ModifiedByUserId).HasMaxLength(128);
+
+                // Audit FKs use Restrict (not SetNull/Cascade): SQL Server rejects two
+                // SetNull/Cascade paths from the same table to the same parent table
+                // (error 1785) even when the columns are independent, and this table
+                // already has two audit FKs pointing at AspNetUsers.
+                entity.HasOne(e => e.CreatedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreatedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ModifiedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.ModifiedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(e => e.Units)
+                      .WithOne(e => e.Property)
+                      .HasForeignKey(e => e.StoragePropertyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<StorageUnit>(entity =>
+            {
+                entity.Property(e => e.Status).HasConversion<string>();
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.CreatedByUserId).HasMaxLength(128);
+                entity.Property(e => e.ModifiedByUserId).HasMaxLength(128);
+
+                entity.HasOne(e => e.CreatedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreatedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ModifiedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.ModifiedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Property)
+                      .WithMany(e => e.Units)
+                      .HasForeignKey(e => e.StoragePropertyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(e => e.Rentals)
+                      .WithOne(e => e.Unit)
+                      .HasForeignKey(e => e.StorageUnitId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<StorageRental>(entity =>
+            {
+                entity.Property(e => e.Status).HasConversion<string>();
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.CustomerUserId).HasMaxLength(128);
+                entity.Property(e => e.CreatedByUserId).HasMaxLength(128);
+                entity.Property(e => e.ModifiedByUserId).HasMaxLength(128);
+
+                // Preserve rental/revenue history even if the customer account is later
+                // deleted, mirroring CollectableCollectionItem -> Collectable's Restrict.
+                entity.HasOne(e => e.Customer)
+                      .WithMany()
+                      .HasForeignKey(e => e.CustomerUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.CreatedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreatedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ModifiedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.ModifiedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Unit)
+                      .WithMany(e => e.Rentals)
+                      .HasForeignKey(e => e.StorageUnitId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // The single uniform image table for every ISupportImageAttachments entity.
+            // A new owner type adds its own HasOne(...).WithMany(...) pair here alongside a
+            // new nullable FK column on ImageAttachment - never a new one-off image table.
+            builder.Entity<ImageAttachment>(entity =>
+            {
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(e => e.Collectable)
+                      .WithMany(e => e.Images)
+                      .HasForeignKey(e => e.CollectableId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.StorageProperty)
+                      .WithMany(e => e.Images)
+                      .HasForeignKey(e => e.StoragePropertyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.ToTable(t => t.HasCheckConstraint(
+                    "CK_ImageAttachment_ExactlyOneOwner",
+                    "([CollectableId] IS NOT NULL AND [StoragePropertyId] IS NULL) OR ([CollectableId] IS NULL AND [StoragePropertyId] IS NOT NULL)"));
             });
         }
     }

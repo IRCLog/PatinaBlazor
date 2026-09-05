@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace PatinaBlazor.Data
 {
-    public class Collectable
+    public class Collectable : ISupportImageAttachments
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -48,6 +48,11 @@ namespace PatinaBlazor.Data
 
         // Navigation properties
         public virtual ApplicationUser? User { get; set; }
-        public virtual ICollection<CollectableImage> Images { get; set; } = new List<CollectableImage>();
+        public virtual ICollection<ImageAttachment> Images { get; set; } = new List<ImageAttachment>();
+
+        public const string ImageSubfolderName = "collectables";
+
+        [NotMapped]
+        public string ImageSubfolder => ImageSubfolderName;
     }
 }

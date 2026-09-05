@@ -88,7 +88,7 @@
                                     <MudItem xs="12" md="6">
                                         <MudCard>
                                             <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary);">
-                                                <img src="@ImageService.GetImageUrl(image)"
+                                                <img src="@image.MediumUrl"
                                                      alt="@collectable.Description"
                                                      style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
                                                      @onclick="(() => ShowImageModal(image))" />
@@ -270,7 +270,7 @@
             // Handle multiple new image uploads if present
             if (selectedImageFiles.Any())
             {
-                var uploadResults = await ImageService.SaveMultipleImagesAsync(selectedImageFiles);
+                var uploadResults = await ImageService.SaveMultipleImagesAsync(selectedImageFiles, collectable.ImageSubfolder);
 
                 var successfulUploads = uploadResults.Where(r => r.Success).ToList();
                 var failedUploads = uploadResults.Where(r => !r.Success).ToList();
@@ -283,20 +283,23 @@
                     // Clean up successful uploads if any failed
                     foreach (var successResult in successfulUploads)
                     {
-                        await ImageService.DeleteImageAsync(successResult.FileName);
+                        await ImageService.DeleteImageAsync(successResult);
                     }
                     return;
                 }
 
-                // Create CollectableImage records for successful uploads
+                // Create ImageAttachment records for successful uploads
                 var currentImageCount = collectable.Images.Count;
                 for (int i = 0; i < successfulUploads.Count; i++)
                 {
                     var result = successfulUploads[i];
-                    var newImage = new CollectableImage
+                    var newImage = new ImageAttachment
                     {
                         CollectableId = collectable.Id,
                         FileName = result.FileName,
+                        RelativePath = result.RelativePath,
+                        ThumbnailRelativePath = result.ThumbnailRelativePath,
+                        MediumRelativePath = result.MediumRelativePath,
                         ContentType = result.ContentType,
                         FileSize = result.FileSize,
                         IsMainImage = currentImageCount == 0 && i == 0, // First new image is main if no existing images
@@ -304,7 +307,7 @@
                         CreatedDate = DateTime.UtcNow
                     };
 
-                    DbContext.CollectableImages.Add(newImage);
+                    DbContext.ImageAttachments.Add(newImage);
                 }
             }
 
@@ -327,7 +330,7 @@
         }
     }
 
-    private async Task SetAsMainImage(CollectableImage image)
+    private async Task SetAsMainImage(ImageAttachment image)
     {
         if (collectable?.Images != null)
         {
@@ -341,22 +344,22 @@
             image.IsMainImage = true;
 
             // Update in database
-            DbContext.CollectableImages.UpdateRange(collectable.Images);
+            DbContext.ImageAttachments.UpdateRange(collectable.Images);
             await DbContext.SaveChangesAsync();
 
             StateHasChanged();
         }
     }
 
-    private async Task RemoveImage(CollectableImage image)
+    private async Task RemoveImage(ImageAttachment image)
     {
         if (collectable?.Images != null)
         {
             // Delete the physical file
-            await ImageService.DeleteCollectableImageAsync(image);
+            await ImageService.DeleteImageAsync(image);
 
             // Remove from database
-            DbContext.CollectableImages.Remove(image);
+            DbContext.ImageAttachments.Remove(image);
             collectable.Images.Remove(image);
 
             // If this was the main image and there are other images, set the first one as main
@@ -426,7 +429,7 @@
         return $"{number:n1}{suffixes[counter]}";
     }
 
-    private async Task ShowImageModal(CollectableImage selectedImage)
+    private async Task ShowImageModal(ImageAttachment selectedImage)
     {
         if (collectable?.Images != null && collectable.Images.Any())
         {
