@@ -1,6 +1,5 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
-@using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
 @using PatinaBlazor.Services
 @inject IStorageService StorageService
@@ -134,17 +133,20 @@
 
     private async Task<IEnumerable<ApplicationUser>> SearchCustomersAsync(string search)
     {
-        var query = UserManager.Users.AsQueryable();
+        // Only customers already in the Storage Customer role are rentable to - keeps the
+        // picker from surfacing unrelated site users (other admins, Collectables-only accounts).
+        var customers = await UserManager.GetUsersInRoleAsync(PatinaBlazor.Services.StorageService.StorageCustomerRoleName);
 
+        IEnumerable<ApplicationUser> filtered = customers;
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(u =>
-                (u.Email != null && u.Email.Contains(search)) ||
-                (u.UserName != null && u.UserName.Contains(search)) ||
-                (u.DisplayName != null && u.DisplayName.Contains(search)));
+            filtered = customers.Where(u =>
+                (u.Email != null && u.Email.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (u.UserName != null && u.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                (u.DisplayName != null && u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)));
         }
 
-        return await query.OrderBy(u => u.Email).Take(20).ToListAsync();
+        return filtered.OrderBy(u => u.Email).Take(20);
     }
 
     private async Task<string> GetCurrentUserIdAsync()
