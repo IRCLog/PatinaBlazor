@@ -36,6 +36,10 @@
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4" Style="display: block;">
                 @GetBillingSummary()
             </MudText>
+            <MudDatePicker Label="Payment Date" @bind-Date="_paymentDate" Class="mb-2" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4" Style="display: block;">
+                This is the recurring payment day of the month. Must be on or after the start date, and no more than one month after it.
+            </MudText>
         }
         else
         {
@@ -77,6 +81,7 @@
     private DateTime? _startDate = DateTime.Today;
     private decimal _monthlyRate;
     private BillingFrequency _billingFrequency = BillingFrequency.Monthly;
+    private DateTime? _paymentDate = DateTime.Today;
 
     private StorageRental? _rental;
     private string _endingUnitNumber = "";
@@ -90,6 +95,7 @@
         _startDate = DateTime.Today;
         _monthlyRate = unit.MonthlyRate;
         _billingFrequency = BillingFrequency.Monthly;
+        _paymentDate = DateTime.Today;
         _errorMessage = null;
         _isVisible = true;
         StateHasChanged();
@@ -160,9 +166,16 @@
     {
         _errorMessage = null;
 
-        if (_mode == RentalDialogMode.Start && (_selectedCustomer == null || _startDate == null))
+        if (_mode == RentalDialogMode.Start && (_selectedCustomer == null || _startDate == null || _paymentDate == null))
         {
-            _errorMessage = "Please select a customer and a start date.";
+            _errorMessage = "Please select a customer, a start date, and a payment date.";
+            return;
+        }
+
+        if (_mode == RentalDialogMode.Start && _startDate != null && _paymentDate != null &&
+            (_paymentDate.Value.Date < _startDate.Value.Date || _paymentDate.Value.Date > _startDate.Value.Date.AddMonths(1)))
+        {
+            _errorMessage = "Payment date must be on or after the start date, and no more than one month after it.";
             return;
         }
 
@@ -184,9 +197,9 @@
                 return;
             }
 
-            if (_mode == RentalDialogMode.Start && _unit != null && _selectedCustomer != null && _startDate != null)
+            if (_mode == RentalDialogMode.Start && _unit != null && _selectedCustomer != null && _startDate != null && _paymentDate != null)
             {
-                await StorageService.StartRentalAsync(_unit.Id, _selectedCustomer.Id, _monthlyRate, _startDate.Value, _billingFrequency, currentUserId);
+                await StorageService.StartRentalAsync(_unit.Id, _selectedCustomer.Id, _monthlyRate, _startDate.Value, _billingFrequency, _paymentDate.Value, currentUserId);
             }
             else if (_mode == RentalDialogMode.End && _rental != null && _endDate != null)
             {

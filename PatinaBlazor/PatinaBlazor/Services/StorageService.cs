@@ -167,8 +167,13 @@ namespace PatinaBlazor.Services
 
         // Rentals
 
-        public async Task<StorageRental> StartRentalAsync(int unitId, string customerUserId, decimal monthlyRate, DateTime startDate, BillingFrequency billingFrequency, string currentUserId)
+        public async Task<StorageRental> StartRentalAsync(int unitId, string customerUserId, decimal monthlyRate, DateTime startDate, BillingFrequency billingFrequency, DateTime paymentDate, string currentUserId)
         {
+            if (paymentDate.Date < startDate.Date || paymentDate.Date > startDate.Date.AddMonths(1))
+            {
+                throw new ArgumentException("Payment date must be on or after the start date, and no more than one month after it.", nameof(paymentDate));
+            }
+
             var unit = await _context.StorageUnits.FirstOrDefaultAsync(u => u.Id == unitId)
                 ?? throw new InvalidOperationException($"Storage unit {unitId} not found.");
 
@@ -179,6 +184,7 @@ namespace PatinaBlazor.Services
                 StartDate = startDate,
                 MonthlyRateAtSigning = monthlyRate,
                 BillingFrequency = billingFrequency,
+                PaymentDate = paymentDate,
                 Status = StorageRentalStatus.Active,
                 CreatedDate = DateTime.UtcNow,
                 ModifiedDate = DateTime.UtcNow,
@@ -425,6 +431,7 @@ namespace PatinaBlazor.Services
                     StartDate = startDate,
                     MonthlyRateAtSigning = unit.MonthlyRate,
                     BillingFrequency = billingFrequency,
+                    PaymentDate = startDate,
                     CreatedDate = startDate,
                     ModifiedDate = startDate,
                     CreatedByUserId = adminUserId,
