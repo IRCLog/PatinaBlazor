@@ -35,6 +35,7 @@
                 <MudTh>Unit #</MudTh>
                 <MudTh>Dimensions (L x W x H)</MudTh>
                 <MudTh>Monthly Rate</MudTh>
+                <MudTh>Billing Frequency</MudTh>
                 <MudTh>Status</MudTh>
                 <MudTh>Current Renter</MudTh>
                 <MudTh>Actions</MudTh>
@@ -43,14 +44,23 @@
                 <MudTd DataLabel="Unit #">@context.UnitNumber</MudTd>
                 <MudTd DataLabel="Dimensions">@context.LengthFeet' x @context.WidthFeet' x @context.HeightFeet'</MudTd>
                 <MudTd DataLabel="Monthly Rate">@context.MonthlyRate.ToString("C0")</MudTd>
+                <MudTd DataLabel="Billing Frequency">
+                    @if (_activeRentals.TryGetValue(context.Id, out var billedRental) && billedRental != null)
+                    {
+                        @billedRental.BillingFrequency
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                    }
+                </MudTd>
                 <MudTd DataLabel="Status">
                     <MudChip T="string" Size="Size.Small" Color="@StatusColor(context.Status)">@context.Status</MudChip>
                 </MudTd>
                 <MudTd DataLabel="Current Renter">
                     @if (_activeRentals.TryGetValue(context.Id, out var rental) && rental != null)
                     {
-                        <div>@(rental.Customer?.DisplayName ?? rental.Customer?.Email ?? "Unknown")</div>
-                        <MudText Typo="Typo.caption" Color="Color.Secondary">Billed @rental.BillingFrequency.ToString().ToLowerInvariant()</MudText>
+                        @(rental.Customer?.DisplayName ?? rental.Customer?.Email ?? "Unknown")
                     }
                     else
                     {

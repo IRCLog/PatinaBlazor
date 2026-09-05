@@ -29,7 +29,7 @@
                               Class="mb-4" />
             <MudDatePicker Label="Start Date" @bind-Date="_startDate" Class="mb-4" />
             <MudNumericField Label="Monthly Rate (USD)" @bind-Value="_monthlyRate" Format="F2" Adornment="Adornment.Start" AdornmentText="$" Class="mb-4" />
-            <MudSelect T="BillingFrequency" Label="Bill Customer" @bind-Value="_billingFrequency" Class="mb-2">
+            <MudSelect T="BillingFrequency" Label="Billing Frequency" @bind-Value="_billingFrequency" Class="mb-2">
                 <MudSelectItem Value="BillingFrequency.Monthly">Monthly</MudSelectItem>
                 <MudSelectItem Value="BillingFrequency.Quarterly">Quarterly</MudSelectItem>
                 <MudSelectItem Value="BillingFrequency.Annually">Annually</MudSelectItem>
