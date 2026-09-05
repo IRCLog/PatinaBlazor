@@ -29,6 +29,14 @@
                               Class="mb-4" />
             <MudDatePicker Label="Start Date" @bind-Date="_startDate" Class="mb-4" />
             <MudNumericField Label="Monthly Rate (USD)" @bind-Value="_monthlyRate" Format="F2" Adornment="Adornment.Start" AdornmentText="$" Class="mb-4" />
+            <MudSelect T="BillingFrequency" Label="Bill Customer" @bind-Value="_billingFrequency" Class="mb-2">
+                <MudSelectItem Value="BillingFrequency.Monthly">Monthly</MudSelectItem>
+                <MudSelectItem Value="BillingFrequency.Quarterly">Quarterly</MudSelectItem>
+                <MudSelectItem Value="BillingFrequency.Annually">Annually</MudSelectItem>
+            </MudSelect>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4" Style="display: block;">
+                @GetBillingSummary()
+            </MudText>
         }
         else
         {
@@ -69,6 +77,7 @@
     private ApplicationUser? _selectedCustomer;
     private DateTime? _startDate = DateTime.Today;
     private decimal _monthlyRate;
+    private BillingFrequency _billingFrequency = BillingFrequency.Monthly;
 
     private StorageRental? _rental;
     private string _endingUnitNumber = "";
@@ -81,10 +90,29 @@
         _selectedCustomer = null;
         _startDate = DateTime.Today;
         _monthlyRate = unit.MonthlyRate;
+        _billingFrequency = BillingFrequency.Monthly;
         _errorMessage = null;
         _isVisible = true;
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    private string GetBillingSummary()
+    {
+        var months = _billingFrequency switch
+        {
+            BillingFrequency.Quarterly => 3,
+            BillingFrequency.Annually => 12,
+            _ => 1
+        };
+        var amount = _monthlyRate * months;
+        var period = _billingFrequency switch
+        {
+            BillingFrequency.Quarterly => "every 3 months",
+            BillingFrequency.Annually => "every 12 months",
+            _ => "every month"
+        };
+        return $"Customer will be charged {amount:C2} {period}.";
     }
 
     public Task ShowEndModal(StorageRental rental, string unitNumber)
@@ -156,7 +184,7 @@
 
             if (_mode == RentalDialogMode.Start && _unit != null && _selectedCustomer != null && _startDate != null)
             {
-                await StorageService.StartRentalAsync(_unit.Id, _selectedCustomer.Id, _monthlyRate, _startDate.Value, currentUserId);
+                await StorageService.StartRentalAsync(_unit.Id, _selectedCustomer.Id, _monthlyRate, _startDate.Value, _billingFrequency, currentUserId);
             }
             else if (_mode == RentalDialogMode.End && _rental != null && _endDate != null)
             {

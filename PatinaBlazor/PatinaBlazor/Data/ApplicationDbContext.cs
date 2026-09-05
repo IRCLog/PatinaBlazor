@@ -185,6 +185,7 @@ namespace PatinaBlazor.Data
             builder.Entity<StorageRental>(entity =>
             {
                 entity.Property(e => e.Status).HasConversion<string>();
+                entity.Property(e => e.BillingFrequency).HasConversion<string>().HasDefaultValue(BillingFrequency.Monthly);
                 entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(e => e.CustomerUserId).HasMaxLength(128);

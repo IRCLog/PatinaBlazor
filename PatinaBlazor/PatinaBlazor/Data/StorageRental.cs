@@ -28,6 +28,11 @@ namespace PatinaBlazor.Data
         [Required]
         public StorageRentalStatus Status { get; set; } = StorageRentalStatus.Active;
 
+        // How often the customer is actually invoiced - independent of MonthlyRateAtSigning,
+        // which stays a monthly-equivalent figure for revenue/MRR reporting regardless of cadence.
+        [Required]
+        public BillingFrequency BillingFrequency { get; set; } = BillingFrequency.Monthly;
+
         public DateTime CreatedDate { get; set; }
 
         public DateTime ModifiedDate { get; set; }

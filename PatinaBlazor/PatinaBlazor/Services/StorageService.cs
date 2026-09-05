@@ -167,7 +167,7 @@ namespace PatinaBlazor.Services
 
         // Rentals
 
-        public async Task<StorageRental> StartRentalAsync(int unitId, string customerUserId, decimal monthlyRate, DateTime startDate, string currentUserId)
+        public async Task<StorageRental> StartRentalAsync(int unitId, string customerUserId, decimal monthlyRate, DateTime startDate, BillingFrequency billingFrequency, string currentUserId)
         {
             var unit = await _context.StorageUnits.FirstOrDefaultAsync(u => u.Id == unitId)
                 ?? throw new InvalidOperationException($"Storage unit {unitId} not found.");
@@ -178,6 +178,7 @@ namespace PatinaBlazor.Services
                 CustomerUserId = customerUserId,
                 StartDate = startDate,
                 MonthlyRateAtSigning = monthlyRate,
+                BillingFrequency = billingFrequency,
                 Status = StorageRentalStatus.Active,
                 CreatedDate = DateTime.UtcNow,
                 ModifiedDate = DateTime.UtcNow,
@@ -411,12 +412,19 @@ namespace PatinaBlazor.Services
                 var startDate = now.AddMonths(-startMonthsAgo);
                 var isEnded = startMonthsAgo > 3 && random.NextDouble() < 0.35;
 
+                // Mostly monthly, with a realistic minority paying less often.
+                var billingRoll = random.NextDouble();
+                var billingFrequency = billingRoll < 0.7 ? BillingFrequency.Monthly
+                    : billingRoll < 0.9 ? BillingFrequency.Quarterly
+                    : BillingFrequency.Annually;
+
                 var rental = new StorageRental
                 {
                     StorageUnitId = unit.Id,
                     CustomerUserId = customerId,
                     StartDate = startDate,
                     MonthlyRateAtSigning = unit.MonthlyRate,
+                    BillingFrequency = billingFrequency,
                     CreatedDate = startDate,
                     ModifiedDate = startDate,
                     CreatedByUserId = adminUserId,

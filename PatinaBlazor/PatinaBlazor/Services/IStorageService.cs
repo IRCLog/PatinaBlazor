@@ -22,7 +22,7 @@ namespace PatinaBlazor.Services
         Task DeleteUnitAsync(int id);
 
         // Rentals
-        Task<StorageRental> StartRentalAsync(int unitId, string customerUserId, decimal monthlyRate, DateTime startDate, string currentUserId);
+        Task<StorageRental> StartRentalAsync(int unitId, string customerUserId, decimal monthlyRate, DateTime startDate, BillingFrequency billingFrequency, string currentUserId);
         Task EndRentalAsync(int rentalId, DateTime endDate, string currentUserId);
         Task<StorageRental?> GetActiveRentalForUnitAsync(int unitId);
 

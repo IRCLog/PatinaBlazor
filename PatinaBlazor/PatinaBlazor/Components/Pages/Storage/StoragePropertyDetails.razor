@@ -49,7 +49,8 @@
                 <MudTd DataLabel="Current Renter">
                     @if (_activeRentals.TryGetValue(context.Id, out var rental) && rental != null)
                     {
-                        @(rental.Customer?.DisplayName ?? rental.Customer?.Email ?? "Unknown")
+                        <div>@(rental.Customer?.DisplayName ?? rental.Customer?.Email ?? "Unknown")</div>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Billed @rental.BillingFrequency.ToString().ToLowerInvariant()</MudText>
                     }
                     else
                     {
