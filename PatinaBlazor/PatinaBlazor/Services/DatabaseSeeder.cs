@@ -7,6 +7,7 @@ namespace PatinaBlazor.Services
     {
         private const string AdminRoleName = "Admin";
         private const string StorageAdminRoleName = "Storage Admin";
+        private const string ArticlePublisherRoleName = "Article Publisher";
 
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
@@ -35,6 +36,7 @@ namespace PatinaBlazor.Services
                 await EnsureRoleExistsAsync(AdminRoleName);
                 await EnsureRoleExistsAsync(StorageAdminRoleName);
                 await EnsureRoleExistsAsync(StorageService.StorageCustomerRoleName);
+                await EnsureRoleExistsAsync(ArticlePublisherRoleName);
 
                 var adminUser = await EnsureAdminUserAsync();
                 if (adminUser == null)

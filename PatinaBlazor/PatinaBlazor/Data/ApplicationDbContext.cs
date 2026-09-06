@@ -15,6 +15,7 @@ namespace PatinaBlazor.Data
         public DbSet<StorageUnit> StorageUnits { get; set; }
         public DbSet<StorageRental> StorageRentals { get; set; }
         public DbSet<ImageAttachment> ImageAttachments { get; set; }
+        public DbSet<Article> Articles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -75,6 +76,15 @@ namespace PatinaBlazor.Data
                 entity.HasIndex(e => e.PagePath).IsUnique();
                 entity.Property(e => e.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(e => e.LastHit).HasDefaultValueSql("GETUTCDATE()");
+
+                // Filtered unique index, same pattern as ApplicationUser.DisplayName - lets
+                // ArticleId stay null for ordinary page-path counters while still enforcing
+                // at most one counter row per article.
+                entity.HasIndex(e => e.ArticleId).IsUnique().HasFilter("[ArticleId] IS NOT NULL");
+                entity.HasOne(e => e.Article)
+                      .WithMany()
+                      .HasForeignKey(e => e.ArticleId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<Collectable>(entity =>
@@ -231,9 +241,45 @@ namespace PatinaBlazor.Data
                       .HasForeignKey(e => e.StoragePropertyId)
                       .OnDelete(DeleteBehavior.Cascade);
 
+                entity.HasOne(e => e.Article)
+                      .WithMany(e => e.Images)
+                      .HasForeignKey(e => e.ArticleId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // "Exactly one owner" as a sum-of-CASE-WHEN, generalized beyond the old
+                // pairwise form now that there are three owner columns.
                 entity.ToTable(t => t.HasCheckConstraint(
                     "CK_ImageAttachment_ExactlyOneOwner",
-                    "([CollectableId] IS NOT NULL AND [StoragePropertyId] IS NULL) OR ([CollectableId] IS NULL AND [StoragePropertyId] IS NOT NULL)"));
+                    "(CASE WHEN [CollectableId] IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN [StoragePropertyId] IS NOT NULL THEN 1 ELSE 0 END + " +
+                    "CASE WHEN [ArticleId] IS NOT NULL THEN 1 ELSE 0 END) = 1"));
+            });
+
+            builder.Entity<Article>(entity =>
+            {
+                entity.Property(e => e.Status).HasConversion<string>();
+                entity.Property(e => e.Audience).HasConversion<string>();
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(e => e.AuthorUserId).HasMaxLength(128);
+                entity.Property(e => e.CreatedByUserId).HasMaxLength(128);
+                entity.Property(e => e.ModifiedByUserId).HasMaxLength(128);
+
+                // Restrict, not SetNull/Cascade: this table has three FKs to AspNetUsers,
+                // and SQL Server rejects multiple SetNull/Cascade paths into the same parent
+                // table (error 1785) - same reasoning as StorageProperty/StorageRental.
+                entity.HasOne(e => e.Author)
+                      .WithMany()
+                      .HasForeignKey(e => e.AuthorUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.CreatedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.CreatedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.ModifiedByUser)
+                      .WithMany()
+                      .HasForeignKey(e => e.ModifiedByUserId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

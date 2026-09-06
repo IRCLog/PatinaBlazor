@@ -1,0 +1,329 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@using System.ComponentModel.DataAnnotations
+@inject IArticleService ArticleService
+@inject IImageService ImageService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+
+<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_isEditMode ? "Edit Article" : "Add Article")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <EditForm Model="_model" OnValidSubmit="HandleSave" id="articleForm">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+            }
+
+            <MudTextField Label="Title" @bind-Value="_model.Title" For="@(() => _model.Title)" Class="mb-4" />
+            <MudTextField Label="Tag Line" @bind-Value="_model.TagLine" For="@(() => _model.TagLine)" Class="mb-4" />
+
+            <MudAutocomplete T="ApplicationUser"
+                              Label="Author"
+                              @bind-Value="_selectedAuthor"
+                              SearchFunc="SearchAuthorsAsync"
+                              ToStringFunc="@(u => u == null ? "" : $"{(string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName)} ({u.Email})")"
+                              Class="mb-4" />
+
+            <MudGrid Class="mb-2">
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="ArticleStatus" Label="Status" @bind-Value="_model.Status">
+                        <MudSelectItem Value="ArticleStatus.Draft">Draft</MudSelectItem>
+                        <MudSelectItem Value="ArticleStatus.Published">Published</MudSelectItem>
+                        <MudSelectItem Value="ArticleStatus.Archived">Archived</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="ArticleAudience" Label="Audience" @bind-Value="_model.Audience">
+                        <MudSelectItem Value="ArticleAudience.Public">Public (anyone, including anonymous visitors)</MudSelectItem>
+                        <MudSelectItem Value="ArticleAudience.RegisteredUsers">Registered Users</MudSelectItem>
+                        <MudSelectItem Value="ArticleAudience.StorageCustomers">Storage Customers</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+
+            <MudSwitch T="bool" @bind-Value="_model.FeatureOnHomePage" Color="Color.Primary" Class="mb-4">
+                Feature on Home page
+            </MudSwitch>
+            @if (_model.FeatureOnHomePage && _model.Audience != ArticleAudience.Public)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    Only Public articles are shown in the Home page's featured section - this article won't appear there until its audience is set to Public.
+                </MudAlert>
+            }
+
+            <MudTextField Label="Body (Markdown)" @bind-Value="_model.Body" For="@(() => _model.Body)" Lines="14" Class="mb-4" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Photos</MudText>
+            <InputFile id="articleImages" OnChange="OnImagesSelected" accept="image/*" multiple class="mud-input-file" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-3" Style="display: block;">
+                Upload photos for the article (max 15MB each, JPG/PNG/GIF/WebP).
+            </MudText>
+
+            @if (_imageUploadErrors.Any())
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">
+                    <ul class="mb-0">
+                        @foreach (var error in _imageUploadErrors)
+                        {
+                            <li>@error</li>
+                        }
+                    </ul>
+                </MudAlert>
+            }
+
+            @if (_existingImages.Any() || _selectedImageFiles.Any())
+            {
+                <MudGrid Class="mb-2">
+                    @foreach (var image in _existingImages)
+                    {
+                        <MudItem xs="4">
+                            <div style="position: relative;">
+                                <img src="@image.ThumbnailUrl" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px;" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" Style="position: absolute; top: 0; right: 0;" OnClick="@(() => RemoveExistingImage(image))" />
+                            </div>
+                        </MudItem>
+                    }
+                    @foreach (var file in _selectedImageFiles)
+                    {
+                        <MudItem xs="4">
+                            <MudPaper Class="pa-2" Style="height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <MudText Typo="Typo.caption" Style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">@file.Name</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+            }
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Disabled="_isSaving">Cancel</MudButton>
+        <MudButton ButtonType="ButtonType.Submit" form="articleForm" Variant="Variant.Filled" Color="Color.Primary" Disabled="_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private readonly DialogOptions _dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        CloseOnEscapeKey = true,
+    };
+
+    private bool _isVisible;
+    private bool _isSaving;
+    private bool _isEditMode;
+    private string? _errorMessage;
+
+    private Article? _article;
+    private ArticleEditModel _model = new();
+    private ApplicationUser? _selectedAuthor;
+    private List<ImageAttachment> _existingImages = new();
+    private List<int> _removedImageIds = new();
+    private List<IBrowserFile> _selectedImageFiles = new();
+    private List<string> _imageUploadErrors = new();
+
+    public async Task ShowModal(Article? existing)
+    {
+        _article = existing;
+        _isEditMode = existing != null;
+        _errorMessage = null;
+        _selectedImageFiles.Clear();
+        _imageUploadErrors.Clear();
+        _removedImageIds.Clear();
+        _existingImages = existing?.Images.OrderBy(i => i.DisplayOrder).ToList() ?? new List<ImageAttachment>();
+
+        _model = existing == null
+            ? new ArticleEditModel()
+            : new ArticleEditModel
+            {
+                Title = existing.Title,
+                TagLine = existing.TagLine,
+                Body = existing.Body,
+                Status = existing.Status,
+                Audience = existing.Audience,
+                FeatureOnHomePage = existing.FeatureOnHomePage
+            };
+
+        if (existing != null)
+        {
+            _selectedAuthor = existing.Author ?? await UserManager.FindByIdAsync(existing.AuthorUserId);
+        }
+        else
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            _selectedAuthor = await UserManager.GetUserAsync(authState.User);
+        }
+
+        _isVisible = true;
+        StateHasChanged();
+    }
+
+    private void Close()
+    {
+        _isVisible = false;
+    }
+
+    private void OnImagesSelected(InputFileChangeEventArgs e)
+    {
+        _imageUploadErrors.Clear();
+        if (e.FileCount > 0)
+        {
+            _selectedImageFiles.AddRange(e.GetMultipleFiles());
+            _imageUploadErrors = ImageService.ValidateImageFiles(_selectedImageFiles);
+        }
+        StateHasChanged();
+    }
+
+    private void RemoveExistingImage(ImageAttachment image)
+    {
+        _removedImageIds.Add(image.Id);
+        _existingImages.Remove(image);
+    }
+
+    private async Task<IEnumerable<ApplicationUser>> SearchAuthorsAsync(string search)
+    {
+        var query = UserManager.Users.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(u =>
+                (u.Email != null && u.Email.Contains(search)) ||
+                (u.UserName != null && u.UserName.Contains(search)) ||
+                (u.DisplayName != null && u.DisplayName.Contains(search)));
+        }
+
+        return await query.OrderBy(u => u.Email).Take(20).ToListAsync();
+    }
+
+    private async Task<string> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        return user?.Id ?? string.Empty;
+    }
+
+    private async Task HandleSave()
+    {
+        _errorMessage = null;
+
+        if (_selectedAuthor == null)
+        {
+            _errorMessage = "Please select an author.";
+            return;
+        }
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var currentUserId = await GetCurrentUserIdAsync();
+            if (string.IsNullOrEmpty(currentUserId))
+            {
+                _errorMessage = "Unable to determine the current user. Please refresh and log in again.";
+                return;
+            }
+
+            if (_isEditMode && _article != null)
+            {
+                _article.Title = _model.Title;
+                _article.TagLine = _model.TagLine;
+                _article.Body = _model.Body;
+                _article.Status = _model.Status;
+                _article.Audience = _model.Audience;
+                _article.FeatureOnHomePage = _model.FeatureOnHomePage;
+                _article.AuthorUserId = _selectedAuthor.Id;
+
+                await ArticleService.UpdateAsync(_article, currentUserId);
+
+                foreach (var imageId in _removedImageIds)
+                {
+                    var image = await ArticleService.GetArticleImageAsync(imageId);
+                    if (image != null)
+                    {
+                        await ImageService.DeleteImageAsync(image);
+                        await ArticleService.DeleteArticleImageAsync(imageId);
+                    }
+                }
+
+                await UploadSelectedImagesAsync(_article);
+            }
+            else
+            {
+                var article = new Article
+                {
+                    Title = _model.Title,
+                    TagLine = _model.TagLine,
+                    Body = _model.Body,
+                    Status = _model.Status,
+                    Audience = _model.Audience,
+                    FeatureOnHomePage = _model.FeatureOnHomePage,
+                    AuthorUserId = _selectedAuthor.Id
+                };
+
+                article = await ArticleService.CreateAsync(article, currentUserId);
+                await UploadSelectedImagesAsync(article);
+            }
+
+            _isVisible = false;
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error saving article: {ex.Message}";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task UploadSelectedImagesAsync(Article article)
+    {
+        if (!_selectedImageFiles.Any())
+        {
+            return;
+        }
+
+        var hasExistingImages = _existingImages.Any();
+        for (var i = 0; i < _selectedImageFiles.Count; i++)
+        {
+            var result = await ImageService.SaveImageAsync(_selectedImageFiles[i], article.ImageSubfolder);
+            if (result.Success)
+            {
+                await ArticleService.AddArticleImageAsync(article.Id, result, isMainImage: !hasExistingImages && i == 0);
+            }
+        }
+    }
+
+    public class ArticleEditModel
+    {
+        [Required(ErrorMessage = "Title is required")]
+        [StringLength(200)]
+        public string Title { get; set; } = "";
+
+        [StringLength(300)]
+        public string? TagLine { get; set; }
+
+        [Required(ErrorMessage = "Body is required")]
+        public string Body { get; set; } = "";
+
+        public ArticleStatus Status { get; set; } = ArticleStatus.Draft;
+        public ArticleAudience Audience { get; set; } = ArticleAudience.Public;
+        public bool FeatureOnHomePage { get; set; }
+    }
+}

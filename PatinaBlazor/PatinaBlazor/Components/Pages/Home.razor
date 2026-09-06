@@ -1,7 +1,9 @@
 @page "/"
 @using Microsoft.AspNetCore.Components.Authorization
+@using PatinaBlazor.Data
 @using PatinaBlazor.Services
 @inject ICollectableService CollectableService
+@inject IArticleService ArticleService
 @inject ILogger<Home> Logger
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
@@ -14,6 +16,32 @@
         <MudText Typo="Typo.h2" Color="Color.Primary" Class="mb-3" Style="font-weight:700;">Welcome to Silzell.net</MudText>
         <MudText Typo="Typo.h6" Color="Color.Secondary">You are here.</MudText>
     </div>
+
+    @if (_featuredArticles.Any())
+    {
+        <MudText Typo="Typo.h5" Class="mb-3">Featured Articles</MudText>
+        <MudGrid Class="mb-4">
+            @foreach (var article in _featuredArticles)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.subtitle1">@article.Title</MudText>
+                                @if (!string.IsNullOrWhiteSpace(article.TagLine))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@article.TagLine</MudText>
+                                }
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardActions>
+                            <MudButton FullWidth="true" Variant="Variant.Outlined" Href="@($"/articles/{article.Id}")">Read more</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
 </MudContainer>
 
 <footer class="page-footer">
@@ -25,6 +53,7 @@
     private int itemsPerSlide = 3; // Number of items to show per carousel slide on desktop
     private int currentSlide = 0; // For desktop carousel
     private int currentMobileSlide = 0; // For mobile carousel
+    private List<Article> _featuredArticles = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -34,6 +63,9 @@
             && !authState.User.IsInRole("Admin"))
         {
             Navigation.NavigateTo("/storage/admin");
+            return;
         }
+
+        _featuredArticles = await ArticleService.GetFeaturedForHomeAsync();
     }
 }

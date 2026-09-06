@@ -49,6 +49,9 @@ namespace PatinaBlazor.Data
         public int? StoragePropertyId { get; set; }
         public StorageProperty? StorageProperty { get; set; }
 
+        public Guid? ArticleId { get; set; }
+        public Article? Article { get; set; }
+
         // Falls back to the full-size image when a smaller variant wasn't generated
         // (e.g. an upload that couldn't be decoded and was saved as-is).
         [NotMapped]

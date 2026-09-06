@@ -1,0 +1,106 @@
+@page "/articles"
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@rendermode InteractiveServer
+@inject IArticleService ArticleService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Articles</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <MudText Typo="Typo.h4" Class="mb-4">Articles</MudText>
+
+    @if (_articles == null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading articles...</MudText>
+        </div>
+    }
+    else if (!_articles.Any())
+    {
+        <MudText Typo="Typo.body1" Color="Color.Secondary">No articles yet.</MudText>
+    }
+    else
+    {
+        <MudTextField T="string"
+                      Value="_searchText"
+                      ValueChanged="@((string v) => _searchText = v)"
+                      Immediate="true"
+                      Placeholder="Search articles..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Clearable="true"
+                      Class="mb-4" />
+
+        <MudGrid>
+            @foreach (var article in FilteredArticles)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                        @{
+                            var mainImage = article.GetMainImage();
+                        }
+                        <div style="height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-background-grey, #161b22);">
+                            @if (mainImage != null)
+                            {
+                                <img src="@mainImage.MediumUrl"
+                                     srcset="@($"{mainImage.ThumbnailUrl} 400w, {mainImage.MediumUrl} 1000w")"
+                                     sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
+                                     alt="@article.Title" style="max-height: 100%; max-width: 100%; object-fit: cover; width: 100%;" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Article" Size="Size.Large" Color="Color.Secondary" />
+                            }
+                        </div>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.subtitle1">@article.Title</MudText>
+                                @if (!string.IsNullOrWhiteSpace(article.TagLine))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@article.TagLine</MudText>
+                                }
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent Class="flex-grow-1">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">by @AuthorLabel(article)</MudText>
+                            @if (article.PublishedDate.HasValue)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@article.PublishedDate.Value.ToLocalTime().ToString("MMM d, yyyy")</MudText>
+                            }
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton FullWidth="true" Variant="Variant.Outlined" Href="@($"/articles/{article.Id}")">Read more</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private List<Article>? _articles;
+    private string _searchText = "";
+
+    private IEnumerable<Article> FilteredArticles =>
+        _articles == null
+            ? Enumerable.Empty<Article>()
+            : string.IsNullOrWhiteSpace(_searchText)
+                ? _articles
+                : _articles.Where(a =>
+                    a.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                    (a.TagLine != null && a.TagLine.Contains(_searchText, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var allowedAudiences = await ArticleAudienceResolver.GetAllowedAudiencesAsync(AuthenticationStateProvider);
+        _articles = await ArticleService.GetVisibleArticlesAsync(allowedAudiences);
+    }
+
+    private static string AuthorLabel(Article article) =>
+        article.Author == null
+            ? "(unknown)"
+            : string.IsNullOrWhiteSpace(article.Author.DisplayName) ? article.Author.UserName ?? "(unknown)" : article.Author.DisplayName;
+}

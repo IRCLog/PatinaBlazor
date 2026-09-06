@@ -18,6 +18,7 @@
 
 @code {
     [Parameter] public string PagePath { get; set; } = "/";
+    [Parameter] public Guid? ArticleId { get; set; }
 
     private long hitCount = 0;
     private bool isLoading = true;
@@ -34,14 +35,16 @@
     {
         try
         {
-            var counter = await DbContext.HitCounters
-                .FirstOrDefaultAsync(h => h.PagePath == PagePath);
+            var counter = ArticleId.HasValue
+                ? await DbContext.HitCounters.FirstOrDefaultAsync(h => h.ArticleId == ArticleId)
+                : await DbContext.HitCounters.FirstOrDefaultAsync(h => h.PagePath == PagePath);
 
             if (counter == null)
             {
                 counter = new Data.HitCounter
                 {
-                    PagePath = PagePath,
+                    PagePath = ArticleId.HasValue ? $"/articles/{ArticleId}" : PagePath,
+                    ArticleId = ArticleId,
                     HitCount = 1,
                     CreatedAt = DateTime.UtcNow,
                     LastHit = DateTime.UtcNow

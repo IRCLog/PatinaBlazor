@@ -1,0 +1,74 @@
+@page "/articles/{Id:guid}"
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@rendermode InteractiveServer
+@inject IArticleService ArticleService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>@(_article?.Title ?? "Article")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    @if (_isLoading)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        </div>
+    }
+    else if (_article == null)
+    {
+        <MudText Typo="Typo.h5">Article not found</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mt-2">
+            This article doesn't exist, isn't published, or isn't available to you.
+        </MudText>
+        <MudButton Href="/articles" Variant="Variant.Outlined" Class="mt-4">Back to Articles</MudButton>
+    }
+    else
+    {
+        var mainImage = _article.GetMainImage();
+        @if (mainImage != null)
+        {
+            <img src="@mainImage.MediumUrl" alt="@_article.Title" style="width: 100%; max-height: 360px; object-fit: cover; border-radius: 8px;" class="mb-4" />
+        }
+
+        <MudText Typo="Typo.h3" Class="mb-1">@_article.Title</MudText>
+        @if (!string.IsNullOrWhiteSpace(_article.TagLine))
+        {
+            <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mb-2">@_article.TagLine</MudText>
+        }
+
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">by @AuthorLabel(_article)</MudText>
+            @if (_article.PublishedDate.HasValue)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">&bull; @_article.PublishedDate.Value.ToLocalTime().ToString("MMM d, yyyy")</MudText>
+            }
+        </MudStack>
+
+        <div class="mb-4">
+            @((MarkupString)_renderedBody)
+        </div>
+
+        <HitCounter ArticleId="@_article.Id" />
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Article? _article;
+    private bool _isLoading = true;
+    private string _renderedBody = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var allowedAudiences = await ArticleAudienceResolver.GetAllowedAudiencesAsync(AuthenticationStateProvider);
+        _article = await ArticleService.GetPublishedArticleAsync(Id, allowedAudiences);
+        _renderedBody = _article == null ? string.Empty : ArticleMarkdown.ToSafeHtml(_article.Body);
+        _isLoading = false;
+    }
+
+    private static string AuthorLabel(Article article) =>
+        article.Author == null
+            ? "(unknown)"
+            : string.IsNullOrWhiteSpace(article.Author.DisplayName) ? article.Author.UserName ?? "(unknown)" : article.Author.DisplayName;
+}

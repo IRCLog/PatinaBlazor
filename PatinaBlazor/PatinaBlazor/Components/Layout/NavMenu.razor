@@ -3,6 +3,7 @@
 
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" OnClick="NotifyNavigate">Home</MudNavLink>
+    <MudNavLink Href="/articles" Icon="@Icons.Material.Filled.Article" OnClick="NotifyNavigate">Articles</MudNavLink>
 
     <AuthorizeView>
         <Authorized>
@@ -11,6 +12,12 @@
             <AuthorizeView Roles="Admin,Storage Admin" Context="storageAdminContext">
                 <Authorized>
                     <MudNavLink Href="/storage/admin" Icon="@Icons.Material.Filled.Warehouse" OnClick="NotifyNavigate">Storage</MudNavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="Admin,Article Publisher" Context="articlePublisherContext">
+                <Authorized>
+                    <MudNavLink Href="/articles/admin" Icon="@Icons.Material.Filled.EditNote" OnClick="NotifyNavigate">Manage Articles</MudNavLink>
                 </Authorized>
             </AuthorizeView>
 

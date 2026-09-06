@@ -1,0 +1,225 @@
+@page "/articles/admin"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize(Roles = "Admin,Article Publisher")]
+@rendermode InteractiveServer
+@inject IArticleService ArticleService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Manage Articles</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="py-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">Articles</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="@(() => _articleDialog!.ShowModal(null))">Add Article</MudButton>
+    </div>
+
+    @if (_articles == null)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading articles...</MudText>
+        </div>
+    }
+    else
+    {
+        <MudGrid Class="mb-3" AlignItems="AlignItems.Center">
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Value="_searchText"
+                              ValueChanged="@((string v) => _searchText = v)"
+                              Immediate="true"
+                              Placeholder="Search by title..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Clearable="true" />
+            </MudItem>
+            <MudItem xs="12" md="6" Style="text-align: right;">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Showing @FilteredArticles.Count() of @_articles.Count articles
+                </MudText>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            @foreach (var article in FilteredArticles)
+            {
+                <MudItem xs="12" sm="6" md="4" lg="4">
+                    <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
+                        @{
+                            var mainImage = article.GetMainImage();
+                        }
+                        <div style="height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-background-grey, #161b22);">
+                            @if (mainImage != null)
+                            {
+                                <img src="@mainImage.MediumUrl"
+                                     srcset="@($"{mainImage.ThumbnailUrl} 400w, {mainImage.MediumUrl} 1000w")"
+                                     sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
+                                     alt="@article.Title" style="max-height: 100%; max-width: 100%; object-fit: cover; width: 100%;" />
+                            }
+                            else
+                            {
+                                <MudIcon Icon="@Icons.Material.Filled.Article" Size="Size.Large" Color="Color.Secondary" />
+                            }
+                        </div>
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.subtitle1">@article.Title</MudText>
+                                @if (!string.IsNullOrWhiteSpace(article.TagLine))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@article.TagLine</MudText>
+                                }
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudTooltip Text="Edit">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" OnClick="@(() => _articleDialog!.ShowModal(article))" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => PromptDelete(article))" />
+                                </MudTooltip>
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent Class="flex-grow-1">
+                            <MudStack Row="true" Spacing="1" Class="mb-2">
+                                <MudChip T="string" Size="Size.Small" Color="@StatusColor(article.Status)">@article.Status</MudChip>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">@AudienceLabel(article.Audience)</MudChip>
+                            </MudStack>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">by @AuthorLabel(article)</MudText>
+                            @if (article.PublishedDate.HasValue)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Published @article.PublishedDate.Value.ToLocalTime().ToString("MMM d, yyyy")</MudText>
+                            }
+                        </MudCardContent>
+                        <MudCardActions>
+                            @if (article.Status == ArticleStatus.Published)
+                            {
+                                <MudButton FullWidth="true" Variant="Variant.Outlined" OnClick="@(() => Unpublish(article))">Unpublish</MudButton>
+                            }
+                            else
+                            {
+                                <MudButton FullWidth="true" Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => Publish(article))">Publish</MudButton>
+                            }
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudContainer>
+
+<ArticleDialog @ref="_articleDialog" OnSaved="HandleArticleSaved" />
+<ConfirmDialog @ref="_confirmDialog" OnConfirmed="HandleDeleteConfirmed" />
+
+@code {
+    private List<Article>? _articles;
+    private string _searchText = "";
+    private ArticleDialog? _articleDialog;
+    private ConfirmDialog? _confirmDialog;
+    private Article? _articlePendingDelete;
+
+    private IEnumerable<Article> FilteredArticles =>
+        _articles == null
+            ? Enumerable.Empty<Article>()
+            : string.IsNullOrWhiteSpace(_searchText)
+                ? _articles
+                : _articles.Where(a => a.Title.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadArticles();
+    }
+
+    private async Task LoadArticles()
+    {
+        _articles = await ArticleService.GetAllAsync();
+    }
+
+    private static string AuthorLabel(Article article) =>
+        article.Author == null
+            ? "(unknown)"
+            : string.IsNullOrWhiteSpace(article.Author.DisplayName) ? article.Author.UserName ?? "(unknown)" : article.Author.DisplayName;
+
+    private static Color StatusColor(ArticleStatus status) => status switch
+    {
+        ArticleStatus.Published => Color.Success,
+        ArticleStatus.Archived => Color.Default,
+        _ => Color.Warning
+    };
+
+    private static string AudienceLabel(ArticleAudience audience) => audience switch
+    {
+        ArticleAudience.RegisteredUsers => "Registered Users",
+        ArticleAudience.StorageCustomers => "Storage Customers",
+        _ => "Public"
+    };
+
+    private async Task<string> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        return user?.Id ?? string.Empty;
+    }
+
+    private async Task Publish(Article article)
+    {
+        var currentUserId = await GetCurrentUserIdAsync();
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            Snackbar.Add("Unable to determine the current user. Please refresh and log in again.", Severity.Error);
+            return;
+        }
+
+        await ArticleService.PublishAsync(article.Id, currentUserId);
+        await LoadArticles();
+        Snackbar.Add($"'{article.Title}' published.", Severity.Success);
+    }
+
+    private async Task Unpublish(Article article)
+    {
+        var currentUserId = await GetCurrentUserIdAsync();
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            Snackbar.Add("Unable to determine the current user. Please refresh and log in again.", Severity.Error);
+            return;
+        }
+
+        await ArticleService.UnpublishAsync(article.Id, currentUserId);
+        await LoadArticles();
+        Snackbar.Add($"'{article.Title}' unpublished.", Severity.Success);
+    }
+
+    private async Task HandleArticleSaved()
+    {
+        await LoadArticles();
+        Snackbar.Add("Article saved successfully.", Severity.Success);
+    }
+
+    private Task PromptDelete(Article article)
+    {
+        _articlePendingDelete = article;
+        return _confirmDialog!.ShowModal(
+            "Delete Article",
+            $"Are you sure you want to delete '{article.Title}'? This will also permanently delete its images and view count history. This cannot be undone.",
+            "Delete",
+            Color.Error);
+    }
+
+    private async Task HandleDeleteConfirmed()
+    {
+        if (_articlePendingDelete == null)
+        {
+            return;
+        }
+
+        var title = _articlePendingDelete.Title;
+        await ArticleService.DeleteAsync(_articlePendingDelete.Id);
+        _articlePendingDelete = null;
+
+        await LoadArticles();
+        Snackbar.Add($"Article '{title}' deleted.", Severity.Success);
+    }
+}
