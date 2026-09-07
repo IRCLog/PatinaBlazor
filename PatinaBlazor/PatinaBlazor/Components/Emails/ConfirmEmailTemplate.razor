@@ -1,0 +1,10 @@
+<EmailLayout Title="Confirm your email">
+    <p style="margin:0 0 16px 0; font-size:18px; font-weight:700;">Welcome to Silzell.net!</p>
+    <p style="margin:0 0 8px 0;">Please confirm your email address to finish setting up your account.</p>
+    <EmailButton Href="@ConfirmationLink">Confirm Email</EmailButton>
+    <p style="margin:16px 0 0 0; color:#8a8f98; font-size:13px;">If you didn't create this account, you can safely ignore this email.</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ConfirmationLink { get; set; } = "";
+}

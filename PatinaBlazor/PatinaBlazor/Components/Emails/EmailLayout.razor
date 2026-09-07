@@ -1,0 +1,55 @@
+@* Shared branded chrome for every account email. See CLAUDE.md's "Email templates"
+   section before adding a new email or changing this layout - in particular, why this
+   uses table-based markup with inline styles instead of the CSS classes/flexbox used
+   everywhere else in this app: most email clients (Outlook desktop especially) strip
+   <style> blocks and don't support flexbox/grid at all, so email HTML has to be written
+   the old-fashioned way to render consistently. This file is rendered to a raw HTML
+   string via EmailTemplateRenderer - it is never served as a normal page. *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Title</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f4f4f7; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+    @* Preheader: hidden preview text shown next to the subject line in most inboxes. *@
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0;">@EffectivePreheader</div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; padding:32px 16px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:8px; overflow:hidden; border:1px solid #e2e2e6;">
+                    <tr>
+                        <td style="background-color:#1f6feb; padding:24px 32px;">
+                            <span style="color:#ffffff; font-size:20px; font-weight:700; letter-spacing:0.3px;">Silzell.net</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:32px; color:#22252a; font-size:15px; line-height:1.6;">
+                            @ChildContent
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:20px 32px; background-color:#f9f9fb; border-top:1px solid #e2e2e6; color:#8a8f98; font-size:12px; line-height:1.5;">
+                            This is an automated message from Silzell.net. If you weren't expecting this email, you can safely ignore it.
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    // Falls back to Title so callers aren't forced to think of separate preview text
+    // for every email - override with something more specific when it's worth it.
+    [Parameter] public string? PreheaderText { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string EffectivePreheader => PreheaderText ?? Title;
+}

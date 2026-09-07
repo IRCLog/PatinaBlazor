@@ -77,6 +77,7 @@ builder.Services.Configure<IrcApiSettings>(builder.Configuration.GetSection("Irc
 // Register email services
 builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentitySmtpEmailSender>();
+builder.Services.AddSingleton<EmailTemplateRenderer>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<ImageAttachmentMigrationService>();
 builder.Services.AddScoped<IImageService, ImageService>();

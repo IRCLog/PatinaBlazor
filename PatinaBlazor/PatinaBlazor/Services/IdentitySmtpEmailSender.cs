@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using PatinaBlazor.Components.Emails;
 using PatinaBlazor.Data;
 
 namespace PatinaBlazor.Services
@@ -7,29 +8,39 @@ namespace PatinaBlazor.Services
     public class IdentitySmtpEmailSender : IEmailSender<ApplicationUser>
     {
         private readonly IEmailSender _emailSender;
+        private readonly EmailTemplateRenderer _templateRenderer;
 
-        public IdentitySmtpEmailSender(IEmailSender emailSender)
+        public IdentitySmtpEmailSender(IEmailSender emailSender, EmailTemplateRenderer templateRenderer)
         {
             _emailSender = emailSender;
+            _templateRenderer = templateRenderer;
         }
 
-        public Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink) =>
-            _emailSender.SendEmailAsync(email, "Confirm your email",
-                $@"<h2>Welcome to Silzell.net!</h2>
-                   <p>Please confirm your account by <a href='{confirmationLink}'>clicking here</a>.</p>
-                   <p>If you did not create this account, please ignore this email.</p>");
+        public async Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink)
+        {
+            var html = await _templateRenderer.RenderAsync<ConfirmEmailTemplate>(new()
+            {
+                [nameof(ConfirmEmailTemplate.ConfirmationLink)] = confirmationLink
+            });
+            await _emailSender.SendEmailAsync(email, "Confirm your email", html);
+        }
 
-        public Task SendPasswordResetLinkAsync(ApplicationUser user, string email, string resetLink) =>
-            _emailSender.SendEmailAsync(email, "Reset your password",
-                $@"<h2>Password Reset Request</h2>
-                   <p>Please reset your password by <a href='{resetLink}'>clicking here</a>.</p>
-                   <p>If you did not request a password reset, please ignore this email.</p>");
+        public async Task SendPasswordResetLinkAsync(ApplicationUser user, string email, string resetLink)
+        {
+            var html = await _templateRenderer.RenderAsync<ResetPasswordLinkTemplate>(new()
+            {
+                [nameof(ResetPasswordLinkTemplate.ResetLink)] = resetLink
+            });
+            await _emailSender.SendEmailAsync(email, "Reset your password", html);
+        }
 
-        public Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode) =>
-            _emailSender.SendEmailAsync(email, "Reset your password",
-                $@"<h2>Password Reset Code</h2>
-                   <p>Please reset your password using the following code:</p>
-                   <p><strong>{resetCode}</strong></p>
-                   <p>If you did not request a password reset, please ignore this email.</p>");
+        public async Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode)
+        {
+            var html = await _templateRenderer.RenderAsync<ResetPasswordCodeTemplate>(new()
+            {
+                [nameof(ResetPasswordCodeTemplate.ResetCode)] = resetCode
+            });
+            await _emailSender.SendEmailAsync(email, "Reset your password", html);
+        }
     }
 }
