@@ -151,11 +151,19 @@ else
 
 app.UseHttpsRedirection();
 
-// MapStaticAssets (introduced in .NET 9) replaces UseStaticFiles for Razor Components apps -
-// required for the framework's own static assets (notably _framework/blazor.web.js when both
-// Server and WebAssembly render modes are registered) to resolve correctly; UseStaticFiles alone
-// 404s on blazor.web.js under .NET 10, silently breaking every interactive circuit on the page.
+// MapStaticAssets (introduced in .NET 9) is required for the framework's own build-time static
+// assets (notably _framework/blazor.web.js when both Server and WebAssembly render modes are
+// registered) to resolve correctly; UseStaticFiles alone 404s on blazor.web.js under .NET 10,
+// silently breaking every interactive circuit on the page.
+//
+// UseStaticFiles is restored alongside it as a safety net for wwwroot/uploads/ - files written at
+// runtime by ImageService.SaveImageAsync, never present in the build-time static-web-assets
+// manifest MapStaticAssets serves from. On plain Kestrel, MapStaticAssets alone was observed to
+// still serve those files fine (fell back to disk), so this wasn't reproduced as the cause of a
+// reported production image-loading regression - restoring UseStaticFiles is cheap insurance for
+// any hosting-specific difference (e.g. IIS) rather than a confirmed root-cause fix.
 app.MapStaticAssets();
+app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
