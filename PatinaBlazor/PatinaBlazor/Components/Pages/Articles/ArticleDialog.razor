@@ -29,7 +29,7 @@
                               @bind-Value="_selectedAuthor"
                               SearchFunc="SearchAuthorsAsync"
                               ToStringFunc="@(u => u == null ? "" : $"{(string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName)} ({u.Email})")"
-                              Class="mb-4" />
+                              Class="mb-6" />
 
             <MudGrid Class="mb-2">
                 <MudItem xs="12" sm="6">
@@ -62,13 +62,13 @@
 
             <MudText Typo="Typo.subtitle2" Class="mb-2">Photos</MudText>
             <InputFile id="articleImages" OnChange="OnImagesSelected" accept="image/*" multiple class="mud-input-file" />
-            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-3" Style="display: block;">
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-6" Style="display: block;">
                 Upload photos for the article (max 15MB each, JPG/PNG/GIF/WebP).
             </MudText>
 
             @if (_imageUploadErrors.Any())
             {
-                <MudAlert Severity="Severity.Error" Class="mb-3">
+                <MudAlert Severity="Severity.Error" Class="mb-6">
                     <ul class="mb-0">
                         @foreach (var error in _imageUploadErrors)
                         {
@@ -85,7 +85,7 @@
                     {
                         <MudItem xs="4">
                             <div style="position: relative;">
-                                <img src="@image.ThumbnailUrl" style="width: 100%; height: 80px; object-fit: cover; border-radius: 4px;" />
+                                <ResponsiveImage Image="image" Height="80px" Sizes="33vw" BorderRadius="4px" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" Style="position: absolute; top: 0; right: 0;" OnClick="@(() => RemoveExistingImage(image))" />
                             </div>
                         </MudItem>

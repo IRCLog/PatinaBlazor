@@ -79,7 +79,7 @@
                     </MudTabPanel>
 
                     <MudTabPanel Text="Images" Icon="@Icons.Material.Filled.Image">
-                        <MudText Typo="Typo.subtitle2" Class="mb-2">Current Images</MudText>
+                        <MudText Typo="Typo.subtitle2" Class="mb-6">Current Images</MudText>
                         @if (collectable.Images != null && collectable.Images.Any())
                         {
                             <MudGrid Class="mb-4">
@@ -87,12 +87,8 @@
                                 {
                                     <MudItem xs="12" md="6">
                                         <MudCard>
-                                            <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary);">
-                                                <img src="@image.MediumUrl"
-                                                     alt="@collectable.Description"
-                                                     style="max-height: 100%; max-width: 100%; object-fit: contain; cursor: pointer;"
-                                                     @onclick="(() => ShowImageModal(image))" />
-                                            </div>
+                                            <ResponsiveImage Image="image" Alt="@collectable.Description" Height="200px"
+                                                             Fit="ResponsiveImage.ObjectFit.Contain" OnClick="(() => ShowImageModal(image))" />
                                             <MudCardContent>
                                                 @if (image.IsMainImage)
                                                 {
@@ -138,7 +134,7 @@
                         @if (selectedImageFiles.Any())
                         {
                             <div class="mt-3">
-                                <div class="d-flex justify-space-between align-center mb-2">
+                                <div class="d-flex justify-space-between align-center mb-6">
                                     <MudText Typo="Typo.subtitle1">
                                         <MudIcon Icon="@Icons.Material.Filled.Image" Class="mr-1" /> New Images Selected (@selectedImageFiles.Count)
                                     </MudText>

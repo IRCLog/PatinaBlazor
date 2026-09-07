@@ -24,16 +24,9 @@
     }
     else
     {
-        var mainImage = _article.GetMainImage();
-        @if (mainImage != null)
-        {
-            <div style="max-height: 360px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-background-gray, #161b22); border-radius: 8px;" class="mb-4">
-                <img src="@mainImage.MediumUrl"
-                     srcset="@($"{mainImage.ThumbnailUrl} {mainImage.EffectiveThumbnailWidth}w, {mainImage.MediumUrl} {mainImage.EffectiveMediumWidth}w")"
-                     sizes="(max-width: 960px) 100vw, 960px"
-                     alt="@_article.Title" style="max-width: 100%; max-height: 360px; object-fit: contain;" />
-            </div>
-        }
+        <ResponsiveImage Image="_article.GetMainImage()" Alt="@_article.Title" Height="360px" FixedHeight="false"
+                         Fit="ResponsiveImage.ObjectFit.Contain" Sizes="(max-width: 960px) 100vw, 960px"
+                         Class="mb-4" BorderRadius="8px" />
 
         <MudText Typo="Typo.h3" Class="mb-1">@_article.Title</MudText>
         @if (!string.IsNullOrWhiteSpace(_article.TagLine))

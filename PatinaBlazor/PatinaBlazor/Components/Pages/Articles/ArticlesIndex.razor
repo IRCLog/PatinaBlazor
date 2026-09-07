@@ -31,29 +31,16 @@
                       Adornment="Adornment.Start"
                       AdornmentIcon="@Icons.Material.Filled.Search"
                       Clearable="true"
-                      Class="mb-4" />
+                      Class="mb-6" />
 
         <MudGrid>
             @foreach (var article in FilteredArticles)
             {
                 <MudItem xs="12" sm="6" md="4">
                     <MudCard Elevation="2" Style="height: 100%; display: flex; flex-direction: column;">
-                        @{
-                            var mainImage = article.GetMainImage();
-                        }
-                        <div style="height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-background-gray, #161b22);">
-                            @if (mainImage != null)
-                            {
-                                <img src="@mainImage.MediumUrl"
-                                     srcset="@($"{mainImage.ThumbnailUrl} {mainImage.EffectiveThumbnailWidth}w, {mainImage.MediumUrl} {mainImage.EffectiveMediumWidth}w")"
-                                     sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
-                                     alt="@article.Title" style="max-height: 100%; max-width: 100%; object-fit: cover; width: 100%;" />
-                            }
-                            else
-                            {
-                                <MudIcon Icon="@Icons.Material.Filled.Article" Size="Size.Large" Color="Color.Secondary" />
-                            }
-                        </div>
+                        <ResponsiveImage Image="article.GetMainImage()" Alt="@article.Title" Height="160px">
+                            <Placeholder><MudIcon Icon="@Icons.Material.Filled.Article" Size="Size.Large" Color="Color.Secondary" /></Placeholder>
+                        </ResponsiveImage>
                         <MudCardHeader>
                             <CardHeaderContent>
                                 <MudText Typo="Typo.subtitle1">@article.Title</MudText>

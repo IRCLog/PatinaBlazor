@@ -43,7 +43,7 @@
     }
     else
     {
-        <MudGrid Class="mb-3">
+        <MudGrid Class="mb-6">
             <MudItem xs="12" md="6">
                 <MudText Typo="Typo.body1" Color="Color.Secondary">Total Items: <strong>@collectables.Count</strong></MudText>
             </MudItem>
@@ -61,17 +61,7 @@
                             <MudText Typo="Typo.caption" Color="Color.Secondary">ID: #@collectable.Id</MudText>
                             <MudText Typo="Typo.caption" Color="Color.Secondary">@collectable.CreatedDate.ToString("MMM dd, yyyy")</MudText>
                         </div>
-                        @{
-                            var mainImage = collectable.Images?.FirstOrDefault(i => i.IsMainImage);
-                        }
-                        @if (mainImage != null)
-                        {
-                            <div style="height: 200px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary);">
-                                <img src="@mainImage.ThumbnailUrl"
-                                     alt="@collectable.Description"
-                                     style="max-height: 100%; max-width: 100%; object-fit: contain;" />
-                            </div>
-                        }
+                        <ResponsiveImage Image="collectable.GetMainImage()" Alt="@collectable.Description" Height="200px" Fit="ResponsiveImage.ObjectFit.Contain" />
                         <MudCardContent>
                             <MudText Typo="Typo.h6">@collectable.Description</MudText>
                             <div class="my-2">

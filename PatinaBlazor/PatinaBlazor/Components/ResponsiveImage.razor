@@ -1,0 +1,76 @@
+@* See CLAUDE.md's "ResponsiveImage component" section for the full usage convention -
+   read it before changing this file or adding a new image display elsewhere in the app. *@
+@using PatinaBlazor.Data
+
+<div class="@WrapperClass" style="@WrapperStyle" @onclick="HandleClickAsync">
+    @if (Image != null)
+    {
+        <img src="@Image.MediumUrl"
+             srcset="@($"{Image.ThumbnailUrl} {Image.EffectiveThumbnailWidth}w, {Image.MediumUrl} {Image.EffectiveMediumWidth}w")"
+             sizes="@Sizes"
+             alt="@Alt"
+             style="@ImgStyle" />
+    }
+    else if (Placeholder != null)
+    {
+        @Placeholder
+    }
+    else
+    {
+        <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Large" Color="Color.Secondary" />
+    }
+</div>
+
+@code {
+    // The image to display. Null renders Placeholder (or a generic image icon if
+    // Placeholder wasn't supplied) instead of an <img> tag.
+    [Parameter, EditorRequired] public ImageAttachment? Image { get; set; }
+
+    [Parameter] public string Alt { get; set; } = "";
+
+    // CSS height of the box. With FixedHeight="true" (the default) the box is always
+    // exactly this tall, cropping/cover-fitting the image to match - use this for a
+    // grid of uniform card tiles. With FixedHeight="false" the box only caps at this
+    // height and shrinks to the image's own rendered height otherwise - use this for a
+    // single, non-tiled image (e.g. an article's hero image) where you don't want a
+    // short landscape photo to leave a tall empty box.
+    [Parameter] public string Height { get; set; } = "200px";
+    [Parameter] public bool FixedHeight { get; set; } = true;
+
+    // Cover crops the image to completely fill the box (grid tiles). Contain shrinks
+    // the image to fit entirely inside the box, letterboxed on whichever axis doesn't
+    // match - use this whenever cropping would hide real content the viewer should see
+    // in full (an article's hero image, a collectable's zoomed-in detail view).
+    [Parameter] public ObjectFit Fit { get; set; } = ObjectFit.Cover;
+
+    // The sizes attribute paired with the srcset this component generates from
+    // Image.ThumbnailUrl/MediumUrl - the default matches this app's 3-cards-per-row
+    // desktop grid convention. Override for a different layout (e.g. a full-width hero:
+    // "(max-width: 960px) 100vw, 960px").
+    [Parameter] public string Sizes { get; set; } = "(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw";
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string BorderRadius { get; set; } = "0";
+
+    // Rendered in place of the generic placeholder icon when Image is null - e.g. a
+    // MudIcon with a more specific icon for the entity type (Warehouse, Collections, ...).
+    [Parameter] public RenderFragment? Placeholder { get; set; }
+
+    // Optional click handler (e.g. open a lightbox) - adds cursor:pointer automatically.
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    public enum ObjectFit { Cover, Contain }
+
+    private string WrapperClass => $"d-flex align-center justify-center{(string.IsNullOrWhiteSpace(Class) ? "" : " " + Class)}";
+
+    private string WrapperStyle =>
+        $"{(FixedHeight ? "height" : "max-height")}: {Height}; overflow: hidden; " +
+        $"background-color: var(--mud-palette-background-gray, #161b22); border-radius: {BorderRadius};" +
+        (OnClick.HasDelegate ? " cursor: pointer;" : "");
+
+    private string ImgStyle => Fit == ObjectFit.Contain
+        ? $"max-width: 100%; max-height: {Height}; object-fit: contain;"
+        : "max-height: 100%; max-width: 100%; width: 100%; object-fit: cover;";
+
+    private Task HandleClickAsync() => OnClick.HasDelegate ? OnClick.InvokeAsync() : Task.CompletedTask;
+}
