@@ -102,7 +102,7 @@
 </MudContainer>
 
 <!-- Add Collectable Modal -->
-<MudDialog @bind-IsVisible="showAddModal" Options="_dialogOptions">
+<MudDialog @bind-Visible="showAddModal" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">Add Collectable to Collection</MudText>
     </TitleContent>
@@ -123,10 +123,10 @@
         }
         else
         {
-            <MudList Clickable="true" Style="max-height: 400px; overflow-y: auto;">
+            <MudList T="string" Style="max-height: 400px; overflow-y: auto;">
                 @foreach (var collectable in availableCollectables)
                 {
-                    <MudListItem OnClick="@(() => AddCollectable(collectable.Id))">
+                    <MudListItem T="string" OnClick="@(() => AddCollectable(collectable.Id))">
                         <ChildContent>
                             <div class="d-flex align-center justify-space-between" style="width: 100%;">
                                 <div style="flex: 1;">

@@ -7,7 +7,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject UserManager<ApplicationUser> UserManager
 
-<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+<MudDialog @bind-Visible="_isVisible" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">@(_isEditMode ? "Edit Unit" : "Add Unit")</MudText>
     </TitleContent>

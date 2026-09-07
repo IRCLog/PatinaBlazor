@@ -9,7 +9,7 @@ public static class AppMudTheme
         PaletteDark = new PaletteDark
         {
             Background = "#0d1117",
-            BackgroundGrey = "#161b22",
+            BackgroundGray = "#161b22",
             Surface = "#161b22",
             DrawerBackground = "#161b22",
             DrawerText = "#f0f6fc",

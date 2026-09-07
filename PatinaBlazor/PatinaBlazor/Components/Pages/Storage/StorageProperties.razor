@@ -28,7 +28,7 @@
     }
     else
     {
-        <MudGrid Class="mb-3" AlignItems="AlignItems.Center">
+        <MudGrid Class="mb-3">
             <MudItem xs="12" md="6">
                 <MudTextField T="string"
                               Value="_searchText"
@@ -54,7 +54,7 @@
                         @{
                             var mainImage = property.GetMainImage();
                         }
-                        <div style="height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-background-grey, #161b22);">
+                        <div style="height: 160px; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: var(--mud-palette-background-gray, #161b22);">
                             @if (mainImage != null)
                             {
                                 <img src="@mainImage.MediumUrl"

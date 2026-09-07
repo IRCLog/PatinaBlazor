@@ -6,7 +6,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-<MudDialog @bind-IsVisible="_isVisible" Options="_dialogOptions">
+<MudDialog @bind-Visible="_isVisible" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">@(_mode == RentalDialogMode.Start ? "Start Rental" : "End Rental")</MudText>
     </TitleContent>
@@ -137,7 +137,7 @@
         _isVisible = false;
     }
 
-    private async Task<IEnumerable<ApplicationUser>> SearchCustomersAsync(string search)
+    private async Task<IEnumerable<ApplicationUser>> SearchCustomersAsync(string search, CancellationToken cancellationToken)
     {
         // Only customers already in the Storage Customer role are rentable to - keeps the
         // picker from surfacing unrelated site users (other admins, Collectables-only accounts).

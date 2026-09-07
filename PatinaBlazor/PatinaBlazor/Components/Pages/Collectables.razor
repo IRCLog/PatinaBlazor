@@ -40,10 +40,10 @@
                         }
                         else
                         {
-                            <MudList Clickable="true" DisablePadding="true">
+                            <MudList T="string">
                                 @foreach (var collection in collections)
                                 {
-                                    <MudListItem Href="@($"/collection/{collection.Id}")">
+                                    <MudListItem T="string" Href="@($"/collection/{collection.Id}")">
                                         <ChildContent>
                                             <div class="d-flex align-center justify-space-between" style="width: 100%;">
                                                 <div style="min-width: 0; flex: 1;">
@@ -108,7 +108,7 @@
 </MudContainer>
 
 <!-- Create Collection Modal -->
-<MudDialog @bind-IsVisible="showCreateModal" Options="_dialogOptions">
+<MudDialog @bind-Visible="showCreateModal" Options="_dialogOptions">
     <TitleContent>
         <MudText Typo="Typo.h6">Create New Collection</MudText>
     </TitleContent>
