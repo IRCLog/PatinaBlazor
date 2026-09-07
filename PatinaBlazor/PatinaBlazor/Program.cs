@@ -45,8 +45,17 @@ builder.Services.AddAuthentication(options =>
 // Use SQL Server for all environments
 var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+// Blazor Server keeps one DI scope (and one scoped ApplicationDbContext) alive for a
+// circuit's entire lifetime, not per page - so a still-in-flight query from a page the
+// user just left can race a query the next page fires immediately on navigation, since
+// EF Core's DbContext isn't safe for concurrent use. Registering AddDbContextFactory
+// (rather than AddDbContext) and deriving the scoped ApplicationDbContext from it keeps
+// every existing @inject ApplicationDbContext consumer working unchanged, while also
+// making IDbContextFactory<ApplicationDbContext> available for services (like
+// ArticleService) that create a short-lived, per-call context instead.
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseSqlServer(sqlServerConnectionString));
+builder.Services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options => 

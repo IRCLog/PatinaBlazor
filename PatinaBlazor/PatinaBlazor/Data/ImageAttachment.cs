@@ -27,6 +27,14 @@ namespace PatinaBlazor.Data
         [StringLength(500)]
         public string? MediumRelativePath { get; set; }
 
+        // Actual generated width of each variant - NOT necessarily ThumbnailMaxDimension/
+        // MediumMaxDimension, since a portrait source image is constrained by height instead,
+        // leaving width smaller. Null for pre-existing rows saved before this was tracked, or
+        // for the rare non-decodable-image fallback that has no resized variants at all -
+        // display code should fall back to the historical constants (400/1000) when null.
+        public int? ThumbnailWidth { get; set; }
+        public int? MediumWidth { get; set; }
+
         [Required]
         [StringLength(100)]
         public string ContentType { get; set; } = string.Empty;
@@ -59,5 +67,15 @@ namespace PatinaBlazor.Data
 
         [NotMapped]
         public string MediumUrl => MediumRelativePath ?? RelativePath;
+
+        // Real width for a srcset "w" descriptor, falling back to the historical fixed
+        // dimension only for rows saved before actual widths were tracked. Using the
+        // wrong (larger) value here can make a browser pick a variant believing it covers
+        // more display width than it actually does, upscaling/blurring it - see ImageService.
+        [NotMapped]
+        public int EffectiveThumbnailWidth => ThumbnailWidth ?? 400;
+
+        [NotMapped]
+        public int EffectiveMediumWidth => MediumWidth ?? 1000;
     }
 }

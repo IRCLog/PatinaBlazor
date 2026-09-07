@@ -155,8 +155,8 @@ namespace PatinaBlazor.Services
                         var filePath = Path.Combine(uploadsPath, fileName);
 
                         ResizeAndEncodeJpeg(skBitmap, LargeMaxDimension, filePath);
-                        ResizeAndEncodeJpeg(skBitmap, MediumMaxDimension, Path.Combine(uploadsPath, mediumFileName));
-                        ResizeAndEncodeJpeg(skBitmap, ThumbnailMaxDimension, Path.Combine(uploadsPath, thumbFileName));
+                        var mediumWidth = ResizeAndEncodeJpeg(skBitmap, MediumMaxDimension, Path.Combine(uploadsPath, mediumFileName));
+                        var thumbnailWidth = ResizeAndEncodeJpeg(skBitmap, ThumbnailMaxDimension, Path.Combine(uploadsPath, thumbFileName));
 
                         _logger.LogInformation("Image saved with responsive sizes: {FileName}", fileName);
 
@@ -167,6 +167,8 @@ namespace PatinaBlazor.Services
                             RelativePath = $"/uploads/{subfolder}/{fileName}",
                             ThumbnailRelativePath = $"/uploads/{subfolder}/{thumbFileName}",
                             MediumRelativePath = $"/uploads/{subfolder}/{mediumFileName}",
+                            ThumbnailWidth = thumbnailWidth,
+                            MediumWidth = mediumWidth,
                             ContentType = "image/jpeg",
                             FileSize = new FileInfo(filePath).Length
                         };
@@ -269,7 +271,12 @@ namespace PatinaBlazor.Services
             return oriented;
         }
 
-        private static void ResizeAndEncodeJpeg(SKBitmap sourceBitmap, int maxDimension, string outputPath, int quality = 82)
+        // Returns the actual encoded width - callers must not assume this equals maxDimension,
+        // since a portrait source image is constrained by height instead, leaving width smaller
+        // than maxDimension. Callers that build a srcset "w" descriptor need this real value:
+        // labeling a variant with a width it doesn't actually have can make a browser pick it
+        // believing it covers more display width than it really does, upscaling/blurring it.
+        private static int ResizeAndEncodeJpeg(SKBitmap sourceBitmap, int maxDimension, string outputPath, int quality = 82)
         {
             var scale = Math.Min((float)maxDimension / sourceBitmap.Width, (float)maxDimension / sourceBitmap.Height);
             scale = Math.Min(scale, 1.0f); // never upscale
@@ -282,6 +289,7 @@ namespace PatinaBlazor.Services
             using var data = image.Encode(SKEncodedImageFormat.Jpeg, quality);
             using var outputStream = File.Create(outputPath);
             data.SaveTo(outputStream);
+            return newWidth;
         }
 
         public Task<bool> DeleteImageAsync(ImageAttachment image)
@@ -360,6 +368,8 @@ namespace PatinaBlazor.Services
         public string RelativePath { get; set; } = string.Empty;
         public string? ThumbnailRelativePath { get; set; }
         public string? MediumRelativePath { get; set; }
+        public int? ThumbnailWidth { get; set; }
+        public int? MediumWidth { get; set; }
         public string ContentType { get; set; } = string.Empty;
         public long FileSize { get; set; }
         public string ErrorMessage { get; set; } = string.Empty;

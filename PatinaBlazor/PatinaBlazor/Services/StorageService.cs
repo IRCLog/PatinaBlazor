@@ -77,6 +77,8 @@ namespace PatinaBlazor.Services
                 RelativePath = upload.RelativePath,
                 ThumbnailRelativePath = upload.ThumbnailRelativePath,
                 MediumRelativePath = upload.MediumRelativePath,
+                ThumbnailWidth = upload.ThumbnailWidth,
+                MediumWidth = upload.MediumWidth,
                 ContentType = upload.ContentType,
                 FileSize = upload.FileSize,
                 IsMainImage = isMainImage,

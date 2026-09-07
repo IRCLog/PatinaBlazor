@@ -3,20 +3,26 @@ using PatinaBlazor.Data;
 
 namespace PatinaBlazor.Services
 {
+    // Uses IDbContextFactory rather than an injected scoped ApplicationDbContext: Blazor
+    // Server keeps one DI scope (and one scoped DbContext) alive for a circuit's entire
+    // lifetime, not per page, so a query from the page a user just left can still be
+    // in-flight when the next page's query starts - and EF Core's DbContext isn't safe
+    // for concurrent use. Every method here gets its own short-lived context instead.
     public class ArticleService : IArticleService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
 
-        public ArticleService(ApplicationDbContext context)
+        public ArticleService(IDbContextFactory<ApplicationDbContext> contextFactory)
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
 
         // Admin/authoring
 
         public async Task<List<Article>> GetAllAsync()
         {
-            return await _context.Articles
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Articles
                 .AsNoTracking()
                 .Include(a => a.Author)
                 .Include(a => a.Images)
@@ -26,7 +32,8 @@ namespace PatinaBlazor.Services
 
         public async Task<Article?> GetByIdAsync(Guid id)
         {
-            return await _context.Articles
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Articles
                 .Include(a => a.Author)
                 .Include(a => a.Images)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -40,8 +47,9 @@ namespace PatinaBlazor.Services
             article.CreatedByUserId = currentUserId;
             article.ModifiedByUserId = currentUserId;
 
-            _context.Articles.Add(article);
-            await _context.SaveChangesAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            context.Articles.Add(article);
+            await context.SaveChangesAsync();
             return article;
         }
 
@@ -50,8 +58,10 @@ namespace PatinaBlazor.Services
             NormalizePublishedDate(article);
             article.ModifiedDate = DateTime.UtcNow;
             article.ModifiedByUserId = currentUserId;
-            _context.Articles.Update(article);
-            await _context.SaveChangesAsync();
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            context.Articles.Update(article);
+            await context.SaveChangesAsync();
         }
 
         // PublishedDate is set once, the first time Status becomes Published, regardless
@@ -67,39 +77,43 @@ namespace PatinaBlazor.Services
 
         public async Task DeleteAsync(Guid id)
         {
-            var article = await _context.Articles.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var article = await context.Articles.FindAsync(id);
             if (article != null)
             {
-                _context.Articles.Remove(article);
-                await _context.SaveChangesAsync();
+                context.Articles.Remove(article);
+                await context.SaveChangesAsync();
             }
         }
 
         public async Task PublishAsync(Guid id, string currentUserId)
         {
-            var article = await _context.Articles.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var article = await context.Articles.FindAsync(id);
             if (article == null) return;
 
             article.Status = ArticleStatus.Published;
             article.PublishedDate ??= DateTime.UtcNow;
             article.ModifiedDate = DateTime.UtcNow;
             article.ModifiedByUserId = currentUserId;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
         public async Task UnpublishAsync(Guid id, string currentUserId)
         {
-            var article = await _context.Articles.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var article = await context.Articles.FindAsync(id);
             if (article == null) return;
 
             article.Status = ArticleStatus.Draft;
             article.ModifiedDate = DateTime.UtcNow;
             article.ModifiedByUserId = currentUserId;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
         public async Task<ImageAttachment> AddArticleImageAsync(Guid articleId, ImageUploadResult upload, bool isMainImage)
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
             var image = new ImageAttachment
             {
                 ArticleId = articleId,
@@ -107,30 +121,34 @@ namespace PatinaBlazor.Services
                 RelativePath = upload.RelativePath,
                 ThumbnailRelativePath = upload.ThumbnailRelativePath,
                 MediumRelativePath = upload.MediumRelativePath,
+                ThumbnailWidth = upload.ThumbnailWidth,
+                MediumWidth = upload.MediumWidth,
                 ContentType = upload.ContentType,
                 FileSize = upload.FileSize,
                 IsMainImage = isMainImage,
-                DisplayOrder = await _context.ImageAttachments.CountAsync(i => i.ArticleId == articleId),
+                DisplayOrder = await context.ImageAttachments.CountAsync(i => i.ArticleId == articleId),
                 CreatedDate = DateTime.UtcNow
             };
 
-            _context.ImageAttachments.Add(image);
-            await _context.SaveChangesAsync();
+            context.ImageAttachments.Add(image);
+            await context.SaveChangesAsync();
             return image;
         }
 
         public async Task<ImageAttachment?> GetArticleImageAsync(int imageId)
         {
-            return await _context.ImageAttachments.FindAsync(imageId);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.ImageAttachments.FindAsync(imageId);
         }
 
         public async Task DeleteArticleImageAsync(int imageId)
         {
-            var image = await _context.ImageAttachments.FindAsync(imageId);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var image = await context.ImageAttachments.FindAsync(imageId);
             if (image != null)
             {
-                _context.ImageAttachments.Remove(image);
-                await _context.SaveChangesAsync();
+                context.ImageAttachments.Remove(image);
+                await context.SaveChangesAsync();
             }
         }
 
@@ -138,7 +156,8 @@ namespace PatinaBlazor.Services
 
         public async Task<List<Article>> GetVisibleArticlesAsync(IReadOnlyCollection<ArticleAudience> allowedAudiences)
         {
-            return await _context.Articles
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Articles
                 .AsNoTracking()
                 .Include(a => a.Author)
                 .Include(a => a.Images)
@@ -149,7 +168,8 @@ namespace PatinaBlazor.Services
 
         public async Task<Article?> GetPublishedArticleAsync(Guid id, IReadOnlyCollection<ArticleAudience> allowedAudiences)
         {
-            return await _context.Articles
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Articles
                 .AsNoTracking()
                 .Include(a => a.Author)
                 .Include(a => a.Images)
@@ -161,7 +181,8 @@ namespace PatinaBlazor.Services
 
         public async Task<List<Article>> GetFeaturedForHomeAsync(int count = 3)
         {
-            return await _context.Articles
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Articles
                 .AsNoTracking()
                 .Include(a => a.Author)
                 .Include(a => a.Images)
@@ -175,7 +196,8 @@ namespace PatinaBlazor.Services
 
         public async Task<List<Article>> GetFeaturedForStorageLandingAsync(int count = 3)
         {
-            return await _context.Articles
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Articles
                 .AsNoTracking()
                 .Include(a => a.Author)
                 .Include(a => a.Images)

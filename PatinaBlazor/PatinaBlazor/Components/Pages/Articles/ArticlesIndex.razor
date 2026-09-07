@@ -45,7 +45,7 @@
                             @if (mainImage != null)
                             {
                                 <img src="@mainImage.MediumUrl"
-                                     srcset="@($"{mainImage.ThumbnailUrl} 400w, {mainImage.MediumUrl} 1000w")"
+                                     srcset="@($"{mainImage.ThumbnailUrl} {mainImage.EffectiveThumbnailWidth}w, {mainImage.MediumUrl} {mainImage.EffectiveMediumWidth}w")"
                                      sizes="(max-width: 600px) 100vw, (max-width: 960px) 50vw, 33vw"
                                      alt="@article.Title" style="max-height: 100%; max-width: 100%; object-fit: cover; width: 100%;" />
                             }
