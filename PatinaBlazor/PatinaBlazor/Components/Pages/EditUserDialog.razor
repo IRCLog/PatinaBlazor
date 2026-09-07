@@ -18,7 +18,7 @@
                 <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
             }
 
-            <MudTabs Rounded="true" Color="Color.Primary" Class="mb-2" PanelClass="edit-user-tab-panel">
+            <MudTabs Rounded="true" Color="Color.Primary" Class="mb-2" TabPanelsClass="edit-user-tab-panel">
                 <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Person">
                     <MudTextField Label="Email" @bind-Value="_model.Email" For="@(() => _model.Email)" Class="mb-4" />
                     <MudTextField Label="Username" @bind-Value="_model.UserName" For="@(() => _model.UserName)" Class="mb-4" />
