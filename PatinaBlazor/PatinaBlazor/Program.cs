@@ -151,7 +151,11 @@ else
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
+// MapStaticAssets (introduced in .NET 9) replaces UseStaticFiles for Razor Components apps -
+// required for the framework's own static assets (notably _framework/blazor.web.js when both
+// Server and WebAssembly render modes are registered) to resolve correctly; UseStaticFiles alone
+// 404s on blazor.web.js under .NET 10, silently breaking every interactive circuit on the page.
+app.MapStaticAssets();
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>()

@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/PatinaBlazor/bin/Debug/net8.0/PatinaBlazor.dll",
+            "program": "${workspaceFolder}/PatinaBlazor/bin/Debug/net10.0/PatinaBlazor.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PatinaBlazor",
             "stopAtEntry": false,
