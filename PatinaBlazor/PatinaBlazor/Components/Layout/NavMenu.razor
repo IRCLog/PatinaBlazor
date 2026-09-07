@@ -3,10 +3,10 @@
 
 <MudNavMenu>
     <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home" OnClick="NotifyNavigate">Home</MudNavLink>
-    <MudNavLink Href="/articles" Icon="@Icons.Material.Filled.Article" OnClick="NotifyNavigate">Articles</MudNavLink>
 
     <AuthorizeView>
         <Authorized>
+            <MudNavLink Href="/articles" Icon="@Icons.Material.Filled.Article" OnClick="NotifyNavigate">Articles</MudNavLink>
             <MudNavLink Href="collectables" Icon="@Icons.Material.Filled.Diamond" OnClick="NotifyNavigate">Collectables</MudNavLink>
 
             <AuthorizeView Roles="Admin,Storage Admin" Context="storageAdminContext">

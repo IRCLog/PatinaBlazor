@@ -38,6 +38,35 @@
     z-index: calc(var(--mud-zindex-appbar) + 10) !important;
 }
 
+/* MudDrawer defaults to Fixed="true" (position:fixed, anchored to the
+   viewport) - explicitly set here too - but because AppShell (which holds
+   MudAppBar/MudDrawer) is a separate interactive island from MudLayout,
+   MudDrawer never resolves to its "fixed" CSS class in this app regardless
+   of the Fixed parameter's value; it renders as position:absolute instead,
+   meaning it scrolls away with the page. Without this, opening the drawer
+   after scrolling down shows an empty panel, since the actual nav links
+   render far above the visible viewport. Force it directly. */
+.mud-drawer {
+    position: fixed !important;
+}
+
+/* MudLayout normally toggles a `mud-drawer-open-responsive-*-left` class on
+   itself (driving .mud-main-content's margin-left) whenever MudDrawer's
+   Open state changes, so closing the drawer lets the content reclaim that
+   space. That mechanism relies on MudLayout re-rendering in response to
+   MudDrawer - but MudLayout lives outside AppShell's interactive island
+   (see MainLayout.razor), so it only computes that class once, at the very
+   first static prerender, and never updates it again for the life of the
+   page: whatever the drawer's state was on first load, .mud-main-content's
+   margin is stuck there regardless of later toggles.
+   Fixed by driving the margin off .mud-drawer's own --open/--closed class
+   instead, which *does* stay live (it's part of the same reactive island
+   as the button that toggles it) - a plain CSS sibling selector needs no
+   cooperation from MudLayout at all. */
+.mud-drawer.mud-drawer--closed ~ .mud-main-content {
+    margin-left: 0 !important;
+}
+
 html, body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif !important;
     background-color: var(--bg-primary) !important;
