@@ -26,7 +26,7 @@
     @if (requirePassword)
     {
         <div class="form-floating mb-3">
-            <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Please enter your password." />
+            <InputText type="password" @bind-Value="Input!.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Please enter your password." />
             <label for="password" class="form-label">Password</label>
             <ValidationMessage For="() => Input.Password" class="text-danger" />
         </div>
@@ -43,10 +43,13 @@
     private HttpContext HttpContext { get; set; } = default!;
 
     [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
+    private InputModel? Input { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        // [SupplyParameterFromForm] overwrites Input with null if a POST doesn't include its
+        // fields (a malformed/adversarial request, never a normal EditForm submission) - restore
+        // a safe default here, before EditForm (which requires a non-null Model) ever renders.
         Input ??= new();
         user = await UserAccessor.GetRequiredUserAsync(HttpContext);
         requirePassword = await UserManager.HasPasswordAsync(user);
@@ -54,7 +57,7 @@
 
     private async Task OnValidSubmitAsync()
     {
-        if (requirePassword && !await UserManager.CheckPasswordAsync(user, Input.Password))
+        if (requirePassword && !await UserManager.CheckPasswordAsync(user, Input!.Password))
         {
             message = "Error: Incorrect password.";
             return;

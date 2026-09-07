@@ -25,7 +25,7 @@
                 <label for="username" class="form-label">Username</label>
             </div>
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.DisplayName" class="form-control" placeholder="YourDisplayName" />
+                <InputText @bind-Value="Input!.DisplayName" class="form-control" placeholder="YourDisplayName" />
                 <label for="display-name" class="form-label">Display Name</label>
                 <ValidationMessage For="() => Input.DisplayName" class="text-danger" />
             </div>
@@ -49,10 +49,15 @@
     private HttpContext HttpContext { get; set; } = default!;
 
     [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
+    private InputModel? Input { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        // [SupplyParameterFromForm] overwrites Input with null if a POST doesn't include its
+        // fields (a malformed/adversarial request, never a normal EditForm submission) - restore
+        // a safe default here, before EditForm (which requires a non-null Model) ever renders.
+        Input ??= new();
+
         user = await UserAccessor.GetRequiredUserAsync(HttpContext);
         username = await UserManager.GetUserNameAsync(user);
         phoneNumber = await UserManager.GetPhoneNumberAsync(user);
@@ -64,6 +69,12 @@
 
     private async Task OnValidSubmitAsync()
     {
+        if (Input is null)
+        {
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: Something went wrong. Please try again.", HttpContext);
+            return;
+        }
+
         if (Input.DisplayName != displayName)
         {
             var nameTaken = await UserManager.Users

@@ -22,7 +22,7 @@
             <DataAnnotationsValidator />
             <ValidationSummary class="text-danger" role="alert" />
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.TwoFactorCode" class="form-control" autocomplete="off" />
+                <InputText @bind-Value="Input!.TwoFactorCode" class="form-control" autocomplete="off" />
                 <label for="two-factor-code" class="form-label">Authenticator code</label>
                 <ValidationMessage For="() => Input.TwoFactorCode" class="text-danger" />
             </div>
@@ -46,7 +46,7 @@
     private ApplicationUser user = default!;
 
     [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
+    private InputModel? Input { get; set; }
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
@@ -56,6 +56,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // [SupplyParameterFromForm] overwrites Input with null if a POST doesn't include its
+        // fields (a malformed/adversarial request, never a normal EditForm submission) - restore
+        // a safe default here, before EditForm (which requires a non-null Model) ever renders.
+        Input ??= new();
+
         // Ensure the user has gone through the username & password screen first
         user = await SignInManager.GetTwoFactorAuthenticationUserAsync() ??
             throw new InvalidOperationException("Unable to load two-factor authentication user.");
@@ -63,7 +68,7 @@
 
     private async Task OnValidSubmitAsync()
     {
-        var authenticatorCode = Input.TwoFactorCode!.Replace(" ", string.Empty).Replace("-", string.Empty);
+        var authenticatorCode = Input!.TwoFactorCode!.Replace(" ", string.Empty).Replace("-", string.Empty);
         var result = await SignInManager.TwoFactorAuthenticatorSignInAsync(authenticatorCode, RememberMe, Input.RememberMachine);
         var userId = await UserManager.GetUserIdAsync(user);
 

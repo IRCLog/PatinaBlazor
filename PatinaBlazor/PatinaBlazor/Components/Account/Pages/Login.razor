@@ -22,7 +22,7 @@
                     <MudText Typo="Typo.h5" Class="text-center mb-4">Welcome Back</MudText>
                     <ValidationSummary class="text-danger" role="alert" />
                     <div class="form-floating mb-3">
-                        <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                        <InputText @bind-Value="Input!.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
                         <label for="email" class="form-label">Email</label>
                         <ValidationMessage For="() => Input.Email" class="text-danger" />
                     </div>
@@ -62,13 +62,18 @@
     private HttpContext HttpContext { get; set; } = default!;
 
     [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
+    private InputModel? Input { get; set; }
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
+        // [SupplyParameterFromForm] overwrites Input with null if a POST doesn't include its
+        // fields (a malformed/adversarial request, never a normal EditForm submission) - restore
+        // a safe default here, before EditForm (which requires a non-null Model) ever renders.
+        Input ??= new();
+
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
             // Clear the existing external cookie to ensure a clean login process
@@ -80,7 +85,7 @@
     {
         // This doesn't count login failures towards account lockout
         // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        var result = await SignInManager.PasswordSignInAsync(Input!.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");

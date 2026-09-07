@@ -28,7 +28,7 @@
                     <MudText Typo="Typo.h5" Class="text-center mb-4">Create New Account</MudText>
                     <ValidationSummary class="text-danger" role="alert" />
                     <div class="form-floating mb-3">
-                        <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                        <InputText @bind-Value="Input!.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
                         <label for="email">Email</label>
                         <ValidationMessage For="() => Input.Email" class="text-danger" />
                     </div>
@@ -63,15 +63,29 @@
     private IEnumerable<IdentityError>? identityErrors;
 
     [SupplyParameterFromForm]
-    private InputModel Input { get; set; } = new();
+    private InputModel? Input { get; set; }
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
     private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
 
+    protected override void OnInitialized()
+    {
+        // [SupplyParameterFromForm] overwrites Input with null if a POST doesn't include its
+        // fields (a malformed/adversarial request, never a normal EditForm submission) - restore
+        // a safe default here, before EditForm (which requires a non-null Model) ever renders.
+        Input ??= new();
+    }
+
     public async Task RegisterUser(EditContext editContext)
     {
+        if (Input is null)
+        {
+            identityErrors = [new IdentityError { Description = "Something went wrong. Please try again." }];
+            return;
+        }
+
         var displayNameTaken = await UserManager.Users
             .AnyAsync(u => u.DisplayName == Input.DisplayName);
         if (displayNameTaken)
