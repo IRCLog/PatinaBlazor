@@ -1,7 +1,7 @@
 @rendermode InteractiveServer
 @using PatinaBlazor.Data
 @using Microsoft.EntityFrameworkCore
-@inject ApplicationDbContext DbContext
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @implements IAsyncDisposable
 
 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center" Justify="Justify.Center">
@@ -35,9 +35,11 @@
     {
         try
         {
+            await using var context = await DbContextFactory.CreateDbContextAsync();
+
             var counter = ArticleId.HasValue
-                ? await DbContext.HitCounters.FirstOrDefaultAsync(h => h.ArticleId == ArticleId)
-                : await DbContext.HitCounters.FirstOrDefaultAsync(h => h.PagePath == PagePath);
+                ? await context.HitCounters.FirstOrDefaultAsync(h => h.ArticleId == ArticleId)
+                : await context.HitCounters.FirstOrDefaultAsync(h => h.PagePath == PagePath);
 
             if (counter == null)
             {
@@ -49,7 +51,7 @@
                     CreatedAt = DateTime.UtcNow,
                     LastHit = DateTime.UtcNow
                 };
-                DbContext.HitCounters.Add(counter);
+                context.HitCounters.Add(counter);
                 hitCount = 1;
             }
             else
@@ -59,7 +61,7 @@
                 hitCount = counter.HitCount;
             }
 
-            await DbContext.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
         catch (Exception ex)
         {

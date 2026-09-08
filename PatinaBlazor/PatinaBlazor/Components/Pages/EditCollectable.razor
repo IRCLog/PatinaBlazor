@@ -8,7 +8,7 @@
 @using Microsoft.EntityFrameworkCore
 @attribute [Authorize]
 @rendermode InteractiveServer
-@inject ApplicationDbContext DbContext
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
@@ -214,7 +214,8 @@
 
     private async Task LoadCollectable()
     {
-        collectable = await DbContext.Collectables
+        await using var context = await DbContextFactory.CreateDbContextAsync();
+        collectable = await context.Collectables
             .Include(c => c.Images)
             .FirstOrDefaultAsync(c => c.Id == Id && c.UserId == currentUserId);
 
@@ -251,6 +252,8 @@
 
         try
         {
+            await using var context = await DbContextFactory.CreateDbContextAsync();
+
             // Update basic properties
             collectable.Description = editModel.Description;
             collectable.PricePaid = editModel.PricePaid;
@@ -306,11 +309,12 @@
                         CreatedDate = DateTime.UtcNow
                     };
 
-                    DbContext.ImageAttachments.Add(newImage);
+                    context.ImageAttachments.Add(newImage);
                 }
             }
 
-            await DbContext.SaveChangesAsync();
+            context.Collectables.Update(collectable);
+            await context.SaveChangesAsync();
 
             Snackbar.Add($"Successfully updated '{collectable.Description}'!", Severity.Success);
 
@@ -343,8 +347,9 @@
             image.IsMainImage = true;
 
             // Update in database
-            DbContext.ImageAttachments.UpdateRange(collectable.Images);
-            await DbContext.SaveChangesAsync();
+            await using var context = await DbContextFactory.CreateDbContextAsync();
+            context.ImageAttachments.UpdateRange(collectable.Images);
+            await context.SaveChangesAsync();
 
             StateHasChanged();
         }
@@ -358,16 +363,18 @@
             await ImageService.DeleteImageAsync(image);
 
             // Remove from database
-            DbContext.ImageAttachments.Remove(image);
+            await using var context = await DbContextFactory.CreateDbContextAsync();
+            context.ImageAttachments.Remove(image);
             collectable.Images.Remove(image);
 
             // If this was the main image and there are other images, set the first one as main
             if (image.IsMainImage && collectable.Images.Any())
             {
                 collectable.Images.First().IsMainImage = true;
+                context.ImageAttachments.Update(collectable.Images.First());
             }
 
-            await DbContext.SaveChangesAsync();
+            await context.SaveChangesAsync();
             StateHasChanged();
         }
     }

@@ -3,28 +3,35 @@ using PatinaBlazor.Data;
 
 namespace PatinaBlazor.Services;
 
+// Uses IDbContextFactory rather than an injected scoped ApplicationDbContext: Blazor
+// Server keeps one DI scope (and one scoped DbContext) alive for a circuit's entire
+// lifetime, not per page, so a query from the page a user just left can still be
+// in-flight when the next page's query starts - and EF Core's DbContext isn't safe
+// for concurrent use. Every method here gets its own short-lived context instead.
 public class IrcEventService : IIrcEventService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
     private readonly IrcChatNotifier _notifier;
 
-    public IrcEventService(ApplicationDbContext context, IrcChatNotifier notifier)
+    public IrcEventService(IDbContextFactory<ApplicationDbContext> contextFactory, IrcChatNotifier notifier)
     {
-        _context = context;
+        _contextFactory = contextFactory;
         _notifier = notifier;
     }
 
     public async Task<IrcEvent> LogEventAsync(IrcEvent ircEvent)
     {
-        _context.IrcEvents.Add(ircEvent);
-        await _context.SaveChangesAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        context.IrcEvents.Add(ircEvent);
+        await context.SaveChangesAsync();
         _notifier.Notify(ircEvent);
         return ircEvent;
     }
 
     public async Task<List<IrcEvent>> GetRecentEventsAsync(int count, string? network, string? channel)
     {
-        var query = _context.IrcEvents.AsQueryable();
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var query = context.IrcEvents.AsQueryable();
 
         if (!string.IsNullOrEmpty(network))
             query = query.Where(e => e.Network == network);
@@ -43,7 +50,8 @@ public class IrcEventService : IIrcEventService
 
     public async Task<List<string>> GetNetworksAsync()
     {
-        return await _context.IrcEvents
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.IrcEvents
             .Select(e => e.Network)
             .Distinct()
             .OrderBy(n => n)
@@ -52,7 +60,8 @@ public class IrcEventService : IIrcEventService
 
     public async Task<List<string>> GetChannelsAsync(string network)
     {
-        return await _context.IrcEvents
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.IrcEvents
             .Where(e => e.Network == network && e.Channel != null)
             .Select(e => e.Channel!)
             .Distinct()

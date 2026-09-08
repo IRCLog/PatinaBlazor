@@ -5,9 +5,10 @@
 @using PatinaBlazor.Services
 @using Microsoft.AspNetCore.Components.Forms
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.EntityFrameworkCore
 @attribute [Authorize]
 @rendermode InteractiveServer
-@inject ApplicationDbContext DbContext
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
@@ -180,6 +181,8 @@
 
         try
         {
+            await using var context = await DbContextFactory.CreateDbContextAsync();
+
             var collectable = new Collectable
             {
                 Description = newCollectable.Description,
@@ -198,8 +201,8 @@
             };
 
             // Save collectable first to get ID
-            DbContext.Collectables.Add(collectable);
-            await DbContext.SaveChangesAsync();
+            context.Collectables.Add(collectable);
+            await context.SaveChangesAsync();
 
             // Handle multiple image uploads if present
             if (selectedImageFiles.Any())
@@ -242,10 +245,10 @@
                         CreatedDate = DateTime.UtcNow
                     };
 
-                    DbContext.ImageAttachments.Add(collectableImage);
+                    context.ImageAttachments.Add(collectableImage);
                 }
 
-                await DbContext.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
 
             // Add collectable to "All Collectables" system collection

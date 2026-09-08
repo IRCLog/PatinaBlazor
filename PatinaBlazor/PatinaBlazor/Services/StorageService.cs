@@ -4,16 +4,25 @@ using PatinaBlazor.Data;
 
 namespace PatinaBlazor.Services
 {
+    // Uses IDbContextFactory rather than an injected scoped ApplicationDbContext: Blazor
+    // Server keeps one DI scope (and one scoped DbContext) alive for a circuit's entire
+    // lifetime, not per page, so a query from the page a user just left can still be
+    // in-flight when the next page's query starts - and EF Core's DbContext isn't safe
+    // for concurrent use. Every method here gets its own short-lived context instead -
+    // methods with multiple sequential operations (e.g. SeedDummyDataAsync's several
+    // SaveChangesAsync calls) reuse that one context throughout the method, which is
+    // fine: the risk this avoids is concurrent use across different method calls, not
+    // sequential awaited use within a single one.
     public class StorageService : IStorageService
     {
         public const string StorageCustomerRoleName = "Storage Customer";
 
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public StorageService(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public StorageService(IDbContextFactory<ApplicationDbContext> contextFactory, UserManager<ApplicationUser> userManager)
         {
-            _context = context;
+            _contextFactory = contextFactory;
             _userManager = userManager;
         }
 
@@ -21,7 +30,8 @@ namespace PatinaBlazor.Services
 
         public async Task<List<StorageProperty>> GetPropertiesAsync()
         {
-            return await _context.StorageProperties
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.StorageProperties
                 .AsNoTracking()
                 .Include(p => p.Units)
                 .Include(p => p.Images)
@@ -31,7 +41,8 @@ namespace PatinaBlazor.Services
 
         public async Task<StorageProperty?> GetPropertyByIdAsync(int id)
         {
-            return await _context.StorageProperties
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.StorageProperties
                 .Include(p => p.Units)
                 .ThenInclude(u => u.Rentals)
                 .Include(p => p.Images)
@@ -40,36 +51,40 @@ namespace PatinaBlazor.Services
 
         public async Task<StorageProperty> CreatePropertyAsync(StorageProperty property, string currentUserId)
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
             property.CreatedDate = DateTime.UtcNow;
             property.ModifiedDate = DateTime.UtcNow;
             property.CreatedByUserId = currentUserId;
             property.ModifiedByUserId = currentUserId;
 
-            _context.StorageProperties.Add(property);
-            await _context.SaveChangesAsync();
+            context.StorageProperties.Add(property);
+            await context.SaveChangesAsync();
             return property;
         }
 
         public async Task UpdatePropertyAsync(StorageProperty property, string currentUserId)
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
             property.ModifiedDate = DateTime.UtcNow;
             property.ModifiedByUserId = currentUserId;
-            _context.StorageProperties.Update(property);
-            await _context.SaveChangesAsync();
+            context.StorageProperties.Update(property);
+            await context.SaveChangesAsync();
         }
 
         public async Task DeletePropertyAsync(int id)
         {
-            var property = await _context.StorageProperties.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var property = await context.StorageProperties.FindAsync(id);
             if (property != null)
             {
-                _context.StorageProperties.Remove(property);
-                await _context.SaveChangesAsync();
+                context.StorageProperties.Remove(property);
+                await context.SaveChangesAsync();
             }
         }
 
         public async Task<ImageAttachment> AddPropertyImageAsync(int propertyId, ImageUploadResult upload, bool isMainImage)
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
             var image = new ImageAttachment
             {
                 StoragePropertyId = propertyId,
@@ -82,27 +97,29 @@ namespace PatinaBlazor.Services
                 ContentType = upload.ContentType,
                 FileSize = upload.FileSize,
                 IsMainImage = isMainImage,
-                DisplayOrder = await _context.ImageAttachments.CountAsync(i => i.StoragePropertyId == propertyId),
+                DisplayOrder = await context.ImageAttachments.CountAsync(i => i.StoragePropertyId == propertyId),
                 CreatedDate = DateTime.UtcNow
             };
 
-            _context.ImageAttachments.Add(image);
-            await _context.SaveChangesAsync();
+            context.ImageAttachments.Add(image);
+            await context.SaveChangesAsync();
             return image;
         }
 
         public async Task<ImageAttachment?> GetPropertyImageAsync(int imageId)
         {
-            return await _context.ImageAttachments.FindAsync(imageId);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.ImageAttachments.FindAsync(imageId);
         }
 
         public async Task DeletePropertyImageAsync(int imageId)
         {
-            var image = await _context.ImageAttachments.FindAsync(imageId);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var image = await context.ImageAttachments.FindAsync(imageId);
             if (image != null)
             {
-                _context.ImageAttachments.Remove(image);
-                await _context.SaveChangesAsync();
+                context.ImageAttachments.Remove(image);
+                await context.SaveChangesAsync();
             }
         }
 
@@ -110,7 +127,8 @@ namespace PatinaBlazor.Services
 
         public async Task<List<StorageUnit>> GetUnitsForPropertyAsync(int propertyId)
         {
-            return await _context.StorageUnits
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.StorageUnits
                 .AsNoTracking()
                 .Include(u => u.Rentals)
                 .Where(u => u.StoragePropertyId == propertyId)
@@ -120,7 +138,8 @@ namespace PatinaBlazor.Services
 
         public async Task<StorageUnit?> GetUnitByIdAsync(int id)
         {
-            return await _context.StorageUnits
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.StorageUnits
                 .Include(u => u.Rentals)
                 .Include(u => u.Property)
                 .FirstOrDefaultAsync(u => u.Id == id);
@@ -128,24 +147,27 @@ namespace PatinaBlazor.Services
 
         public async Task<StorageUnit> CreateUnitAsync(StorageUnit unit, string currentUserId)
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
             unit.Status = StorageUnitStatus.Available;
             unit.CreatedDate = DateTime.UtcNow;
             unit.ModifiedDate = DateTime.UtcNow;
             unit.CreatedByUserId = currentUserId;
             unit.ModifiedByUserId = currentUserId;
 
-            _context.StorageUnits.Add(unit);
-            await _context.SaveChangesAsync();
+            context.StorageUnits.Add(unit);
+            await context.SaveChangesAsync();
             return unit;
         }
 
         public async Task UpdateUnitAsync(StorageUnit unit, string currentUserId)
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
             // Occupied is exclusively a side effect of StartRentalAsync/EndRentalAsync, so a
             // direct edit can never set it - fall back to whatever status the unit already has.
             if (unit.Status == StorageUnitStatus.Occupied)
             {
-                var existing = await _context.StorageUnits
+                var existing = await context.StorageUnits
                     .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.Id == unit.Id);
                 unit.Status = existing?.Status ?? StorageUnitStatus.Available;
@@ -153,17 +175,18 @@ namespace PatinaBlazor.Services
 
             unit.ModifiedDate = DateTime.UtcNow;
             unit.ModifiedByUserId = currentUserId;
-            _context.StorageUnits.Update(unit);
-            await _context.SaveChangesAsync();
+            context.StorageUnits.Update(unit);
+            await context.SaveChangesAsync();
         }
 
         public async Task DeleteUnitAsync(int id)
         {
-            var unit = await _context.StorageUnits.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var unit = await context.StorageUnits.FindAsync(id);
             if (unit != null)
             {
-                _context.StorageUnits.Remove(unit);
-                await _context.SaveChangesAsync();
+                context.StorageUnits.Remove(unit);
+                await context.SaveChangesAsync();
             }
         }
 
@@ -176,7 +199,9 @@ namespace PatinaBlazor.Services
                 throw new ArgumentException("Payment date must be on or after the start date, and no more than one month after it.", nameof(paymentDate));
             }
 
-            var unit = await _context.StorageUnits.FirstOrDefaultAsync(u => u.Id == unitId)
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var unit = await context.StorageUnits.FirstOrDefaultAsync(u => u.Id == unitId)
                 ?? throw new InvalidOperationException($"Storage unit {unitId} not found.");
 
             var rental = new StorageRental
@@ -194,12 +219,12 @@ namespace PatinaBlazor.Services
                 ModifiedByUserId = currentUserId
             };
 
-            _context.StorageRentals.Add(rental);
+            context.StorageRentals.Add(rental);
             unit.Status = StorageUnitStatus.Occupied;
             unit.ModifiedDate = DateTime.UtcNow;
             unit.ModifiedByUserId = currentUserId;
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             var customer = await _userManager.FindByIdAsync(customerUserId);
             if (customer != null && !await _userManager.IsInRoleAsync(customer, StorageCustomerRoleName))
@@ -212,7 +237,9 @@ namespace PatinaBlazor.Services
 
         public async Task EndRentalAsync(int rentalId, DateTime endDate, string currentUserId)
         {
-            var rental = await _context.StorageRentals
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var rental = await context.StorageRentals
                 .Include(r => r.Unit)
                 .FirstOrDefaultAsync(r => r.Id == rentalId)
                 ?? throw new InvalidOperationException($"Storage rental {rentalId} not found.");
@@ -229,12 +256,13 @@ namespace PatinaBlazor.Services
                 rental.Unit.ModifiedByUserId = currentUserId;
             }
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
 
         public async Task<StorageRental?> GetActiveRentalForUnitAsync(int unitId)
         {
-            return await _context.StorageRentals
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.StorageRentals
                 .Include(r => r.Customer)
                 .Where(r => r.StorageUnitId == unitId && r.Status == StorageRentalStatus.Active)
                 .OrderByDescending(r => r.StartDate)
@@ -245,15 +273,17 @@ namespace PatinaBlazor.Services
 
         public async Task<StorageDashboardSummary> GetDashboardSummaryAsync()
         {
-            var totalProperties = await _context.StorageProperties.CountAsync();
-            var units = await _context.StorageUnits.AsNoTracking().ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var totalProperties = await context.StorageProperties.CountAsync();
+            var units = await context.StorageUnits.AsNoTracking().ToListAsync();
             var totalUnits = units.Count;
             var occupied = units.Count(u => u.Status == StorageUnitStatus.Occupied);
             var available = units.Count(u => u.Status == StorageUnitStatus.Available);
             var reserved = units.Count(u => u.Status == StorageUnitStatus.Reserved);
             var maintenance = units.Count(u => u.Status == StorageUnitStatus.Maintenance);
 
-            var currentMrr = await _context.StorageRentals
+            var currentMrr = await context.StorageRentals
                 .Where(r => r.Status == StorageRentalStatus.Active)
                 .SumAsync(r => (decimal?)r.MonthlyRateAtSigning) ?? 0m;
 
@@ -274,7 +304,8 @@ namespace PatinaBlazor.Services
 
         public async Task<List<MonthlyRevenuePoint>> GetMonthlyRevenueAsync(int monthsBack = 12, int monthsForwardProjection = 3)
         {
-            var rentals = await _context.StorageRentals.AsNoTracking().ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var rentals = await context.StorageRentals.AsNoTracking().ToListAsync();
             var points = new List<MonthlyRevenuePoint>();
 
             var thisMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
@@ -319,7 +350,9 @@ namespace PatinaBlazor.Services
 
         public async Task SeedDummyDataAsync(string adminUserId, List<string> customerUserIds)
         {
-            if (await _context.StorageProperties.AnyAsync())
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            if (await context.StorageProperties.AnyAsync())
             {
                 return;
             }
@@ -356,8 +389,8 @@ namespace PatinaBlazor.Services
                 }
             };
 
-            _context.StorageProperties.AddRange(properties);
-            await _context.SaveChangesAsync();
+            context.StorageProperties.AddRange(properties);
+            await context.SaveChangesAsync();
 
             var random = new Random(42);
             var unitSizes = new (decimal length, decimal width, decimal height, decimal rate)[]
@@ -397,8 +430,8 @@ namespace PatinaBlazor.Services
                 }
             }
 
-            _context.StorageUnits.AddRange(allUnits);
-            await _context.SaveChangesAsync();
+            context.StorageUnits.AddRange(allUnits);
+            await context.SaveChangesAsync();
 
             if (customerUserIds.Count == 0)
             {
@@ -469,8 +502,8 @@ namespace PatinaBlazor.Services
                 }
             }
 
-            _context.StorageRentals.AddRange(rentals);
-            await _context.SaveChangesAsync();
+            context.StorageRentals.AddRange(rentals);
+            await context.SaveChangesAsync();
         }
     }
 }
