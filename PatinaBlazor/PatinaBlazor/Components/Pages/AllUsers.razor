@@ -1,10 +1,12 @@
 @page "/admin/allUsers"
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 @inject UserManager<ApplicationUser> UserManager
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
 <PageTitle>All Users - Admin</PageTitle>
 
@@ -173,6 +175,34 @@
             return;
 
         var email = _userPendingDelete.Email;
+
+        // Delete the user's collectables explicitly, in their own SaveChanges call, before
+        // deleting the user - Collectable.UserId cascades at the database level, which
+        // would remove them (and their ImageAttachments) invisibly to EF's change tracker
+        // if left to UserManager.DeleteAsync's own SaveChanges, meaning
+        // ImageCleanupSaveChangesInterceptor would never see them and their photo files
+        // would be orphaned on disk.
+        await using (var context = await DbContextFactory.CreateDbContextAsync())
+        {
+            var collectables = await context.Collectables
+                .Where(c => c.UserId == _userPendingDelete.Id)
+                .ToListAsync();
+            if (collectables.Count > 0)
+            {
+                // CollectableCollectionItem -> Collectable is DeleteBehavior.Restrict (see
+                // ApplicationDbContext.cs), so membership rows (e.g. the user's own
+                // auto-created "All Collectables" collection) must go first, same as
+                // MyCollectables.razor's own delete flow.
+                var collectableIds = collectables.Select(c => c.Id).ToList();
+                var membershipRows = await context.CollectableCollectionItems
+                    .Where(ci => collectableIds.Contains(ci.CollectableId))
+                    .ToListAsync();
+                context.CollectableCollectionItems.RemoveRange(membershipRows);
+                context.Collectables.RemoveRange(collectables);
+                await context.SaveChangesAsync();
+            }
+        }
+
         var result = await UserManager.DeleteAsync(_userPendingDelete);
         _userPendingDelete = null;
 

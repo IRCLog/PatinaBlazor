@@ -9,7 +9,6 @@
 @inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject IImageService ImageService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>My Collectables</PageTitle>
@@ -144,16 +143,8 @@
 
         try
         {
-            // Delete all image files if they exist
-            if (collectable.Images != null && collectable.Images.Any())
-            {
-                foreach (var image in collectable.Images)
-                {
-                    await ImageService.DeleteImageAsync(image);
-                }
-            }
-
-            // Remove from database (cascading delete will handle its ImageAttachments).
+            // Remove from database (cascading delete will handle its ImageAttachments;
+            // ImageCleanupSaveChangesInterceptor handles deleting the physical files).
             // CollectableCollectionItem -> Collectable is DeleteBehavior.Restrict (by design,
             // see ApplicationDbContext.cs), so membership rows (e.g. the auto-created "All
             // Collectables" entry every collectable has) must be removed first or the delete

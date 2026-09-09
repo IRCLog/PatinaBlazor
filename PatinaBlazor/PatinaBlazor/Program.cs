@@ -45,6 +45,14 @@ builder.Services.AddAuthentication(options =>
 // Use SQL Server for all environments
 var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
 
+// ImageService has no per-request state (just IWebHostEnvironment/ILogger, both
+// singleton-safe) - registered as a singleton so ImageCleanupSaveChangesInterceptor
+// (itself a singleton, shared by every DbContext instance the factory below creates) can
+// safely depend on it without hitting the "cannot consume scoped service from singleton"
+// DI validation error.
+builder.Services.AddSingleton<IImageService, ImageService>();
+builder.Services.AddSingleton<ImageCleanupSaveChangesInterceptor>();
+
 // Blazor Server keeps one DI scope (and one scoped ApplicationDbContext) alive for a
 // circuit's entire lifetime, not per page - so a still-in-flight query from a page the
 // user just left can race a query the next page fires immediately on navigation, since
@@ -53,8 +61,13 @@ var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlSe
 // every existing @inject ApplicationDbContext consumer working unchanged, while also
 // making IDbContextFactory<ApplicationDbContext> available for services (like
 // ArticleService) that create a short-lived, per-call context instead.
-builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
-    options.UseSqlServer(sqlServerConnectionString));
+//
+// ImageCleanupSaveChangesInterceptor is registered here so every entity implementing
+// ISupportImageAttachments gets its photo files cleaned up on delete uniformly,
+// regardless of which service/page triggers the delete - see that class for details.
+builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, options) =>
+    options.UseSqlServer(sqlServerConnectionString)
+           .AddInterceptors(serviceProvider.GetRequiredService<ImageCleanupSaveChangesInterceptor>()));
 builder.Services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -80,7 +93,6 @@ builder.Services.AddTransient<IEmailSender<ApplicationUser>, IdentitySmtpEmailSe
 builder.Services.AddSingleton<EmailTemplateRenderer>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<ImageAttachmentMigrationService>();
-builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICollectableService, CollectableService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IStorageService, StorageService>();
