@@ -60,10 +60,22 @@
 
             <MudTextField Label="Body (Markdown)" @bind-Value="_model.Body" For="@(() => _model.Body)" Lines="14" Class="mb-4" />
 
+            <MudSelect T="ArticleMediaLayout" Label="Media Layout" @bind-Value="_model.MediaLayout" Class="mb-1">
+                <MudSelectItem Value="ArticleMediaLayout.Hero">Hero - big banner photo above the title</MudSelectItem>
+                <MudSelectItem Value="ArticleMediaLayout.SplitTextWrap">Split - photo floats beside the opening text</MudSelectItem>
+                <MudSelectItem Value="ArticleMediaLayout.Gallery">Gallery - every photo in a grid after the article</MudSelectItem>
+                <MudSelectItem Value="ArticleMediaLayout.Masonry">Masonry - every photo in a staggered grid after the article</MudSelectItem>
+                <MudSelectItem Value="ArticleMediaLayout.Carousel">Carousel - every photo as a slideshow after the article</MudSelectItem>
+                <MudSelectItem Value="ArticleMediaLayout.InlineBreaks">Inline breaks - photos woven between paragraphs of the body</MudSelectItem>
+            </MudSelect>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-6" Style="display: block;">
+                @GetLayoutDescription(_model.MediaLayout)
+            </MudText>
+
             <MudText Typo="Typo.subtitle2" Class="mb-2">Photos</MudText>
             <InputFile id="articleImages" OnChange="OnImagesSelected" accept="image/*" multiple class="mud-input-file" />
             <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1 mb-6" Style="display: block;">
-                Upload photos for the article (max 15MB each, JPG/PNG/GIF/WebP).
+                Upload photos for the article (max 15MB each, JPG/PNG/GIF/WebP). Drag to reorder - order determines each photo's slot in the layout above, and the first photo is used as the article's thumbnail.
             </MudText>
 
             @if (_imageUploadErrors.Any())
@@ -78,18 +90,44 @@
                 </MudAlert>
             }
 
-            @if (_existingImages.Any() || _selectedImageFiles.Any())
+            @if (_existingImageItems.Count >= 2)
+            {
+                <MudDropContainer T="ArticleImageDropItem"
+                                  Items="_existingImageItems"
+                                  ItemsSelector="@((item, zone) => true)"
+                                  ItemDropped="ExistingImageDropped"
+                                  Class="d-flex flex-wrap mb-2">
+                    <ChildContent>
+                        <MudDropZone T="ArticleImageDropItem" Identifier="Photos" Class="d-flex flex-wrap flex-grow-1" />
+                    </ChildContent>
+                    <ItemRenderer Context="photoItem">
+                        @{ var slot = _existingImageItems.IndexOf(photoItem) + 1; }
+                        <div style="position: relative; width: 110px; margin: 4px; cursor: grab;">
+                            <ResponsiveImage Image="photoItem.Image" Height="80px" Sizes="33vw" BorderRadius="4px" />
+                            <div style="position: absolute; top: 2px; left: 2px; background: var(--mud-palette-primary); color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center;">@slot</div>
+                            <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" Style="position: absolute; top: 0; right: 0;" OnClick="@(() => RemoveExistingImage(photoItem.Image))" />
+                        </div>
+                    </ItemRenderer>
+                </MudDropContainer>
+            }
+            else if (_existingImageItems.Any())
             {
                 <MudGrid Class="mb-2">
-                    @foreach (var image in _existingImages)
+                    @foreach (var item in _existingImageItems)
                     {
                         <MudItem xs="4">
                             <div style="position: relative;">
-                                <ResponsiveImage Image="image" Height="80px" Sizes="33vw" BorderRadius="4px" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" Style="position: absolute; top: 0; right: 0;" OnClick="@(() => RemoveExistingImage(image))" />
+                                <ResponsiveImage Image="item.Image" Height="80px" Sizes="33vw" BorderRadius="4px" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" Style="position: absolute; top: 0; right: 0;" OnClick="@(() => RemoveExistingImage(item.Image))" />
                             </div>
                         </MudItem>
                     }
+                </MudGrid>
+            }
+
+            @if (_selectedImageFiles.Any())
+            {
+                <MudGrid Class="mb-2">
                     @foreach (var file in _selectedImageFiles)
                     {
                         <MudItem xs="4">
@@ -132,7 +170,7 @@
     private Article? _article;
     private ArticleEditModel _model = new();
     private ApplicationUser? _selectedAuthor;
-    private List<ImageAttachment> _existingImages = new();
+    private List<ArticleImageDropItem> _existingImageItems = new();
     private List<int> _removedImageIds = new();
     private List<IBrowserFile> _selectedImageFiles = new();
     private List<string> _imageUploadErrors = new();
@@ -145,7 +183,8 @@
         _selectedImageFiles.Clear();
         _imageUploadErrors.Clear();
         _removedImageIds.Clear();
-        _existingImages = existing?.Images.OrderBy(i => i.DisplayOrder).ToList() ?? new List<ImageAttachment>();
+        _existingImageItems = existing?.Images.OrderBy(i => i.DisplayOrder).Select(i => new ArticleImageDropItem { Image = i }).ToList()
+            ?? new List<ArticleImageDropItem>();
 
         _model = existing == null
             ? new ArticleEditModel()
@@ -156,6 +195,7 @@
                 Body = existing.Body,
                 Status = existing.Status,
                 Audience = existing.Audience,
+                MediaLayout = existing.MediaLayout,
                 FeatureOnHomePage = existing.FeatureOnHomePage
             };
 
@@ -192,8 +232,29 @@
     private void RemoveExistingImage(ImageAttachment image)
     {
         _removedImageIds.Add(image.Id);
-        _existingImages.Remove(image);
+        _existingImageItems.RemoveAll(i => i.Image.Id == image.Id);
     }
+
+    private void ExistingImageDropped(MudItemDropInfo<ArticleImageDropItem> dropItem)
+    {
+        if (dropItem.Item is null)
+            return;
+
+        _existingImageItems.Remove(dropItem.Item);
+        var index = Math.Clamp(dropItem.IndexInZone, 0, _existingImageItems.Count);
+        _existingImageItems.Insert(index, dropItem.Item);
+    }
+
+    private static string GetLayoutDescription(ArticleMediaLayout layout) => layout switch
+    {
+        ArticleMediaLayout.Hero => "Uses the first photo as a full-width banner above the title.",
+        ArticleMediaLayout.SplitTextWrap => "Uses the first photo, floated beside the opening paragraph so text wraps around it.",
+        ArticleMediaLayout.Gallery => "Uses every photo, shown in an even grid after the article body.",
+        ArticleMediaLayout.Masonry => "Uses every photo, shown in a Pinterest-style staggered grid after the article body.",
+        ArticleMediaLayout.Carousel => "Uses every photo, shown as a slideshow after the article body.",
+        ArticleMediaLayout.InlineBreaks => "Uses every photo, woven between paragraphs as the article body reads.",
+        _ => ""
+    };
 
     private async Task<IEnumerable<ApplicationUser>> SearchAuthorsAsync(string search, CancellationToken cancellationToken)
     {
@@ -245,6 +306,7 @@
                 _article.Body = _model.Body;
                 _article.Status = _model.Status;
                 _article.Audience = _model.Audience;
+                _article.MediaLayout = _model.MediaLayout;
                 _article.FeatureOnHomePage = _model.FeatureOnHomePage;
                 _article.AuthorUserId = _selectedAuthor.Id;
 
@@ -260,6 +322,11 @@
                     }
                 }
 
+                if (_existingImageItems.Any())
+                {
+                    await ArticleService.ReorderArticleImagesAsync(_article.Id, _existingImageItems.Select(i => i.Image.Id).ToList());
+                }
+
                 await UploadSelectedImagesAsync(_article);
             }
             else
@@ -271,6 +338,7 @@
                     Body = _model.Body,
                     Status = _model.Status,
                     Audience = _model.Audience,
+                    MediaLayout = _model.MediaLayout,
                     FeatureOnHomePage = _model.FeatureOnHomePage,
                     AuthorUserId = _selectedAuthor.Id
                 };
@@ -299,7 +367,7 @@
             return;
         }
 
-        var hasExistingImages = _existingImages.Any();
+        var hasExistingImages = _existingImageItems.Any();
         for (var i = 0; i < _selectedImageFiles.Count; i++)
         {
             var result = await ImageService.SaveImageAsync(_selectedImageFiles[i], article.ImageSubfolder);
@@ -324,6 +392,12 @@
 
         public ArticleStatus Status { get; set; } = ArticleStatus.Draft;
         public ArticleAudience Audience { get; set; } = ArticleAudience.Public;
+        public ArticleMediaLayout MediaLayout { get; set; } = ArticleMediaLayout.Hero;
         public bool FeatureOnHomePage { get; set; }
+    }
+
+    public class ArticleImageDropItem
+    {
+        public ImageAttachment Image { get; set; } = default!;
     }
 }

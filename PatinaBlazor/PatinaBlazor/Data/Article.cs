@@ -28,6 +28,8 @@ namespace PatinaBlazor.Data
 
         public ArticleAudience Audience { get; set; } = ArticleAudience.Public;
 
+        public ArticleMediaLayout MediaLayout { get; set; } = ArticleMediaLayout.Hero;
+
         public bool FeatureOnHomePage { get; set; }
 
         // Reserved for a future Storage-customer landing page (Phase 2) that doesn't

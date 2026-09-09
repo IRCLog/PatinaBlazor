@@ -152,6 +152,25 @@ namespace PatinaBlazor.Services
             }
         }
 
+        public async Task ReorderArticleImagesAsync(Guid articleId, List<int> orderedImageIds)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var images = await context.ImageAttachments
+                .Where(i => i.ArticleId == articleId)
+                .ToDictionaryAsync(i => i.Id);
+
+            for (var index = 0; index < orderedImageIds.Count; index++)
+            {
+                if (images.TryGetValue(orderedImageIds[index], out var image))
+                {
+                    image.DisplayOrder = index;
+                    image.IsMainImage = index == 0;
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
         // Public/audience-filtered reads
 
         public async Task<List<Article>> GetVisibleArticlesAsync(IReadOnlyCollection<ArticleAudience> allowedAudiences)

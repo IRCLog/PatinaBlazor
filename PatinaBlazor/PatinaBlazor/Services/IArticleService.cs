@@ -17,6 +17,11 @@ namespace PatinaBlazor.Services
         Task<ImageAttachment?> GetArticleImageAsync(int imageId);
         Task DeleteArticleImageAsync(int imageId);
 
+        // Sets DisplayOrder to each id's position in orderedImageIds, and IsMainImage on
+        // whichever image lands at position 0 - the only place IsMainImage is reassigned
+        // after upload, so "first in order" and "main image" never diverge.
+        Task ReorderArticleImagesAsync(Guid articleId, List<int> orderedImageIds);
+
         // Public/audience-filtered reads
         Task<List<Article>> GetVisibleArticlesAsync(IReadOnlyCollection<ArticleAudience> allowedAudiences);
         Task<Article?> GetPublishedArticleAsync(Guid id, IReadOnlyCollection<ArticleAudience> allowedAudiences);

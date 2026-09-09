@@ -24,10 +24,6 @@
     }
     else
     {
-        <ResponsiveImage Image="_article.GetMainImage()" Alt="@_article.Title" Height="360px" FixedHeight="false"
-                         Fit="ResponsiveImage.ObjectFit.Contain" Sizes="(max-width: 960px) 100vw, 960px"
-                         Class="mb-4" BorderRadius="8px" />
-
         <MudText Typo="Typo.h3" Class="mb-1">@_article.Title</MudText>
         @if (!string.IsNullOrWhiteSpace(_article.TagLine))
         {
@@ -42,9 +38,7 @@
             }
         </MudStack>
 
-        <div class="mb-4">
-            @((MarkupString)_renderedBody)
-        </div>
+        <ArticleMediaLayoutView Article="_article" />
 
         <HitCounter ArticleId="@_article.Id" />
     }
@@ -55,13 +49,11 @@
 
     private Article? _article;
     private bool _isLoading = true;
-    private string _renderedBody = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         var allowedAudiences = await ArticleAudienceResolver.GetAllowedAudiencesAsync(AuthenticationStateProvider);
         _article = await ArticleService.GetPublishedArticleAsync(Id, allowedAudiences);
-        _renderedBody = _article == null ? string.Empty : ArticleMarkdown.ToSafeHtml(_article.Body);
         _isLoading = false;
     }
 

@@ -259,6 +259,7 @@ namespace PatinaBlazor.Data
             {
                 entity.Property(e => e.Status).HasConversion<string>();
                 entity.Property(e => e.Audience).HasConversion<string>();
+                entity.Property(e => e.MediaLayout).HasConversion<string>().HasDefaultValue(ArticleMediaLayout.Hero);
                 entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(e => e.ModifiedDate).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(e => e.AuthorUserId).HasMaxLength(128);

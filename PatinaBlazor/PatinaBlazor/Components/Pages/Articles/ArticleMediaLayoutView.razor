@@ -1,0 +1,130 @@
+@* Renders an article's body together with its photos, arranged according to
+   Article.MediaLayout. Owns the Markdown-&gt;HTML rendering itself (rather than the
+   caller pre-rendering it) because InlineBreaks needs the raw Markdown split into
+   per-paragraph chunks, while every other layout renders the whole body once. *@
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+
+@switch (Article.MediaLayout)
+{
+    case ArticleMediaLayout.Hero:
+        <ResponsiveImage Image="Article.GetMainImage()" Alt="@Article.Title" Height="360px" FixedHeight="false"
+                         Fit="ResponsiveImage.ObjectFit.Contain" Sizes="(max-width: 960px) 100vw, 960px"
+                         Class="mb-4" BorderRadius="8px" />
+        <div class="mb-4">@((MarkupString)WholeBodyHtml)</div>
+        break;
+
+    case ArticleMediaLayout.SplitTextWrap:
+        <div class="mb-4">
+            @if (Article.GetMainImage() is { } splitImage)
+            {
+                <div style="float: left; margin: 0 16px 8px 0; max-width: 45%;">
+                    <ResponsiveImage Image="splitImage" Alt="@Article.Title" Height="280px" FixedHeight="false"
+                                     Fit="ResponsiveImage.ObjectFit.Contain" Sizes="45vw" BorderRadius="8px" />
+                </div>
+            }
+            @((MarkupString)WholeBodyHtml)
+            <div style="clear: both;"></div>
+        </div>
+        break;
+
+    case ArticleMediaLayout.Gallery:
+        <div class="mb-4">@((MarkupString)WholeBodyHtml)</div>
+        @if (OrderedImages.Count >= 2)
+        {
+            <MudGrid Class="mb-2">
+                @foreach (var image in OrderedImages)
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <ResponsiveImage Image="image" Alt="@Article.Title" Height="200px" BorderRadius="8px" />
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        break;
+
+    case ArticleMediaLayout.Masonry:
+        <div class="mb-4">@((MarkupString)WholeBodyHtml)</div>
+        @if (OrderedImages.Count >= 2)
+        {
+            <div style="column-count: 3; column-gap: 12px;">
+                @foreach (var image in OrderedImages)
+                {
+                    <div style="break-inside: avoid; margin-bottom: 12px;">
+                        <ResponsiveImage Image="image" Alt="@Article.Title" Height="320px" FixedHeight="false" BorderRadius="8px" />
+                    </div>
+                }
+            </div>
+        }
+        break;
+
+    case ArticleMediaLayout.Carousel:
+        <div class="mb-4">@((MarkupString)WholeBodyHtml)</div>
+        @if (OrderedImages.Count >= 2)
+        {
+            <MudCarousel TData="ImageAttachment" Class="mb-2" Style="height: 400px;" ShowArrows="true" ShowBullets="true" AutoCycle="false" EnableSwipeGesture="true">
+                @foreach (var image in OrderedImages)
+                {
+                    <MudCarouselItem Transition="Transition.Slide">
+                        <ResponsiveImage Image="image" Alt="@Article.Title" Height="400px" Fit="ResponsiveImage.ObjectFit.Contain" />
+                    </MudCarouselItem>
+                }
+            </MudCarousel>
+        }
+        break;
+
+    case ArticleMediaLayout.InlineBreaks:
+        <div class="mb-4">
+            @foreach (var segment in InlineSegments)
+            {
+                @((MarkupString)segment.Html)
+                @if (segment.ImageAfter != null)
+                {
+                    <ResponsiveImage Image="segment.ImageAfter" Alt="@Article.Title" Height="320px" FixedHeight="false"
+                                     Fit="ResponsiveImage.ObjectFit.Contain" Sizes="(max-width: 960px) 100vw, 960px"
+                                     Class="my-4" BorderRadius="8px" />
+                }
+            }
+        </div>
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired] public Article Article { get; set; } = default!;
+
+    private List<ImageAttachment> OrderedImages => Article.Images.OrderBy(i => i.DisplayOrder).ToList();
+
+    private string WholeBodyHtml => ArticleMarkdown.ToSafeHtml(Article.Body);
+
+    private List<(string Html, ImageAttachment? ImageAfter)> InlineSegments => BuildInlineSegments(Article, OrderedImages);
+
+    private static List<(string Html, ImageAttachment? ImageAfter)> BuildInlineSegments(Article article, List<ImageAttachment> images)
+    {
+        var paragraphs = (article.Body ?? string.Empty).Split(new[] { "\n\n" }, StringSplitOptions.None);
+        var usableImageCount = Math.Min(images.Count, Math.Max(paragraphs.Length - 1, 0));
+
+        if (usableImageCount == 0)
+        {
+            return new List<(string, ImageAttachment?)> { (ArticleMarkdown.ToSafeHtml(article.Body ?? string.Empty), null) };
+        }
+
+        var bucketCount = usableImageCount + 1;
+        var baseSize = paragraphs.Length / bucketCount;
+        var remainder = paragraphs.Length % bucketCount;
+
+        var segments = new List<(string, ImageAttachment?)>();
+        var index = 0;
+        for (var bucket = 0; bucket < bucketCount; bucket++)
+        {
+            var size = baseSize + (bucket < remainder ? 1 : 0);
+            var bucketParagraphs = paragraphs.Skip(index).Take(size);
+            index += size;
+
+            var html = ArticleMarkdown.ToSafeHtml(string.Join("\n\n", bucketParagraphs));
+            var imageAfter = bucket < usableImageCount ? images[bucket] : null;
+            segments.Add((html, imageAfter));
+        }
+
+        return segments;
+    }
+}
