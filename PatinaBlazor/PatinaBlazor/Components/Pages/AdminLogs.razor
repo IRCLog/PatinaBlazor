@@ -1,0 +1,270 @@
+@page "/admin/logs"
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PatinaBlazor.Data
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+
+<PageTitle>Application Logs</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="py-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">Application Logs</MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/admin">Back to Admin</MudButton>
+    </div>
+
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" md="5">
+            <MudDateRangePicker Label="Date Range (Central)" @bind-DateRange="_dateRange" DateFormat="MM/dd/yyyy" />
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <MudTextField T="string"
+                          Value="_searchText"
+                          ValueChanged="OnSearchTextChanged"
+                          Immediate="true"
+                          DebounceInterval="400"
+                          Placeholder="Search message text..."
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Clearable="true" />
+        </MudItem>
+        <MudItem xs="12" md="2" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="ApplyDateRange">Apply</MudButton>
+        </MudItem>
+    </MudGrid>
+
+    <MudDataGrid @ref="_dataGrid"
+                 T="AppLogEntry"
+                 ServerData="LoadServerData"
+                 Filterable="true"
+                 SortMode="SortMode.Single"
+                 Hover="true"
+                 Dense="true"
+                 RowsPerPage="25">
+        <Columns>
+            <PropertyColumn Property="x => x.TimeStampCentral" Title="Time (Central)" Filterable="false" Format="yyyy-MM-dd HH:mm:ss" />
+            <PropertyColumn Property="x => x.Level" Title="Level">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@LevelColor(context.Item.Level)">@context.Item.Level</MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.Message" Title="Message">
+                <CellTemplate>
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 500px; display: inline-block; vertical-align: middle;">
+                        @context.Item.Message
+                    </span>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.EntityType" Title="Entity Type" />
+            <PropertyColumn Property="x => x.EntityId" Title="Entity Id" />
+            <PropertyColumn Property="x => x.UserId" Title="User Id" />
+            <TemplateColumn Title="" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    <MudTooltip Text="View Details">
+                        <MudIconButton Icon="@Icons.Material.Filled.Info" Size="Size.Small" OnClick="@(() => ShowDetails(context.Item))" />
+                    </MudTooltip>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="AppLogEntry" />
+        </PagerContent>
+    </MudDataGrid>
+</MudContainer>
+
+<MudDialog @bind-Visible="_detailsVisible">
+    <DialogContent>
+        @if (_selectedEntry != null)
+        {
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.body2"><strong>Time (Central):</strong> @_selectedEntry.TimeStampCentral.ToString("yyyy-MM-dd HH:mm:ss")</MudText>
+                <MudText Typo="Typo.body2"><strong>Level:</strong> @_selectedEntry.Level</MudText>
+                <MudText Typo="Typo.body2"><strong>Entity:</strong> @_selectedEntry.EntityType @_selectedEntry.EntityId</MudText>
+                <MudText Typo="Typo.body2"><strong>User Id:</strong> @_selectedEntry.UserId</MudText>
+                <MudText Typo="Typo.body2"><strong>Message:</strong></MudText>
+                <MudPaper Class="pa-2" Elevation="0" Style="background-color: var(--mud-palette-background-gray, #2a2a2a); white-space: pre-wrap; word-break: break-word;">@_selectedEntry.Message</MudPaper>
+                @if (!string.IsNullOrWhiteSpace(_selectedEntry.Exception))
+                {
+                    <MudText Typo="Typo.body2"><strong>Exception:</strong></MudText>
+                    <MudPaper Class="pa-2" Elevation="0" Style="background-color: var(--mud-palette-background-gray, #2a2a2a); white-space: pre-wrap; word-break: break-word; max-height: 300px; overflow-y: auto;">@_selectedEntry.Exception</MudPaper>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _detailsVisible = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private MudDataGrid<AppLogEntry>? _dataGrid;
+    private DateRange? _dateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
+    private string _searchText = "";
+    private bool _detailsVisible;
+    private AppLogEntry? _selectedEntry;
+
+    private async Task OnSearchTextChanged(string value)
+    {
+        _searchText = value;
+        if (_dataGrid != null)
+        {
+            await _dataGrid.ReloadServerData();
+        }
+    }
+
+    private async Task ApplyDateRange()
+    {
+        if (_dataGrid != null)
+        {
+            await _dataGrid.ReloadServerData();
+        }
+    }
+
+    private void ShowDetails(AppLogEntry entry)
+    {
+        _selectedEntry = entry;
+        _detailsVisible = true;
+    }
+
+    private static Color LevelColor(string? level) => level switch
+    {
+        "Error" or "Fatal" => Color.Error,
+        "Warning" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private async Task<GridData<AppLogEntry>> LoadServerData(GridState<AppLogEntry> state, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            IQueryable<AppLogEntry> query = context.AppLogs;
+
+            if (_dateRange?.Start is { } start)
+            {
+                var startUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(start.Date, DateTimeKind.Unspecified), AppLogEntry.CentralZone);
+                query = query.Where(l => l.TimeStamp >= startUtc);
+            }
+            if (_dateRange?.End is { } end)
+            {
+                var endUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(end.Date.AddDays(1), DateTimeKind.Unspecified), AppLogEntry.CentralZone);
+                query = query.Where(l => l.TimeStamp < endUtc);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_searchText))
+            {
+                var text = _searchText;
+                query = query.Where(l => l.Message != null && l.Message.Contains(text));
+            }
+
+            foreach (var filter in state.FilterDefinitions)
+            {
+                query = ApplyFilter(query, filter);
+            }
+
+            var totalItems = await query.CountAsync(cancellationToken);
+
+            var sort = state.SortDefinitions.FirstOrDefault();
+            query = ApplySort(query, sort);
+
+            var pagedItems = await query.Skip(state.Page * state.PageSize).Take(state.PageSize).ToListAsync(cancellationToken);
+
+            return new GridData<AppLogEntry> { Items = pagedItems, TotalItems = totalItems };
+        }
+        catch (OperationCanceledException)
+        {
+            // MudDataGrid cancels an in-flight ServerData call whenever a newer request
+            // supersedes it (e.g. the debounced search box firing again, or rapid
+            // date-range/filter changes) - letting this propagate would surface as an
+            // unhandled exception in the triggering EventCallback, which crashes the whole
+            // Blazor Server circuit (confirmed: reproduced this exact crash with rapid
+            // typing before adding this catch and the search box's DebounceInterval). The
+            // superseding call's own result renders right after, so this stale result is
+            // never actually shown.
+            return new GridData<AppLogEntry> { Items = Enumerable.Empty<AppLogEntry>(), TotalItems = 0 };
+        }
+    }
+
+    // Builds a real Expression<Func<AppLogEntry,bool>> (plain MemberExpression +
+    // MethodCallExpression composition, no Expression.Invoke) so EF Core translates the
+    // filter into SQL instead of pulling rows into memory first - the whole point of using
+    // MudDataGrid's server-data mode for a table that grows unbounded (every HTTP request
+    // is logged - see Program.cs's UseSerilogRequestLogging).
+    private static IQueryable<AppLogEntry> ApplyFilter(IQueryable<AppLogEntry> query, IFilterDefinition<AppLogEntry> filter)
+    {
+        Expression<Func<AppLogEntry, string?>>? selector = filter.Column?.PropertyName switch
+        {
+            nameof(AppLogEntry.Level) => l => l.Level,
+            nameof(AppLogEntry.Message) => l => l.Message,
+            nameof(AppLogEntry.EntityType) => l => l.EntityType,
+            nameof(AppLogEntry.EntityId) => l => l.EntityId,
+            nameof(AppLogEntry.UserId) => l => l.UserId,
+            _ => null
+        };
+        if (selector is null)
+        {
+            return query;
+        }
+
+        var parameter = selector.Parameters[0];
+        var member = selector.Body;
+        var value = filter.Value?.ToString() ?? "";
+        var valueConst = Expression.Constant(value, typeof(string));
+        var emptyConst = Expression.Constant("", typeof(string));
+        var nullConst = Expression.Constant(null, typeof(string));
+
+        Expression isNull = Expression.Equal(member, nullConst);
+        Expression notNull = Expression.NotEqual(member, nullConst);
+
+        Expression? body = filter.Operator switch
+        {
+            FilterOperator.String.Contains => Expression.AndAlso(notNull, Expression.Call(member, ContainsMethod, valueConst)),
+            FilterOperator.String.NotContains => Expression.OrElse(isNull, Expression.Not(Expression.Call(member, ContainsMethod, valueConst))),
+            FilterOperator.String.Equal => Expression.Equal(member, valueConst),
+            FilterOperator.String.NotEqual => Expression.NotEqual(member, valueConst),
+            FilterOperator.String.StartsWith => Expression.AndAlso(notNull, Expression.Call(member, StartsWithMethod, valueConst)),
+            FilterOperator.String.EndsWith => Expression.AndAlso(notNull, Expression.Call(member, EndsWithMethod, valueConst)),
+            FilterOperator.String.Empty => Expression.OrElse(isNull, Expression.Equal(member, emptyConst)),
+            FilterOperator.String.NotEmpty => Expression.AndAlso(notNull, Expression.NotEqual(member, emptyConst)),
+            _ => null
+        };
+        if (body is null)
+        {
+            return query;
+        }
+
+        var lambda = Expression.Lambda<Func<AppLogEntry, bool>>(body, parameter);
+        return query.Where(lambda);
+    }
+
+    private static readonly System.Reflection.MethodInfo ContainsMethod = typeof(string).GetMethod(nameof(string.Contains), new[] { typeof(string) })!;
+    private static readonly System.Reflection.MethodInfo StartsWithMethod = typeof(string).GetMethod(nameof(string.StartsWith), new[] { typeof(string) })!;
+    private static readonly System.Reflection.MethodInfo EndsWithMethod = typeof(string).GetMethod(nameof(string.EndsWith), new[] { typeof(string) })!;
+
+    // TimeStampCentral is a [NotMapped] computed property (not translatable to SQL), so
+    // sorting by it is redirected to the real TimeStamp column - a monotonic conversion of
+    // the same value, so the resulting order is identical either way.
+    private static IQueryable<AppLogEntry> ApplySort(IQueryable<AppLogEntry> query, SortDefinition<AppLogEntry>? sort)
+    {
+        if (sort is null)
+        {
+            return query.OrderByDescending(l => l.TimeStamp);
+        }
+
+        var propertyName = sort.SortBy == nameof(AppLogEntry.TimeStampCentral) ? nameof(AppLogEntry.TimeStamp) : sort.SortBy;
+        Expression<Func<AppLogEntry, object?>> keySelector = propertyName switch
+        {
+            nameof(AppLogEntry.TimeStamp) => l => l.TimeStamp,
+            nameof(AppLogEntry.Level) => l => l.Level,
+            nameof(AppLogEntry.Message) => l => l.Message,
+            nameof(AppLogEntry.EntityType) => l => l.EntityType,
+            nameof(AppLogEntry.EntityId) => l => l.EntityId,
+            nameof(AppLogEntry.UserId) => l => l.UserId,
+            _ => l => l.TimeStamp
+        };
+
+        return sort.Descending ? query.OrderByDescending(keySelector) : query.OrderBy(keySelector);
+    }
+}

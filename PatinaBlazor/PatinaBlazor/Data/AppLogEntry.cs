@@ -30,6 +30,8 @@ namespace PatinaBlazor.Data
         // (used on Linux) has resolved Windows ids cross-platform since .NET 6, confirmed
         // directly against this app's target framework rather than assumed - so this same id
         // works unchanged on both the Linux dev machine and the Windows production host.
-        private static readonly TimeZoneInfo CentralZone = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
+        // Public so callers (e.g. AdminLogs.razor's date-range filter, which is Central-facing
+        // but must query the underlying UTC column) can convert using this exact same zone.
+        public static readonly TimeZoneInfo CentralZone = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
     }
 }
