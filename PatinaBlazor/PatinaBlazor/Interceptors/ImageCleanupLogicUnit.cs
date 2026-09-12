@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PatinaBlazor.Data;
 using PatinaBlazor.Services;
 
@@ -21,12 +22,13 @@ namespace PatinaBlazor.Interceptors
         private List<ImageAttachment> _imagesToDelete = new();
 
         public ImageCleanupLogicUnit(
-            List<string> errors,
+            ILogger logger,
             DbContext currentContext,
+            string entityTypeName,
             IDbContextFactory<ApplicationDbContext> contextFactory,
             object?[] keyValues,
             IImageService imageService)
-            : base(errors, currentContext, contextFactory, keyValues)
+            : base(logger, currentContext, entityTypeName, contextFactory, keyValues)
         {
             _imageService = imageService;
         }
@@ -53,7 +55,7 @@ namespace PatinaBlazor.Interceptors
             {
                 if (!await _imageService.DeleteImageAsync(image))
                 {
-                    LogError($"Failed to delete image file '{image.FileName}' for a deleted {entity.GetType().Name}.");
+                    LogError($"Failed to delete image file '{image.FileName}'.");
                 }
             }
         }

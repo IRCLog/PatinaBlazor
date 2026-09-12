@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using PatinaBlazor.Data;
 
 namespace PatinaBlazor.Interceptors
@@ -21,10 +22,14 @@ namespace PatinaBlazor.Interceptors
     // field, since this interceptor is registered once (singleton) and shared across every
     // short-lived DbContext the app's IDbContextFactory creates - an instance field would
     // let concurrent SaveChanges calls from different contexts corrupt each other's state.
+    //
+    // Each unit logs through its own ILogger (category = the unit's own concrete type
+    // name), resolved per-invocation via ILoggerFactory rather than a shared error list -
+    // Serilog (see Program.cs) is the actual persistence for anything a unit logs, so this
+    // interceptor no longer aggregates or rolls up log output itself.
     public class EntityLogicUnitInterceptor : SaveChangesInterceptor
     {
         private readonly IServiceScopeFactory _scopeFactory;
-        private readonly ILogger<EntityLogicUnitInterceptor> _logger;
 
         private static readonly Lazy<List<Type>> DiscoveredUnitTypes = new(() =>
             typeof(EntityLogicUnit).Assembly.GetTypes()
@@ -53,7 +58,6 @@ namespace PatinaBlazor.Interceptors
         {
             public IServiceScope Scope { get; }
             public List<PendingUnit> Units { get; } = new();
-            public List<string> Errors { get; } = new();
 
             public PendingSaveState(IServiceScope scope) => Scope = scope;
 
@@ -62,10 +66,9 @@ namespace PatinaBlazor.Interceptors
 
         private static readonly ConditionalWeakTable<DbContext, PendingSaveState> PendingSaves = new();
 
-        public EntityLogicUnitInterceptor(IServiceScopeFactory scopeFactory, ILogger<EntityLogicUnitInterceptor> logger)
+        public EntityLogicUnitInterceptor(IServiceScopeFactory scopeFactory)
         {
             _scopeFactory = scopeFactory;
-            _logger = logger;
         }
 
         public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
@@ -80,6 +83,8 @@ namespace PatinaBlazor.Interceptors
 
                 try
                 {
+                    var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+
                     foreach (var entry in context.ChangeTracker.Entries().ToList())
                     {
                         var changeType = ToChangeType(entry.State);
@@ -100,15 +105,17 @@ namespace PatinaBlazor.Interceptors
                                 .Select(p => entry.Property(p.Name).CurrentValue)
                                 .ToArray();
 
+                            var logger = loggerFactory.CreateLogger(unitType.FullName ?? unitType.Name);
+
                             var unit = (EntityLogicUnit)ActivatorUtilities.CreateInstance(
-                                scope.ServiceProvider, unitType, state.Errors, context, keyValues);
+                                scope.ServiceProvider, unitType, logger, context, entry.Entity.GetType().Name, keyValues);
 
                             await unit.InvokeOnSavingAsync(entry.Entity, changeType.Value);
                             state.Units.Add(new PendingUnit(unit, entry.Entity, changeType.Value));
                         }
                     }
 
-                    if (state.Units.Count > 0 || state.Errors.Count > 0)
+                    if (state.Units.Count > 0)
                     {
                         PendingSaves.AddOrUpdate(context, state);
                     }
@@ -141,13 +148,6 @@ namespace PatinaBlazor.Interceptors
                     foreach (var pending in state.Units)
                     {
                         await pending.Unit.InvokeOnSavedAsync(pending.Entity, pending.ChangeType);
-                    }
-
-                    if (state.Errors.Count > 0)
-                    {
-                        // TODO: persist these to the database and surface them on the Admin
-                        // dashboard (tracked in CLAUDE.md) - logged only, for now.
-                        _logger.LogWarning("Entity logic unit errors during save: {Errors}", string.Join("; ", state.Errors));
                     }
                 }
                 finally

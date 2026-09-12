@@ -17,6 +17,11 @@ namespace PatinaBlazor.Data
         public DbSet<ImageAttachment> ImageAttachments { get; set; }
         public DbSet<Article> Articles { get; set; }
 
+        // Read-only: maps onto the "Logs" table Serilog's MSSqlServer sink creates and
+        // writes to directly (see Program.cs). Never written through EF - see the
+        // ExcludeFromMigrations() call in OnModelCreating below.
+        public DbSet<AppLogEntry> AppLogs => Set<AppLogEntry>();
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -281,6 +286,16 @@ namespace PatinaBlazor.Data
                       .WithMany()
                       .HasForeignKey(e => e.ModifiedByUserId)
                       .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Keyless, read-only mapping onto Serilog's "Logs" table (see Program.cs's
+            // UseSerilog config and AppLogEntry.cs) - ExcludeFromMigrations() tells EF this
+            // table exists but is not its to create/alter, since Serilog's AutoCreateSqlTable
+            // owns that job entirely. Never insert/update through this DbSet.
+            builder.Entity<AppLogEntry>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToTable("Logs", t => t.ExcludeFromMigrations());
             });
         }
     }

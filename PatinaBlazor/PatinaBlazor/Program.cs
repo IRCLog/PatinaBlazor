@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
@@ -11,9 +12,54 @@ using PatinaBlazor.Endpoints;
 using PatinaBlazor.Hubs;
 using PatinaBlazor.Interceptors;
 using PatinaBlazor.Services;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.MSSqlServer;
 using App = PatinaBlazor.Components.App;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Use SQL Server for all environments. Read up-front (rather than where this line lived
+// previously, further down) so both EF and Serilog's MSSqlServer sink share this exact
+// connection string - one place, no duplicated secret.
+var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
+
+// Serilog replaces the default logging provider entirely, so every existing ILogger<T>
+// call already in this codebase (ImageService, ArticleService, etc.), plus the
+// framework's own internal logging (unhandled-exception logging in
+// ExceptionHandlerMiddleware, Blazor Server's circuit-host exception logging) starts
+// flowing into the DB sink with zero other code changes. EntityType/EntityId are named
+// message-template holes (see Interceptors/EntityLogicUnit.cs's LogXxx helpers) - Serilog
+// captures those as structured properties automatically, and the matching AdditionalColumns
+// entries below promote them into real columns on the Logs table. columnOptions.TimeStamp's
+// ConvertToUtc keeps this table's storage consistent with every other timestamp column in
+// the app (all UTC) - display code converts to Central at read time instead (see
+// Data/AppLogEntry.cs's TimeStampCentral).
+//
+// The Logs table itself is entirely Serilog's to own (AutoCreateSqlTable = true) - it is
+// deliberately excluded from EF's migrations (see ApplicationDbContext.OnModelCreating's
+// ExcludeFromMigrations() call) so the two never fight over its schema.
+var logColumnOptions = new ColumnOptions();
+logColumnOptions.TimeStamp.ConvertToUtc = true;
+logColumnOptions.AdditionalColumns = new List<SqlColumn>
+{
+    new() { ColumnName = "EntityType", PropertyName = "EntityType", DataType = SqlDbType.NVarChar, DataLength = 256, AllowNull = true },
+    new() { ColumnName = "EntityId", PropertyName = "EntityId", DataType = SqlDbType.NVarChar, DataLength = 256, AllowNull = true },
+    new() { ColumnName = "UserId", PropertyName = "UserId", DataType = SqlDbType.NVarChar, DataLength = 450, AllowNull = true },
+};
+
+builder.Host.UseSerilog((context, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.MSSqlServer(
+            connectionString: sqlServerConnectionString,
+            sinkOptions: new MSSqlServerSinkOptions { TableName = "Logs", AutoCreateSqlTable = true },
+            columnOptions: logColumnOptions);
+});
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -42,9 +88,6 @@ builder.Services.AddAuthentication(options =>
         options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
     })
     .AddIdentityCookies();
-
-// Use SQL Server for all environments
-var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
 
 // ImageService has no per-request state (just IWebHostEnvironment/ILogger, both
 // singleton-safe) - registered as a singleton so logic units resolved through
@@ -163,6 +206,11 @@ else
     app.UseHsts();
 }
 
+// Logs every request (path, status code, timing) through the same Serilog pipeline as
+// everything else - placed early so it wraps the full pipeline, including error responses
+// from UseExceptionHandler above.
+app.UseSerilogRequestLogging();
+
 app.UseHttpsRedirection();
 
 // MapStaticAssets (introduced in .NET 9) is required for the framework's own build-time static
@@ -191,4 +239,12 @@ app.MapAdditionalIdentityEndpoints();
 app.MapIrcEventEndpoints();
 app.MapHub<IrcBotHub>("/hubs/ircbot");
 
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    // Flushes the MSSqlServer sink's batched writes on graceful shutdown.
+    Log.CloseAndFlush();
+}
