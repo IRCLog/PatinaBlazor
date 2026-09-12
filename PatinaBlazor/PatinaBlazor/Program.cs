@@ -9,6 +9,7 @@ using PatinaBlazor.Components.Account;
 using PatinaBlazor.Data;
 using PatinaBlazor.Endpoints;
 using PatinaBlazor.Hubs;
+using PatinaBlazor.Interceptors;
 using PatinaBlazor.Services;
 using App = PatinaBlazor.Components.App;
 
@@ -46,12 +47,11 @@ builder.Services.AddAuthentication(options =>
 var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
 
 // ImageService has no per-request state (just IWebHostEnvironment/ILogger, both
-// singleton-safe) - registered as a singleton so ImageCleanupSaveChangesInterceptor
-// (itself a singleton, shared by every DbContext instance the factory below creates) can
-// safely depend on it without hitting the "cannot consume scoped service from singleton"
-// DI validation error.
+// singleton-safe) - registered as a singleton so logic units resolved through
+// EntityLogicUnitInterceptor's per-save scope (see Interceptors/) can depend on it
+// without hitting the "cannot consume scoped service from singleton" DI validation error.
 builder.Services.AddSingleton<IImageService, ImageService>();
-builder.Services.AddSingleton<ImageCleanupSaveChangesInterceptor>();
+builder.Services.AddSingleton<EntityLogicUnitInterceptor>();
 
 // Blazor Server keeps one DI scope (and one scoped ApplicationDbContext) alive for a
 // circuit's entire lifetime, not per page - so a still-in-flight query from a page the
@@ -62,12 +62,13 @@ builder.Services.AddSingleton<ImageCleanupSaveChangesInterceptor>();
 // making IDbContextFactory<ApplicationDbContext> available for services (like
 // ArticleService) that create a short-lived, per-call context instead.
 //
-// ImageCleanupSaveChangesInterceptor is registered here so every entity implementing
-// ISupportImageAttachments gets its photo files cleaned up on delete uniformly,
-// regardless of which service/page triggers the delete - see that class for details.
+// EntityLogicUnitInterceptor is registered here so any EntityLogicUnit<T> (e.g.
+// ImageCleanupLogicUnit, which cleans up ISupportImageAttachments photo files on delete)
+// gets discovered and dispatched to automatically on every save, regardless of which
+// service/page triggers it - see Interceptors/EntityLogicUnitInterceptor.cs for details.
 builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, options) =>
     options.UseSqlServer(sqlServerConnectionString)
-           .AddInterceptors(serviceProvider.GetRequiredService<ImageCleanupSaveChangesInterceptor>()));
+           .AddInterceptors(serviceProvider.GetRequiredService<EntityLogicUnitInterceptor>()));
 builder.Services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
