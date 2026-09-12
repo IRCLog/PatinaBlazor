@@ -7,6 +7,7 @@
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
+@inject ILogger<ConfirmEmail> Logger
 
 <PageTitle>Confirm email</PageTitle>
 
@@ -39,12 +40,23 @@
         {
             HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
             statusMessage = $"Error loading user with ID {UserId}";
+            Logger.LogWarning("Email confirmation attempted for unknown user id {UserId}.", UserId);
         }
         else
         {
             var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
             var result = await UserManager.ConfirmEmailAsync(user, code);
             statusMessage = result.Succeeded ? "Thank you for confirming your email." : "Error confirming your email.";
+
+            if (result.Succeeded)
+            {
+                Logger.LogInformation("Email confirmed for {Email} ({UserId}).", user.Email, user.Id);
+            }
+            else
+            {
+                Logger.LogWarning("Email confirmation failed for {Email} ({UserId}): {Errors}",
+                    user.Email, user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
         }
     }
 }

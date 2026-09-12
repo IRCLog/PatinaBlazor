@@ -11,6 +11,7 @@
 @inject IEmailSender<ApplicationUser> EmailSender
 @inject IdentityUserAccessor UserAccessor
 @inject NavigationManager NavigationManager
+@inject ILogger<Email> Logger
 
 <PageTitle>Manage email</PageTitle>
 
@@ -95,6 +96,7 @@
             new Dictionary<string, object?> { ["userId"] = userId, ["email"] = Input.NewEmail, ["code"] = code });
 
         await EmailSender.SendConfirmationLinkAsync(user, Input.NewEmail, callbackUrl);
+        Logger.LogInformation("Email change requested for {UserId}: {OldEmail} -> {NewEmail}.", userId, email, Input.NewEmail);
 
         message = "Confirmation link to change email sent. Please check your email.";
     }
@@ -114,6 +116,7 @@
             new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
 
         await EmailSender.SendConfirmationLinkAsync(user, email, callbackUrl);
+        Logger.LogInformation("Confirmation email resent for {UserId} ({Email}).", userId, email);
 
         message = "Verification email sent. Please check your email.";
     }

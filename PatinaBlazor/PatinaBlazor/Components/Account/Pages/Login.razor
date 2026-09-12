@@ -88,7 +88,8 @@
         var result = await SignInManager.PasswordSignInAsync(Input!.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
         if (result.Succeeded)
         {
-            Logger.LogInformation("User logged in.");
+            var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
+            Logger.LogInformation("User {Email} ({UserId}) logged in.", Input.Email, user?.Id);
             RedirectManager.RedirectTo(ReturnUrl);
         }
         else if (result.RequiresTwoFactor)
@@ -99,11 +100,13 @@
         }
         else if (result.IsLockedOut)
         {
-            Logger.LogWarning("User account locked out.");
+            var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
+            Logger.LogWarning("User {Email} ({UserId}) account locked out.", Input.Email, user?.Id);
             RedirectManager.RedirectTo("Account/Lockout");
         }
         else
         {
+            Logger.LogWarning("Failed login attempt for {Email}.", Input.Email);
             errorMessage = "Error: Invalid login attempt.";
         }
     }

@@ -8,6 +8,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject IdentityRedirectManager RedirectManager
+@inject ILogger<ConfirmEmailChange> Logger
 
 <PageTitle>Confirm email change</PageTitle>
 
@@ -44,6 +45,7 @@
         if (user is null)
         {
             message = "Unable to find user with Id '{userId}'";
+            Logger.LogWarning("Email change confirmation attempted for unknown user id {UserId}.", UserId);
             return;
         }
 
@@ -52,6 +54,8 @@
         if (!result.Succeeded)
         {
             message = "Error changing email.";
+            Logger.LogWarning("Email change failed for {UserId} -> {NewEmail}: {Errors}",
+                UserId, Email, string.Join(", ", result.Errors.Select(e => e.Description)));
             return;
         }
 
@@ -61,10 +65,13 @@
         if (!setUserNameResult.Succeeded)
         {
             message = "Error changing user name.";
+            Logger.LogWarning("Username update failed for {UserId} after email change to {NewEmail}: {Errors}",
+                UserId, Email, string.Join(", ", setUserNameResult.Errors.Select(e => e.Description)));
             return;
         }
 
         await SignInManager.RefreshSignInAsync(user);
+        Logger.LogInformation("Email changed for {UserId} -> {NewEmail}.", UserId, Email);
         message = "Thank you for confirming your email change.";
     }
 }
