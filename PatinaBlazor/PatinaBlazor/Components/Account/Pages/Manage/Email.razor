@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IEmailSender<ApplicationUser> EmailSender
@@ -96,7 +97,7 @@
             new Dictionary<string, object?> { ["userId"] = userId, ["email"] = Input.NewEmail, ["code"] = code });
 
         await EmailSender.SendConfirmationLinkAsync(user, Input.NewEmail, callbackUrl);
-        Logger.LogInformation("Email change requested for {UserId}: {OldEmail} -> {NewEmail}.", userId, email, Input.NewEmail);
+        Logger.LogSecurityInformation("Email change requested for {UserId}: {OldEmail} -> {NewEmail}.", userId, email, Input.NewEmail);
 
         message = "Confirmation link to change email sent. Please check your email.";
     }
@@ -116,7 +117,7 @@
             new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code });
 
         await EmailSender.SendConfirmationLinkAsync(user, email, callbackUrl);
-        Logger.LogInformation("Confirmation email resent for {UserId} ({Email}).", userId, email);
+        Logger.LogSecurityInformation("Confirmation email resent for {UserId} ({Email}).", userId, email);
 
         message = "Verification email sent. Please check your email.";
     }

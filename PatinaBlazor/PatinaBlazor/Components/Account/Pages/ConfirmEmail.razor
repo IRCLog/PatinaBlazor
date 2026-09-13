@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
@@ -40,7 +41,7 @@
         {
             HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
             statusMessage = $"Error loading user with ID {UserId}";
-            Logger.LogWarning("Email confirmation attempted for unknown user id {UserId}.", UserId);
+            Logger.LogSecurityWarning("Email confirmation attempted for unknown user id {UserId}.", UserId);
         }
         else
         {
@@ -50,11 +51,11 @@
 
             if (result.Succeeded)
             {
-                Logger.LogInformation("Email confirmed for {Email} ({UserId}).", user.Email, user.Id);
+                Logger.LogSecurityInformation("Email confirmed for {Email} ({UserId}).", user.Email, user.Id);
             }
             else
             {
-                Logger.LogWarning("Email confirmation failed for {Email} ({UserId}): {Errors}",
+                Logger.LogSecurityWarning("Email confirmation failed for {Email} ({UserId}): {Errors}",
                     user.Email, user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
             }
         }

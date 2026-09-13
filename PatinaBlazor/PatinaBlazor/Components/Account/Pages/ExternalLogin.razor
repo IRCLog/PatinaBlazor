@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -111,7 +112,7 @@
 
         if (result.Succeeded)
         {
-            Logger.LogInformation(
+            Logger.LogSecurityInformation(
                 "{Name} logged in with {LoginProvider} provider.",
                 externalLoginInfo.Principal.Identity?.Name,
                 externalLoginInfo.LoginProvider);
@@ -143,7 +144,7 @@
             result = await UserManager.AddLoginAsync(user, externalLoginInfo);
             if (result.Succeeded)
             {
-                Logger.LogInformation("User created an account using {Name} provider.", externalLoginInfo.LoginProvider);
+                Logger.LogSecurityInformation("User created an account using {Name} provider.", externalLoginInfo.LoginProvider);
 
                 var userId = await UserManager.GetUserIdAsync(user);
                 var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);

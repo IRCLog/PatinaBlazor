@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
@@ -45,7 +46,7 @@
         if (user is null)
         {
             message = "Unable to find user with Id '{userId}'";
-            Logger.LogWarning("Email change confirmation attempted for unknown user id {UserId}.", UserId);
+            Logger.LogSecurityWarning("Email change confirmation attempted for unknown user id {UserId}.", UserId);
             return;
         }
 
@@ -54,7 +55,7 @@
         if (!result.Succeeded)
         {
             message = "Error changing email.";
-            Logger.LogWarning("Email change failed for {UserId} -> {NewEmail}: {Errors}",
+            Logger.LogSecurityWarning("Email change failed for {UserId} -> {NewEmail}: {Errors}",
                 UserId, Email, string.Join(", ", result.Errors.Select(e => e.Description)));
             return;
         }
@@ -65,13 +66,13 @@
         if (!setUserNameResult.Succeeded)
         {
             message = "Error changing user name.";
-            Logger.LogWarning("Username update failed for {UserId} after email change to {NewEmail}: {Errors}",
+            Logger.LogSecurityWarning("Username update failed for {UserId} after email change to {NewEmail}: {Errors}",
                 UserId, Email, string.Join(", ", setUserNameResult.Errors.Select(e => e.Description)));
             return;
         }
 
         await SignInManager.RefreshSignInAsync(user);
-        Logger.LogInformation("Email changed for {UserId} -> {NewEmail}.", UserId, Email);
+        Logger.LogSecurityInformation("Email changed for {UserId} -> {NewEmail}.", UserId, Email);
         message = "Thank you for confirming your email change.";
     }
 }

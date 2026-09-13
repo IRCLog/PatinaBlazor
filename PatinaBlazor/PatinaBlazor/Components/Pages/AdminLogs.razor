@@ -50,6 +50,7 @@
                     <MudChip T="string" Size="Size.Small" Color="@LevelColor(context.Item.Level)">@context.Item.Level</MudChip>
                 </CellTemplate>
             </PropertyColumn>
+            <PropertyColumn Property="x => x.EventCategory" Title="Category" />
             <PropertyColumn Property="x => x.Message" Title="Message">
                 <CellTemplate>
                     <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 500px; display: inline-block; vertical-align: middle;">
@@ -197,6 +198,7 @@
         Expression<Func<AppLogEntry, string?>>? selector = filter.Column?.PropertyName switch
         {
             nameof(AppLogEntry.Level) => l => l.Level,
+            nameof(AppLogEntry.EventCategory) => l => l.EventCategory,
             nameof(AppLogEntry.Message) => l => l.Message,
             nameof(AppLogEntry.EntityType) => l => l.EntityType,
             nameof(AppLogEntry.EntityId) => l => l.EntityId,
@@ -258,6 +260,7 @@
         {
             nameof(AppLogEntry.TimeStamp) => l => l.TimeStamp,
             nameof(AppLogEntry.Level) => l => l.Level,
+            nameof(AppLogEntry.EventCategory) => l => l.EventCategory,
             nameof(AppLogEntry.Message) => l => l.Message,
             nameof(AppLogEntry.EntityType) => l => l.EntityType,
             nameof(AppLogEntry.EntityId) => l => l.EntityId,

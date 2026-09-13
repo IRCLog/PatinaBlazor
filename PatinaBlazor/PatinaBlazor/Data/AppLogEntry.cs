@@ -21,6 +21,13 @@ namespace PatinaBlazor.Data
         public string? EntityType { get; set; }
         public string? EntityId { get; set; }
         public string? UserId { get; set; }
+
+        // "Security" for account events (logins, registrations, password resets, email
+        // confirmations - see Services/SecurityLoggerExtensions.cs) that should stay
+        // visible even though the app otherwise only logs Error and above. Null for
+        // everything else.
+        public string? EventCategory { get; set; }
+
         public string? Properties { get; set; }
 
         [NotMapped]

@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject ILogger<Login> Logger
@@ -89,7 +90,7 @@
         if (result.Succeeded)
         {
             var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
-            Logger.LogInformation("User {Email} ({UserId}) logged in.", Input.Email, user?.Id);
+            Logger.LogSecurityInformation("User {Email} ({UserId}) logged in.", Input.Email, user?.Id);
             RedirectManager.RedirectTo(ReturnUrl);
         }
         else if (result.RequiresTwoFactor)
@@ -101,12 +102,12 @@
         else if (result.IsLockedOut)
         {
             var user = await SignInManager.UserManager.FindByEmailAsync(Input.Email);
-            Logger.LogWarning("User {Email} ({UserId}) account locked out.", Input.Email, user?.Id);
+            Logger.LogSecurityWarning("User {Email} ({UserId}) account locked out.", Input.Email, user?.Id);
             RedirectManager.RedirectTo("Account/Lockout");
         }
         else
         {
-            Logger.LogWarning("Failed login attempt for {Email}.", Input.Email);
+            Logger.LogSecurityWarning("Failed login attempt for {Email}.", Input.Email);
             errorMessage = "Error: Invalid login attempt.";
         }
     }
