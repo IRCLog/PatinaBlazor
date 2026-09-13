@@ -13,7 +13,6 @@ using PatinaBlazor.Hubs;
 using PatinaBlazor.Interceptors;
 using PatinaBlazor.Services;
 using Serilog;
-using Serilog.Events;
 using Serilog.Sinks.MSSqlServer;
 using App = PatinaBlazor.Components.App;
 
@@ -51,8 +50,16 @@ logColumnOptions.AdditionalColumns = new List<SqlColumn>
 builder.Host.UseSerilog((context, loggerConfiguration) =>
 {
     loggerConfiguration
-        .MinimumLevel.Information()
-        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        // Error and above only, for now - Information/Warning turned out to be too
+        // granular in practice (e.g. every successful HTTP request, every routine
+        // LogicUnit/Identity event) once Stages 1-2 were verified end-to-end. No code
+        // changes needed to raise this again later - every LogInformation/LogWarning call
+        // already in the app (EntityLogicUnit, the Identity pages) keeps working exactly as
+        // written, just filtered out here until this is lowered back down.
+        // UseSerilogRequestLogging()'s own default GetLevel already elevates failed
+        // requests (5xx or an exception) to Error, so genuine request failures still land
+        // in Logs even at this level - only successful/benign request noise is dropped.
+        .MinimumLevel.Error()
         .Enrich.FromLogContext()
         .WriteTo.Console()
         .WriteTo.MSSqlServer(
