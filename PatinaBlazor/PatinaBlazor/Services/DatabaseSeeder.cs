@@ -51,13 +51,13 @@ namespace PatinaBlazor.Services
                 var customerUserIds = await EnsureDummyStorageCustomersAsync();
                 await _storageService.SeedDummyDataAsync(adminUser.Id, customerUserIds);
 
-                // Never in Production - this account's credentials are public (checked into
+                // Never in Production - these accounts' credentials are public (checked into
                 // source, see DevTestAccounts.cs), used by interactive dev-time testing and
                 // by PatinaBlazor.Tests' Testcontainers fixture (which calls this same
                 // SeedAsync method against its own throwaway DB after migrating it).
                 if (!_environment.IsProduction())
                 {
-                    await EnsureTestAutomationAccountAsync();
+                    await EnsureDevTestAccountsAsync();
                 }
             }
             catch (Exception ex)
@@ -66,32 +66,53 @@ namespace PatinaBlazor.Services
             }
         }
 
-        private async Task EnsureTestAutomationAccountAsync()
+        private async Task EnsureDevTestAccountsAsync()
         {
-            var existing = await _userManager.FindByEmailAsync(DevTestAccounts.AutomationEmail);
+            // One per role, plus one with no role at all - deliberately separate from the
+            // real seeded admin (adamsilzell@gmail.com) and from EnsureDummyStorageCustomersAsync's
+            // accounts, so admin/role-gated paths can be exercised in tests or interactively
+            // without ever touching real credentials.
+            await EnsureDevTestAccountAsync(DevTestAccounts.AutomationEmail, role: null);
+            await EnsureDevTestAccountAsync(DevTestAccounts.AdminEmail, AdminRoleName);
+            await EnsureDevTestAccountAsync(DevTestAccounts.StorageAdminEmail, StorageAdminRoleName);
+            await EnsureDevTestAccountAsync(DevTestAccounts.StorageCustomerEmail, StorageService.StorageCustomerRoleName);
+            await EnsureDevTestAccountAsync(DevTestAccounts.ArticlePublisherEmail, ArticlePublisherRoleName);
+        }
+
+        private async Task EnsureDevTestAccountAsync(string email, string? role)
+        {
+            var existing = await _userManager.FindByEmailAsync(email);
             if (existing != null)
             {
+                if (role != null && !await _userManager.IsInRoleAsync(existing, role))
+                {
+                    await _userManager.AddToRoleAsync(existing, role);
+                }
                 return;
             }
 
             var user = new ApplicationUser
             {
-                UserName = DevTestAccounts.AutomationEmail,
-                Email = DevTestAccounts.AutomationEmail,
-                DisplayName = "Test Automation",
+                UserName = email,
+                Email = email,
+                DisplayName = role == null ? "Dev Test Account" : $"Dev Test ({role})",
                 EmailConfirmed = true,
                 CreatedDate = DateTime.UtcNow
             };
 
-            var result = await _userManager.CreateAsync(user, DevTestAccounts.AutomationPassword);
+            var result = await _userManager.CreateAsync(user, DevTestAccounts.Password);
             if (result.Succeeded)
             {
+                if (role != null)
+                {
+                    await _userManager.AddToRoleAsync(user, role);
+                }
                 await _collectionService.EnsureAllCollectablesCollectionExistsAsync(user.Id);
-                _logger.LogInformation("Created test automation account {Email}", DevTestAccounts.AutomationEmail);
+                _logger.LogInformation("Created dev/test account {Email} (role: {Role})", email, role ?? "none");
             }
             else
             {
-                _logger.LogError("Failed to create test automation account:");
+                _logger.LogError("Failed to create dev/test account {Email}:", email);
                 foreach (var error in result.Errors)
                 {
                     _logger.LogError("- {ErrorDescription}", error.Description);
