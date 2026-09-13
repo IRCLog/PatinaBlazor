@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Hosting;
 using PatinaBlazor.Data;
 
 namespace PatinaBlazor.Services
@@ -13,6 +14,7 @@ namespace PatinaBlazor.Services
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ICollectionService _collectionService;
         private readonly IStorageService _storageService;
+        private readonly IHostEnvironment _environment;
         private readonly ILogger<DatabaseSeeder> _logger;
 
         public DatabaseSeeder(
@@ -20,12 +22,14 @@ namespace PatinaBlazor.Services
             RoleManager<IdentityRole> roleManager,
             ICollectionService collectionService,
             IStorageService storageService,
+            IHostEnvironment environment,
             ILogger<DatabaseSeeder> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _collectionService = collectionService;
             _storageService = storageService;
+            _environment = environment;
             _logger = logger;
         }
 
@@ -46,10 +50,52 @@ namespace PatinaBlazor.Services
 
                 var customerUserIds = await EnsureDummyStorageCustomersAsync();
                 await _storageService.SeedDummyDataAsync(adminUser.Id, customerUserIds);
+
+                // Never in Production - this account's credentials are public (checked into
+                // source, see DevTestAccounts.cs), used by interactive dev-time testing and
+                // by PatinaBlazor.Tests' Testcontainers fixture (which calls this same
+                // SeedAsync method against its own throwaway DB after migrating it).
+                if (!_environment.IsProduction())
+                {
+                    await EnsureTestAutomationAccountAsync();
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An error occurred while seeding the database");
+            }
+        }
+
+        private async Task EnsureTestAutomationAccountAsync()
+        {
+            var existing = await _userManager.FindByEmailAsync(DevTestAccounts.AutomationEmail);
+            if (existing != null)
+            {
+                return;
+            }
+
+            var user = new ApplicationUser
+            {
+                UserName = DevTestAccounts.AutomationEmail,
+                Email = DevTestAccounts.AutomationEmail,
+                DisplayName = "Test Automation",
+                EmailConfirmed = true,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            var result = await _userManager.CreateAsync(user, DevTestAccounts.AutomationPassword);
+            if (result.Succeeded)
+            {
+                await _collectionService.EnsureAllCollectablesCollectionExistsAsync(user.Id);
+                _logger.LogInformation("Created test automation account {Email}", DevTestAccounts.AutomationEmail);
+            }
+            else
+            {
+                _logger.LogError("Failed to create test automation account:");
+                foreach (var error in result.Errors)
+                {
+                    _logger.LogError("- {ErrorDescription}", error.Description);
+                }
             }
         }
 
