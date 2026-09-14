@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build solution
+        run: dotnet build PatinaBlazor.sln
+
+  tier1-tests:
+    name: Tier 1 - Service/EF Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      # Docker is preinstalled on GitHub-hosted ubuntu runners - Testcontainers.MsSql (and
+      # the raw SQL Server / Mailpit images it and Tier 2 pull) work out of the box, same as
+      # on the local dev machine these tests were originally written against.
+      - name: Run Tier 1 tests
+        run: dotnet test PatinaBlazor.Tests/PatinaBlazor.Tests.csproj --logger "console;verbosity=normal"
+
+  tier2-e2e-tests:
+    name: Tier 2 - Browser E2E Tests
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      # Debug configuration deliberately, not Release - WebAppFixture.LocateApp() hardcodes
+      # "bin/Debug/net10.0" when it launches the built app as a subprocess, so a Release build
+      # here would leave it unable to find the DLL at all. Matches how these tests have always
+      # been built/run locally in this project.
+      #
+      # Build first so Microsoft.Playwright's own playwright.ps1 script exists in the test
+      # project's output directory - the officially documented way to install Chromium for
+      # .NET Playwright in CI. WebAppFixture.InitializeAsync also calls the browser-only
+      # install itself at runtime (needed for local dev machines that already have the OS
+      # libs), but a fresh CI runner is missing the underlying OS dependencies (fonts, X11
+      # libs, etc.) that a real desktop already has - --with-deps installs those too.
+      - name: Build E2E test project
+        run: dotnet build PatinaBlazor.E2ETests/PatinaBlazor.E2ETests.csproj
+      - name: Install Playwright Chromium and OS dependencies
+        run: pwsh PatinaBlazor.E2ETests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Run Tier 2 E2E tests
+        run: dotnet test PatinaBlazor.E2ETests/PatinaBlazor.E2ETests.csproj --no-build --logger "console;verbosity=normal"
