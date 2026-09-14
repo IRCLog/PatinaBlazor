@@ -347,7 +347,7 @@ Parameters:
   - **Proved this test specifically catches the exact historical bug it exists for**: temporarily reintroduced the real double-encoding regression this app shipped once in production (wrapped the callback URL in `HtmlEncoder.Default.Encode(...)` again before `SendConfirmationLinkAsync`, exactly matching the original bug), rebuilt, and confirmed the test failed by timing out waiting for the confirmation text - reproducing the *exact* real-world symptom ("page loads fine, no error, nothing confirmed") documented in this file's original incident entry. Reverted and rebuilt; full suite green again.
   - Full suite: 6/6 passing; Tier 1's 11/11 reconfirmed unaffected. Confirmed via `ps aux`/`docker ps -a` (waited out Ryuk's idle timeout) that the app subprocess and both containers are fully gone after a run.
   - **Not yet done**: a symmetrical password-reset E2E test (same `MailpitClient`, extracting a `"ResetPassword"` link instead) - the infrastructure is in place, just not yet exercised for that specific flow. CI integration remains unstarted for both tiers.
-  - Committed locally; not yet pushed - confirm with the user before pushing.
+  - Pushed to production (`e61bc73`).
 
 ### Next Steps / In Progress
 - **A symmetrical password-reset E2E test** (see the Mailpit-in-`WebAppFixture` entry above) - `MailpitClient` supports this already, just needs a test extracting a `"ResetPassword"` link instead of `"ConfirmEmail"`. CI integration for both `PatinaBlazor.Tests` and `PatinaBlazor.E2ETests` also remains unstarted.
