@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Net.Sockets;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 using Microsoft.Playwright;
 using Testcontainers.MsSql;
 using Xunit;
@@ -21,14 +23,33 @@ namespace PatinaBlazor.E2ETests
     // it for them). Polling the app's root URL until it responds is sufficient to know
     // migrations/seeding have already completed, since Program.cs's startup block runs
     // before app.Run() ever lets Kestrel accept a request.
+    //
+    // Also starts a throwaway Mailpit container (a fake SMTP server) so flows requiring a
+    // real email round-trip - registration's confirmation link, password reset - can be
+    // tested end to end: the launched app is configured to send mail to it via environment
+    // variable overrides, and MailpitClient (see that file) fetches captured messages back
+    // out through Mailpit's REST API to extract the link a real user would click.
     public class WebAppFixture : IAsyncLifetime
     {
         private MsSqlContainer? _dbContainer;
+        private IContainer? _mailpitContainer;
         private Process? _appProcess;
         private IPlaywright? _playwright;
         private IBrowser? _browser;
 
         public string BaseUrl { get; private set; } = "";
+
+        // The DB connection string is exposed so tests can make direct-DB assertions
+        // (e.g. "did EmailConfirmed actually flip to true") alongside the browser-visible
+        // outcome, the same level of rigor Tier 1 applies - not just trusting rendered text.
+        public string DbConnectionString => _dbContainer!.GetConnectionString();
+
+        // Mailpit's HTTP API base URL - used by MailpitClient to fetch captured emails and
+        // extract confirmation/reset links, for flows Playwright can't complete on its own
+        // (it can submit the form that triggers an email, but it can't "receive" one).
+        public string MailpitApiBaseUrl { get; private set; } = "";
+
+        public MailpitClient Mailpit => new(MailpitApiBaseUrl);
 
         public async Task<IBrowserContext> NewContextAsync() => await _browser!.NewContextAsync();
 
@@ -37,7 +58,22 @@ namespace PatinaBlazor.E2ETests
             _dbContainer = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
                 .WithPassword("Test-P@ssw0rd-2026!")
                 .Build();
-            await _dbContainer.StartAsync();
+
+            // A throwaway Mailpit per test run, matching the SQL container's disposable
+            // philosophy - avoids a "find the latest email to X" query ever being confused by
+            // leftover messages from an earlier run against the shared persistent dev Mailpit.
+            _mailpitContainer = new ContainerBuilder("axllent/mailpit:v1.31.1")
+                .WithPortBinding(1025, true)
+                .WithPortBinding(8025, true)
+                .WithWaitStrategy(Wait.ForUnixContainer()
+                    .UntilHttpRequestIsSucceeded(r => r.ForPort(8025).ForPath("/api/v1/messages")))
+                .Build();
+
+            await Task.WhenAll(_dbContainer.StartAsync(), _mailpitContainer.StartAsync());
+
+            var mailpitSmtpPort = _mailpitContainer.GetMappedPublicPort(1025);
+            var mailpitHttpPort = _mailpitContainer.GetMappedPublicPort(8025);
+            MailpitApiBaseUrl = $"http://127.0.0.1:{mailpitHttpPort}";
 
             var port = GetFreeTcpPort();
             BaseUrl = $"http://127.0.0.1:{port}";
@@ -57,7 +93,17 @@ namespace PatinaBlazor.E2ETests
                     {
                         ["ASPNETCORE_ENVIRONMENT"] = "Development",
                         ["ASPNETCORE_URLS"] = BaseUrl,
-                        ["ConnectionStrings__SqlServerConnection"] = _dbContainer.GetConnectionString()
+                        ["ConnectionStrings__SqlServerConnection"] = _dbContainer.GetConnectionString(),
+                        // Mailpit needs no real SMTP credentials - SmtpEmailSender still
+                        // requires non-empty values, so placeholders are used, same as this
+                        // app's own documented local-dev Mailpit setup.
+                        ["EmailSettings__SmtpHost"] = "127.0.0.1",
+                        ["EmailSettings__SmtpPort"] = mailpitSmtpPort.ToString(),
+                        ["EmailSettings__EnableSsl"] = "false",
+                        ["EmailSettings__SmtpUser"] = "e2etest",
+                        ["EmailSettings__SmtpPassword"] = "e2etest",
+                        ["EmailSettings__FromEmail"] = "noreply@e2etest.local",
+                        ["EmailSettings__FromName"] = "PatinaBlazor E2E Test"
                     }
                 }
             };
@@ -93,6 +139,10 @@ namespace PatinaBlazor.E2ETests
             if (_dbContainer != null)
             {
                 await _dbContainer.DisposeAsync();
+            }
+            if (_mailpitContainer != null)
+            {
+                await _mailpitContainer.DisposeAsync();
             }
         }
 
