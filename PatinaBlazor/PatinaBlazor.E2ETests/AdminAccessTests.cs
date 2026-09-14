@@ -80,7 +80,30 @@ namespace PatinaBlazor.E2ETests
             await page.LoginAsync(_fixture.BaseUrl, DevTestAccounts.AdminEmail, DevTestAccounts.Password);
             await page.GotoAsync($"{_fixture.BaseUrl}/admin");
 
-            await page.GetByText("Total Users").WaitForAsync(new() { Timeout = 10_000 });
+            // Real root cause, confirmed by direct SQL polling during a failing run (not
+            // guessed): the login's Security log row is written asynchronously - Serilog's
+            // MSSqlServer sink batches writes (BatchPeriod defaults to 5s, though in practice
+            // this row was already committed within ~1s in the observed failure) - and
+            // Admin.razor's OnInitializedAsync queries Recent Activity exactly once, when the
+            // page first loads, with no live refresh afterward. If the browser's navigation to
+            // /admin (immediately after the login redirect) reaches the server before that
+            // async write has landed, the page renders a snapshot that will never include the
+            // row, no matter how long the test then waits on that same static render - the
+            // page itself never re-queries. A short delay wasn't enough on its own; a reload
+            // forces a genuinely fresh query, taken after the write has had time to land.
+            await Task.Delay(2000);
+            await page.ReloadAsync();
+
+            // .First - other tests logging in earlier in the suite mean more than one
+            // "logged in" row can legitimately exist by now (confirmed via the real error this
+            // produced without it: "strict mode violation: ... resolved to 5 elements" -
+            // Playwright's Locator actions require exactly one match unless narrowed). Recent
+            // Activity orders newest-first, and the reload above guarantees a fresh query
+            // taken after this test's own just-now login, so the first match is always this
+            // test's own row.
+            var loginActivityRow = page.Locator("table tr", new() { HasText = "logged in" }).First;
+            await loginActivityRow.WaitForAsync(new() { Timeout = 10_000 });
+            await Task.Delay(500);
             var bodyText = await page.InnerTextAsync("body");
 
             // The scaffold's old hardcoded values must never come back.
@@ -102,6 +125,20 @@ namespace PatinaBlazor.E2ETests
             // style - real rendered text here is "CLEAR CACHE", not "Clear Cache".
             Assert.DoesNotContain("Clear Cache", bodyText, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("System Maintenance", bodyText, StringComparison.OrdinalIgnoreCase);
+
+            // Logging in just now produced a real "logged in" Security event for this exact
+            // account, so its Recent Activity row's User column must show a resolved display
+            // name, not the raw AspNetUsers.Id GUID - scoped to that specific row/cell (Time,
+            // Level, User, Message in column order), not a body-wide substring search. Doesn't
+            // pin the exact string (DevTestAccounts.AdminEmail's DisplayName, "Dev Test
+            // (Admin)", is DatabaseSeeder's wording to own, not this test's) - the resolution
+            // logic's exact fallback order is already precisely covered at the service layer
+            // by AdminDashboardServiceTests; this only needs to prove a real resolved value
+            // reaches the rendered page instead of the raw id.
+            var userCellText = await loginActivityRow.Locator("td").Nth(2).InnerTextAsync();
+            Assert.False(string.IsNullOrWhiteSpace(userCellText));
+            Assert.NotEqual("—", userCellText);
+            Assert.DoesNotMatch(@"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", userCellText);
         }
 
         [Fact]

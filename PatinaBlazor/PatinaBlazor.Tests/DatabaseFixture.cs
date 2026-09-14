@@ -111,12 +111,12 @@ namespace PatinaBlazor.Tests
         // AppLogEntry is mapped HasNoKey() and EF does not support inserting/tracking a keyless
         // entity type through SaveChanges (matching how the real app never writes this table
         // through EF either).
-        public async Task InsertLogEntryAsync(string level, string message, DateTime timeStampUtc, string? eventCategory = null)
+        public async Task InsertLogEntryAsync(string level, string message, DateTime timeStampUtc, string? eventCategory = null, string? userId = null)
         {
             await using var context = await DbContextFactory.CreateDbContextAsync();
             await context.Database.ExecuteSqlInterpolatedAsync($"""
-                INSERT INTO [Logs] ([Message], [Level], [TimeStamp], [EventCategory])
-                VALUES ({message}, {level}, {timeStampUtc}, {eventCategory})
+                INSERT INTO [Logs] ([Message], [Level], [TimeStamp], [EventCategory], [UserId])
+                VALUES ({message}, {level}, {timeStampUtc}, {eventCategory}, {userId})
                 """);
         }
 

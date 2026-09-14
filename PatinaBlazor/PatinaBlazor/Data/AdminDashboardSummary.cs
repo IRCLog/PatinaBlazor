@@ -18,5 +18,9 @@ namespace PatinaBlazor.Data
         public StorageDashboardSummary Storage { get; set; } = new();
 
         public List<AppLogEntry> RecentActivity { get; set; } = new();
+
+        // Keyed by AppLogEntry.UserId, for rows in RecentActivity that have one - resolved
+        // once via a single batched lookup rather than per-row, see AdminDashboardService.
+        public Dictionary<string, string> RecentActivityUserDisplayNames { get; set; } = new();
     }
 }

@@ -90,6 +90,7 @@
                             <HeaderContent>
                                 <MudTh>Time</MudTh>
                                 <MudTh>Level</MudTh>
+                                <MudTh>User</MudTh>
                                 <MudTh>Message</MudTh>
                             </HeaderContent>
                             <RowTemplate>
@@ -97,7 +98,8 @@
                                 <MudTd DataLabel="Level">
                                     <MudChip T="string" Color="@LevelColor(context.Level)" Size="Size.Small">@(context.EventCategory ?? context.Level)</MudChip>
                                 </MudTd>
-                                <MudTd DataLabel="Message" Style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@context.Message</MudTd>
+                                <MudTd DataLabel="User" Style="max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@GetUserDisplay(context.UserId)</MudTd>
+                                <MudTd DataLabel="Message" Style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@context.Message</MudTd>
                             </RowTemplate>
                         </MudTable>
                         <div class="pa-2">
@@ -124,4 +126,7 @@
         "Warning" => Color.Warning,
         _ => Color.Default
     };
+
+    private string GetUserDisplay(string? userId) =>
+        userId != null && _summary!.RecentActivityUserDisplayNames.TryGetValue(userId, out var name) ? name : "—";
 }

@@ -156,5 +156,57 @@ namespace PatinaBlazor.Tests
                 new[] { "recent-activity-newest", "recent-activity-middle", "recent-activity-oldest" },
                 ourRows.Select(e => e.Message));
         }
+
+        [Fact]
+        public async Task GetSummaryAsync_ResolvesRecentActivityUserIdsToDisplayNames()
+        {
+            using var scope = _fixture.CreateScope();
+            var dashboardService = scope.ServiceProvider.GetRequiredService<IAdminDashboardService>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+            var asOf = new DateTime(2026, 8, 1, 12, 0, 0, DateTimeKind.Utc);
+
+            // A user with a DisplayName set - must resolve to that, not the email/username.
+            var namedUserEmail = $"dashboardnamed_{Guid.NewGuid():N}@patinablazor.local";
+            var namedUser = new ApplicationUser
+            {
+                UserName = namedUserEmail,
+                Email = namedUserEmail,
+                DisplayName = "Dashboard Test Display Name",
+                EmailConfirmed = true,
+                CreatedDate = DateTime.UtcNow
+            };
+            Assert.True((await userManager.CreateAsync(namedUser, "ThrowawayTest123!")).Succeeded);
+
+            // A user with no DisplayName set - must fall back to UserName/Email.
+            var unnamedUserEmail = $"dashboardunnamed_{Guid.NewGuid():N}@patinablazor.local";
+            var unnamedUser = new ApplicationUser
+            {
+                UserName = unnamedUserEmail,
+                Email = unnamedUserEmail,
+                EmailConfirmed = true,
+                CreatedDate = DateTime.UtcNow
+            };
+            Assert.True((await userManager.CreateAsync(unnamedUser, "ThrowawayTest123!")).Succeeded);
+
+            await _fixture.InsertLogEntryAsync("Warning", "resolve-test-named-user", asOf.AddMinutes(-3),
+                eventCategory: "Security", userId: namedUser.Id);
+            await _fixture.InsertLogEntryAsync("Warning", "resolve-test-unnamed-user", asOf.AddMinutes(-2),
+                eventCategory: "Security", userId: unnamedUser.Id);
+            // A UserId that doesn't correspond to any real user (e.g. the account was since
+            // deleted) - must not throw, and must simply be absent from the resolved
+            // dictionary so GetUserDisplay's caller-side fallback ("—") kicks in.
+            await _fixture.InsertLogEntryAsync("Warning", "resolve-test-unknown-user", asOf.AddMinutes(-1),
+                eventCategory: "Security", userId: Guid.NewGuid().ToString());
+            // No UserId at all (e.g. an anonymous failed-login attempt) - must not appear in
+            // the dictionary either, and must not cause the batch lookup itself to fail.
+            await _fixture.InsertLogEntryAsync("Warning", "resolve-test-no-user", asOf, eventCategory: "Security");
+
+            var summary = await dashboardService.GetSummaryAsync(asOf, recentActivityCount: 4);
+
+            Assert.Equal("Dashboard Test Display Name", summary.RecentActivityUserDisplayNames[namedUser.Id]);
+            Assert.Equal(unnamedUserEmail, summary.RecentActivityUserDisplayNames[unnamedUser.Id]);
+            Assert.Equal(2, summary.RecentActivityUserDisplayNames.Count);
+        }
     }
 }
