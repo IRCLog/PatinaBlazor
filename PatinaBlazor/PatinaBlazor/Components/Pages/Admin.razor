@@ -1,19 +1,17 @@
 @page "/admin"
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
 @using PatinaBlazor.Services
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
-@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
-@inject IStorageService StorageService
+@inject IAdminDashboardService AdminDashboardService
 
 <PageTitle>Admin</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
     <MudText Typo="Typo.h4" Class="mb-6">Admin Panel</MudText>
 
-    @if (!_loaded)
+    @if (_summary == null)
     {
         <div class="text-center">
             <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
@@ -26,39 +24,39 @@
             <MudItem xs="12" sm="6" md="4">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Total Users</MudText>
-                    <MudText Typo="Typo.h4">@_userCount</MudText>
+                    <MudText Typo="Typo.h4">@_summary.UserCount</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Collectables</MudText>
-                    <MudText Typo="Typo.h4">@_collectableCount</MudText>
+                    <MudText Typo="Typo.h4">@_summary.CollectableCount</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Published Articles</MudText>
-                    <MudText Typo="Typo.h4">@_publishedArticleCount</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_totalArticleCount total</MudText>
+                    <MudText Typo="Typo.h4">@_summary.PublishedArticleCount</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_summary.TotalArticleCount total</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Storage Occupancy</MudText>
-                    <MudText Typo="Typo.h4">@_storageSummary!.OccupancyPercent.ToString("0.#")%</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_storageSummary!.OccupiedUnits of @_storageSummary.TotalUnits units</MudText>
+                    <MudText Typo="Typo.h4">@_summary.Storage.OccupancyPercent.ToString("0.#")%</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_summary.Storage.OccupiedUnits of @_summary.Storage.TotalUnits units</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Storage MRR</MudText>
-                    <MudText Typo="Typo.h4">@_storageSummary!.CurrentMrr.ToString("C0")</MudText>
+                    <MudText Typo="Typo.h4">@_summary.Storage.CurrentMrr.ToString("C0")</MudText>
                 </MudPaper>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudPaper Elevation="2" Class="pa-4">
                     <MudText Typo="Typo.body2" Color="Color.Secondary">Errors (Last 24h)</MudText>
-                    <MudText Typo="Typo.h4" Color="@(_errorCount24h > 0 ? Color.Error : Color.Default)">@_errorCount24h</MudText>
+                    <MudText Typo="Typo.h4" Color="@(_summary.ErrorCount24h > 0 ? Color.Error : Color.Default)">@_summary.ErrorCount24h</MudText>
                 </MudPaper>
             </MudItem>
         </MudGrid>
@@ -82,13 +80,13 @@
                     <MudToolBar Dense="true" Class="mud-theme-primary">
                         <MudText Typo="Typo.h6">Recent Activity</MudText>
                     </MudToolBar>
-                    @if (_recentActivity.Count == 0)
+                    @if (_summary.RecentActivity.Count == 0)
                     {
                         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No errors or security events recorded yet.</MudText>
                     }
                     else
                     {
-                        <MudTable Items="_recentActivity" Hover="true" Dense="true" Class="pa-2">
+                        <MudTable Items="_summary.RecentActivity" Hover="true" Dense="true" Class="pa-2">
                             <HeaderContent>
                                 <MudTh>Time</MudTh>
                                 <MudTh>Level</MudTh>
@@ -113,35 +111,11 @@
 </MudContainer>
 
 @code {
-    private bool _loaded;
-    private int _userCount;
-    private int _collectableCount;
-    private int _publishedArticleCount;
-    private int _totalArticleCount;
-    private int _errorCount24h;
-    private StorageDashboardSummary? _storageSummary;
-    private List<AppLogEntry> _recentActivity = new();
+    private AdminDashboardSummary? _summary;
 
     protected override async Task OnInitializedAsync()
     {
-        await using var context = await DbContextFactory.CreateDbContextAsync();
-
-        _userCount = await context.Users.CountAsync();
-        _collectableCount = await context.Collectables.CountAsync();
-        _totalArticleCount = await context.Articles.CountAsync();
-        _publishedArticleCount = await context.Articles.CountAsync(a => a.Status == ArticleStatus.Published);
-
-        var errorSince = DateTime.UtcNow.AddHours(-24);
-        _errorCount24h = await context.AppLogs.CountAsync(l => l.Level == "Error" && l.TimeStamp >= errorSince);
-
-        _recentActivity = await context.AppLogs
-            .OrderByDescending(l => l.TimeStamp)
-            .Take(8)
-            .ToListAsync();
-
-        _storageSummary = await StorageService.GetDashboardSummaryAsync();
-
-        _loaded = true;
+        _summary = await AdminDashboardService.GetSummaryAsync();
     }
 
     private static Color LevelColor(string? level) => level switch

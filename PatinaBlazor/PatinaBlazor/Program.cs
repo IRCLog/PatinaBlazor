@@ -153,6 +153,7 @@ builder.Services.AddScoped<ICollectableService, CollectableService>();
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddSingleton<IrcChatNotifier>();
 builder.Services.AddSingleton<IrcBotService>();
 builder.Services.AddScoped<IIrcEventService, IrcEventService>();

@@ -60,6 +60,7 @@ namespace PatinaBlazor.Tests
             services.AddScoped<ICollectionService, CollectionService>();
             services.AddScoped<IStorageService, StorageService>();
             services.AddScoped<IArticleService, ArticleService>();
+            services.AddScoped<IAdminDashboardService, AdminDashboardService>();
             services.AddScoped<DatabaseSeeder>();
             services.AddIdentityCore<ApplicationUser>(options =>
                 {
@@ -75,11 +76,48 @@ namespace PatinaBlazor.Tests
             await using (var context = await DbContextFactory.CreateDbContextAsync())
             {
                 await context.Database.MigrateAsync();
+
+                // The real app never creates this table via EF - Serilog's MSSqlServer sink
+                // creates it itself at startup (AutoCreateSqlTable = true, see Program.cs) and
+                // writes to it directly over ADO.NET, bypassing EF's change tracker entirely.
+                // This test harness doesn't run that Serilog pipeline, so it creates the same
+                // table by hand here - schema confirmed column-for-column against the real
+                // table Serilog created in the actual dev DB (INFORMATION_SCHEMA.COLUMNS),
+                // not guessed - so AdminDashboardServiceTests can insert real-shaped rows via
+                // InsertLogEntryAsync below.
+                await context.Database.ExecuteSqlRawAsync("""
+                    CREATE TABLE [Logs] (
+                        [Id] int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [Message] nvarchar(max) NULL,
+                        [MessageTemplate] nvarchar(max) NULL,
+                        [Level] nvarchar(16) NULL,
+                        [TimeStamp] datetime NULL,
+                        [Exception] nvarchar(max) NULL,
+                        [Properties] nvarchar(max) NULL,
+                        [EntityType] nvarchar(256) NULL,
+                        [EntityId] nvarchar(256) NULL,
+                        [UserId] nvarchar(450) NULL,
+                        [EventCategory] nvarchar(100) NULL
+                    )
+                    """);
             }
 
             using var scope = _serviceProvider.CreateScope();
             var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
             await seeder.SeedAsync();
+        }
+
+        // Inserts a row shaped like a real Serilog MSSqlServer sink write - via raw SQL, since
+        // AppLogEntry is mapped HasNoKey() and EF does not support inserting/tracking a keyless
+        // entity type through SaveChanges (matching how the real app never writes this table
+        // through EF either).
+        public async Task InsertLogEntryAsync(string level, string message, DateTime timeStampUtc, string? eventCategory = null)
+        {
+            await using var context = await DbContextFactory.CreateDbContextAsync();
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO [Logs] ([Message], [Level], [TimeStamp], [EventCategory])
+                VALUES ({message}, {level}, {timeStampUtc}, {eventCategory})
+                """);
         }
 
         public async Task DisposeAsync()
