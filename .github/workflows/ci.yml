@@ -6,6 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+# The repo root's own PatinaBlazor.sln is a separate, older solution file that only
+# references the main app project - it predates PatinaBlazor.Tests/PatinaBlazor.E2ETests and
+# was never updated to include them (that's also why "Deploy to Web Host", in this same
+# .github/workflows/ directory, gets away with a plain `dotnet restore`/`dotnet build` with no
+# explicit path - it's relying on that older root .sln, which is fine for a deploy that only
+# ever needs the main app). The actual, current solution - the one with all three projects,
+# matching this repo's .vscode/ workspace config - lives one level down, so every job here
+# runs from that folder instead of the checkout root.
+defaults:
+  run:
+    working-directory: PatinaBlazor
+
 jobs:
   build:
     name: Build
