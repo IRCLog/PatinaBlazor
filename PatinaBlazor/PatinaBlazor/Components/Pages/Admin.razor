@@ -1,77 +1,153 @@
 @page "/admin"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
 @attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject IStorageService StorageService
 
 <PageTitle>Admin</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
     <MudText Typo="Typo.h4" Class="mb-6">Admin Panel</MudText>
 
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudPaper Elevation="2">
-                <MudToolBar Dense="true" Class="mud-theme-primary">
-                    <MudText Typo="Typo.h6">System Statistics</MudText>
-                </MudToolBar>
-                <div class="pa-4">
-                    <MudText Typo="Typo.body1" Class="mb-2"><strong>Total Users:</strong> 1,234</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-2"><strong>Active Sessions:</strong> 56</MudText>
-                    <MudText Typo="Typo.body1" Class="mb-2"><strong>Database Size:</strong> 2.3 MB</MudText>
-                    <MudText Typo="Typo.body1"><strong>Last Backup:</strong> 2025-01-08 10:30 AM</MudText>
-                </div>
-            </MudPaper>
-        </MudItem>
-        <MudItem xs="12" md="6">
-            <MudPaper Elevation="2">
-                <MudToolBar Dense="true" Class="mud-theme-primary">
-                    <MudText Typo="Typo.h6">Quick Actions</MudText>
-                </MudToolBar>
-                <MudStack Spacing="2" Class="pa-4">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/admin/allUsers">Users</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" FullWidth="true" Href="/storage/admin">Storage Dashboard</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Warning" FullWidth="true">Clear Cache</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Info" FullWidth="true" Href="/admin/logs">View Logs</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Error" FullWidth="true">System Maintenance</MudButton>
-                </MudStack>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+    @if (!_loaded)
+    {
+        <div class="text-center">
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            <MudText Typo="Typo.body1" Class="mt-2">Loading dashboard...</MudText>
+        </div>
+    }
+    else
+    {
+        <MudGrid Class="mb-6">
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total Users</MudText>
+                    <MudText Typo="Typo.h4">@_userCount</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Collectables</MudText>
+                    <MudText Typo="Typo.h4">@_collectableCount</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Published Articles</MudText>
+                    <MudText Typo="Typo.h4">@_publishedArticleCount</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_totalArticleCount total</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Storage Occupancy</MudText>
+                    <MudText Typo="Typo.h4">@_storageSummary!.OccupancyPercent.ToString("0.#")%</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@_storageSummary!.OccupiedUnits of @_storageSummary.TotalUnits units</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Storage MRR</MudText>
+                    <MudText Typo="Typo.h4">@_storageSummary!.CurrentMrr.ToString("C0")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Errors (Last 24h)</MudText>
+                    <MudText Typo="Typo.h4" Color="@(_errorCount24h > 0 ? Color.Error : Color.Default)">@_errorCount24h</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
 
-    <MudGrid Class="mt-4">
-        <MudItem xs="12">
-            <MudPaper Elevation="2">
-                <MudToolBar Dense="true" Class="mud-theme-primary">
-                    <MudText Typo="Typo.h6">Recent Activity</MudText>
-                </MudToolBar>
-                <MudTable Items="_recentActivity" Hover="true" Dense="true" Class="pa-2">
-                    <HeaderContent>
-                        <MudTh>Time</MudTh>
-                        <MudTh>User</MudTh>
-                        <MudTh>Action</MudTh>
-                        <MudTh>Status</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Time">@context.Time</MudTd>
-                        <MudTd DataLabel="User">@context.User</MudTd>
-                        <MudTd DataLabel="Action">@context.Action</MudTd>
-                        <MudTd DataLabel="Status">
-                            <MudChip T="string" Color="@context.StatusColor" Size="Size.Small">@context.Status</MudChip>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2">
+                    <MudToolBar Dense="true" Class="mud-theme-primary">
+                        <MudText Typo="Typo.h6">Quick Actions</MudText>
+                    </MudToolBar>
+                    <MudStack Spacing="2" Class="pa-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Href="/admin/allUsers" StartIcon="@Icons.Material.Filled.People">Users</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" FullWidth="true" Href="/storage/admin" StartIcon="@Icons.Material.Filled.Warehouse">Storage Dashboard</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" FullWidth="true" Href="/articles/admin" StartIcon="@Icons.Material.Filled.EditNote">Manage Articles</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Info" FullWidth="true" Href="/admin/logs" StartIcon="@Icons.Material.Filled.History">View Logs</MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudPaper Elevation="2">
+                    <MudToolBar Dense="true" Class="mud-theme-primary">
+                        <MudText Typo="Typo.h6">Recent Activity</MudText>
+                    </MudToolBar>
+                    @if (_recentActivity.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pa-4">No errors or security events recorded yet.</MudText>
+                    }
+                    else
+                    {
+                        <MudTable Items="_recentActivity" Hover="true" Dense="true" Class="pa-2">
+                            <HeaderContent>
+                                <MudTh>Time</MudTh>
+                                <MudTh>Level</MudTh>
+                                <MudTh>Message</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Time" Style="white-space: nowrap;">@context.TimeStampCentral.ToString("M/d h:mm tt")</MudTd>
+                                <MudTd DataLabel="Level">
+                                    <MudChip T="string" Color="@LevelColor(context.Level)" Size="Size.Small">@(context.EventCategory ?? context.Level)</MudChip>
+                                </MudTd>
+                                <MudTd DataLabel="Message" Style="max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@context.Message</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                        <div class="pa-2">
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/admin/logs" FullWidth="true">View All Logs</MudButton>
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
 </MudContainer>
 
 @code {
-    // Mock data — not wired to real telemetry.
-    private record ActivityRow(string Time, string User, string Action, string Status, Color StatusColor);
+    private bool _loaded;
+    private int _userCount;
+    private int _collectableCount;
+    private int _publishedArticleCount;
+    private int _totalArticleCount;
+    private int _errorCount24h;
+    private StorageDashboardSummary? _storageSummary;
+    private List<AppLogEntry> _recentActivity = new();
 
-    private readonly List<ActivityRow> _recentActivity = new()
+    protected override async Task OnInitializedAsync()
     {
-        new("10:45 AM", "john.doe@example.com", "Login", "Success", Color.Success),
-        new("10:32 AM", "jane.smith@example.com", "Password Reset", "Pending", Color.Warning),
-        new("10:15 AM", "admin@example.com", "Database Backup", "Completed", Color.Success),
+        await using var context = await DbContextFactory.CreateDbContextAsync();
+
+        _userCount = await context.Users.CountAsync();
+        _collectableCount = await context.Collectables.CountAsync();
+        _totalArticleCount = await context.Articles.CountAsync();
+        _publishedArticleCount = await context.Articles.CountAsync(a => a.Status == ArticleStatus.Published);
+
+        var errorSince = DateTime.UtcNow.AddHours(-24);
+        _errorCount24h = await context.AppLogs.CountAsync(l => l.Level == "Error" && l.TimeStamp >= errorSince);
+
+        _recentActivity = await context.AppLogs
+            .OrderByDescending(l => l.TimeStamp)
+            .Take(8)
+            .ToListAsync();
+
+        _storageSummary = await StorageService.GetDashboardSummaryAsync();
+
+        _loaded = true;
+    }
+
+    private static Color LevelColor(string? level) => level switch
+    {
+        "Error" or "Fatal" => Color.Error,
+        "Warning" => Color.Warning,
+        _ => Color.Default
     };
 }
