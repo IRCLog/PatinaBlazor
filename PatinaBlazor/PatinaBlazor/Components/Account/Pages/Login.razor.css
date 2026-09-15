@@ -1,0 +1,67 @@
+/* Login.razor keeps native InputText/InputCheckbox (real HTML name attributes, needed for
+   the static-SSR form POST that sets the auth cookie - MudTextField can't bind through that,
+   see CLAUDE.md) but is restyled here to visually match the MudTextField look used elsewhere
+   in the app (e.g. /storage/signup, /Account/Register): a small label sitting above the
+   field, a separate lighter placeholder inside it, and a Material-style bottom underline
+   instead of the boxed, bordered, filled-background look app.css's global .form-control
+   rule otherwise gives every Identity page. Values (colors, weights, scale) were read
+   directly off a real rendered MudTextField's computed styles rather than eyeballed - see
+   the 2026-09-15 Login/Register restyle entry in CLAUDE.md. Reuses MudBlazor's own CSS
+   custom properties (already global, set by AppMudTheme.cs) instead of new hex values, so
+   this stays in sync if the theme palette ever changes.
+
+   ::deep placement matters here, confirmed by getting this wrong once and testing it live:
+   .patina-field/label are Login.razor's own directly-rendered markup, so a plain (unscoped)
+   selector already gets Blazor's compiled scope attribute attached correctly. .form-control
+   is the <input> InputText (a child component) renders internally - putting ::deep at the
+   very front of the whole selector (my first attempt) compiles to a broken descendant-only
+   match that never hits the DOM; ::deep has to sit immediately before the part that actually
+   crosses into the child component's own output, matching Microsoft's documented pattern
+   (".parent ::deep .child"). */
+
+.patina-field {
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.patina-field label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+    margin-top: 6px;
+}
+
+.patina-field ::deep .form-control {
+    background: transparent;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid var(--mud-palette-lines-inputs);
+    border-radius: 0;
+    color: var(--mud-palette-text-primary);
+    font-size: 14px;
+    padding: 4px 0 7px;
+    box-shadow: none;
+}
+
+.patina-field ::deep .form-control::placeholder {
+    color: var(--mud-palette-text-primary);
+    opacity: 0.42;
+}
+
+.patina-field ::deep .form-control:focus {
+    border-color: var(--mud-palette-lines-inputs);
+    background-color: transparent;
+    border-bottom: 2px solid var(--mud-palette-primary);
+    box-shadow: none;
+    /* Compensate the 1px->2px border growth so the input's own height/baseline doesn't shift. */
+    padding-bottom: 6px;
+}
+
+.patina-field:focus-within label {
+    color: var(--mud-palette-primary);
+}
+
+.patina-field ::deep .form-control.invalid {
+    border-bottom-color: var(--mud-palette-error);
+}

@@ -1,4 +1,4 @@
-﻿@page "/Account/Register"
+@page "/Account/Register"
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -8,14 +8,13 @@
 @using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
 @using PatinaBlazor.Services
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 @inject UserManager<ApplicationUser> UserManager
-@inject IUserStore<ApplicationUser> UserStore
 @inject SignInManager<ApplicationUser> SignInManager
 @inject IEmailSender<ApplicationUser> EmailSender
 @inject ILogger<Register> Logger
 @inject NavigationManager NavigationManager
-@inject IdentityRedirectManager RedirectManager
 
 <PageTitle>Register</PageTitle>
 
@@ -23,32 +22,18 @@
     <MudGrid Justify="Justify.Center">
         <MudItem xs="12" sm="8" md="6">
             <MudPaper Elevation="2" Class="pa-4">
-                <StatusMessage Message="@Message" />
-                <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                }
+                <EditForm Model="_input" FormName="register" OnValidSubmit="RegisterUser">
                     <DataAnnotationsValidator />
                     <MudText Typo="Typo.h5" Class="text-center mb-4">Create New Account</MudText>
-                    <ValidationSummary class="text-danger" role="alert" />
-                    <div class="form-floating mb-3">
-                        <InputText @bind-Value="Input!.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
-                        <label for="email">Email</label>
-                        <ValidationMessage For="() => Input.Email" class="text-danger" />
-                    </div>
-                    <div class="form-floating mb-3">
-                        <InputText @bind-Value="Input.DisplayName" class="form-control" autocomplete="off" aria-required="true" placeholder="YourDisplayName" />
-                        <label for="display-name">Display Name</label>
-                        <ValidationMessage For="() => Input.DisplayName" class="text-danger" />
-                    </div>
-                    <div class="form-floating mb-3">
-                        <InputText type="password" @bind-Value="Input.Password" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                        <label for="password">Password</label>
-                        <ValidationMessage For="() => Input.Password" class="text-danger" />
-                    </div>
-                    <div class="form-floating mb-3">
-                        <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" autocomplete="new-password" aria-required="true" placeholder="password" />
-                        <label for="confirm-password">Confirm Password</label>
-                        <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
-                    </div>
-                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Class="mb-3">Register</MudButton>
+                    <MudTextField Label="Email" Placeholder="name@example.com" @bind-Value="_input.Email" For="@(() => _input.Email)" Class="mb-3" />
+                    <MudTextField Label="Display Name" Placeholder="YourDisplayName" @bind-Value="_input.DisplayName" For="@(() => _input.DisplayName)" Class="mb-3" />
+                    <MudTextField Label="Password" Placeholder="password" InputType="InputType.Password" @bind-Value="_input.Password" For="@(() => _input.Password)" Class="mb-3" />
+                    <MudTextField Label="Confirm Password" Placeholder="confirm password" InputType="InputType.Password" @bind-Value="_input.ConfirmPassword" For="@(() => _input.ConfirmPassword)" Class="mb-4" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Class="mb-3" Disabled="_submitting">Register</MudButton>
                     <div class="text-center">
                         <p class="mb-0">
                             Already have an account? <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Sign in</a>
@@ -61,56 +46,45 @@
 </MudContainer>
 
 @code {
-    private IEnumerable<IdentityError>? identityErrors;
-
-    [SupplyParameterFromForm]
-    private InputModel? Input { get; set; }
+    private readonly InputModel _input = new();
+    private string? _errorMessage;
+    private bool _submitting;
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 
-    private string? Message => identityErrors is null ? null : $"Error: {string.Join(", ", identityErrors.Select(error => error.Description))}";
-
-    protected override void OnInitialized()
+    public async Task RegisterUser()
     {
-        // [SupplyParameterFromForm] overwrites Input with null if a POST doesn't include its
-        // fields (a malformed/adversarial request, never a normal EditForm submission) - restore
-        // a safe default here, before EditForm (which requires a non-null Model) ever renders.
-        Input ??= new();
-    }
-
-    public async Task RegisterUser(EditContext editContext)
-    {
-        if (Input is null)
-        {
-            identityErrors = [new IdentityError { Description = "Something went wrong. Please try again." }];
-            return;
-        }
+        _submitting = true;
+        _errorMessage = null;
 
         var displayNameTaken = await UserManager.Users
-            .AnyAsync(u => u.DisplayName == Input.DisplayName);
+            .AnyAsync(u => u.DisplayName == _input.DisplayName);
         if (displayNameTaken)
         {
-            identityErrors = [new IdentityError { Description = "Display name is already taken." }];
+            _errorMessage = "Display name is already taken.";
+            _submitting = false;
             return;
         }
 
-        var user = CreateUser();
-        user.DisplayName = Input.DisplayName;
+        var user = new ApplicationUser
+        {
+            UserName = _input.Email,
+            Email = _input.Email,
+            DisplayName = _input.DisplayName,
+            CreatedDate = DateTime.UtcNow
+        };
 
-        await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-        var emailStore = GetEmailStore();
-        await emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-        var result = await UserManager.CreateAsync(user, Input.Password);
-
+        var result = await UserManager.CreateAsync(user, _input.Password);
         if (!result.Succeeded)
         {
-            identityErrors = result.Errors;
+            _errorMessage = string.Join(" ", result.Errors.Select(e => e.Description));
+            _submitting = false;
             return;
         }
 
         var userId = await UserManager.GetUserIdAsync(user);
-        Logger.LogSecurityInformation("User {Email} ({UserId}) registered a new account.", Input.Email, userId);
+        Logger.LogSecurityInformation("User {Email} ({UserId}) registered a new account.", _input.Email, userId);
 
         var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
         code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
@@ -118,39 +92,22 @@
             NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
             new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
 
-        await EmailSender.SendConfirmationLinkAsync(user, Input.Email, callbackUrl);
+        await EmailSender.SendConfirmationLinkAsync(user, _input.Email, callbackUrl);
 
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new() { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
-        }
-
-        await SignInManager.SignInAsync(user, isPersistent: false);
-        RedirectManager.RedirectTo(ReturnUrl);
-    }
-
-    private ApplicationUser CreateUser()
-    {
-        try
-        {
-            return Activator.CreateInstance<ApplicationUser>();
-        }
-        catch
-        {
-            throw new InvalidOperationException($"Can't create an instance of '{nameof(ApplicationUser)}'. " +
-                $"Ensure that '{nameof(ApplicationUser)}' is not an abstract class and has a parameterless constructor.");
-        }
-    }
-
-    private IUserEmailStore<ApplicationUser> GetEmailStore()
-    {
-        if (!UserManager.SupportsUserEmail)
-        {
-            throw new NotSupportedException("The default UI requires a user store with email support.");
-        }
-        return (IUserEmailStore<ApplicationUser>)UserStore;
+        // UserManager.Options.SignIn.RequireConfirmedAccount is true app-wide (Program.cs), so
+        // the immediate-sign-in path the stock scaffolded template also supports is dead code
+        // here in practice - and couldn't work from this interactive render mode anyway, since
+        // setting the auth cookie requires a real HTTP response (see Login.razor, which stays
+        // static SSR for exactly this reason). If RequireConfirmedAccount is ever turned off,
+        // this page would need to move back to that pattern to support immediate sign-in.
+        //
+        // forceLoad: true - RegisterConfirmation.razor is a static-SSR page (needs a real
+        // HttpContext) - a plain in-circuit NavigateTo from this interactive page would try to
+        // render it inside the wrong render-mode boundary.
+        var confirmationUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/RegisterConfirmation").AbsoluteUri,
+            new Dictionary<string, object?> { ["email"] = _input.Email, ["returnUrl"] = ReturnUrl });
+        NavigationManager.NavigateTo(confirmationUrl, forceLoad: true);
     }
 
     private sealed class InputModel
