@@ -141,6 +141,44 @@ namespace PatinaBlazor.E2ETests
             Assert.DoesNotMatch(@"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", userCellText);
         }
 
+        // Proves the auto-refresh added alongside the User column actually works, not just
+        // that the page has a timer - a second, independent browser context triggers a new
+        // Security event, and the first page (which is never reloaded or re-navigated) must
+        // pick it up on its own within one refresh cycle. Before Admin.razor polled for
+        // updates, this scenario was a real, if minor, product limitation: an admin watching
+        // the dashboard wouldn't see a brand-new event appear without a manual refresh.
+        [Fact]
+        public async Task AdminDashboard_AutoRefreshesRecentActivityWithoutManualReload()
+        {
+            await using var adminContext = await _fixture.NewContextAsync();
+            var adminPage = await adminContext.NewPageAsync();
+
+            await adminPage.LoginAsync(_fixture.BaseUrl, DevTestAccounts.AdminEmail, DevTestAccounts.Password);
+            await adminPage.GotoAsync($"{_fixture.BaseUrl}/admin");
+            await adminPage.GetByText("Total Users").WaitForAsync(new() { Timeout = 10_000 });
+
+            // A uniquely-identifiable event, triggered from a completely separate browser
+            // context so it's genuinely independent of adminPage's own session/navigation.
+            var uniqueMarkerEmail = $"e2e-autorefresh-{Guid.NewGuid():N}@example.com";
+            await using (var attackerContext = await _fixture.NewContextAsync())
+            {
+                var attackerPage = await attackerContext.NewPageAsync();
+                await attackerPage.GotoAsync($"{_fixture.BaseUrl}/Account/Login");
+                await attackerPage.GetByPlaceholder("name@example.com").FillAsync(uniqueMarkerEmail);
+                await attackerPage.GetByPlaceholder("password").FillAsync("WrongPassword123!");
+                await attackerPage.GetByRole(AriaRole.Button, new() { Name = "Log in" }).ClickAsync();
+                await attackerPage.GetByText("Invalid login attempt").WaitForAsync(new() { Timeout = 10_000 });
+            }
+
+            // No reload, no re-navigation - just wait past one refresh cycle (Admin.razor's
+            // RefreshInterval is 15s; a generous margin above that absorbs normal test-run
+            // scheduling variance without weakening what's actually being proved).
+            var newRow = adminPage.Locator("table tr", new() { HasText = uniqueMarkerEmail });
+            await newRow.WaitForAsync(new() { Timeout = 25_000 });
+
+            Assert.Equal($"{_fixture.BaseUrl}/admin", adminPage.Url);
+        }
+
         [Fact]
         public async Task AdminDashboard_LoggedInAsNonAdminDevTestAccount_IsForbidden()
         {

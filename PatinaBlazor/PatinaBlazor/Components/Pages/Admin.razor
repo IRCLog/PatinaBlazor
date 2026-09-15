@@ -4,6 +4,7 @@
 @using PatinaBlazor.Services
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
+@implements IDisposable
 @inject IAdminDashboardService AdminDashboardService
 
 <PageTitle>Admin</PageTitle>
@@ -113,11 +114,51 @@
 </MudContainer>
 
 @code {
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(15);
+
     private AdminDashboardSummary? _summary;
+    private CancellationTokenSource? _refreshCts;
 
     protected override async Task OnInitializedAsync()
     {
         _summary = await AdminDashboardService.GetSummaryAsync();
+
+        _refreshCts = new CancellationTokenSource();
+        _ = RefreshLoopAsync(_refreshCts.Token);
+    }
+
+    // Without this, the page only ever reflected data as of the moment it first loaded - a
+    // real limitation found while E2E-testing the User column (see CLAUDE.md's 2026-09-14
+    // entry): the login's own Security log row is written asynchronously, so a page reached
+    // in the small window before that write lands would render a permanently stale snapshot,
+    // since OnInitializedAsync only ever runs once per page load. Polling on a fixed interval
+    // (rather than, say, a live push tied to every log write) is enough for an admin-only
+    // overview dashboard and needs no new infrastructure.
+    private async Task RefreshLoopAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(RefreshInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                var summary = await AdminDashboardService.GetSummaryAsync();
+                await InvokeAsync(() =>
+                {
+                    _summary = summary;
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when the page is disposed (navigated away from, or the circuit ends).
+        }
+    }
+
+    public void Dispose()
+    {
+        _refreshCts?.Cancel();
+        _refreshCts?.Dispose();
     }
 
     private static Color LevelColor(string? level) => level switch
