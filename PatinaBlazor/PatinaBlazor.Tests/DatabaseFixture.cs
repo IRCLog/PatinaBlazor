@@ -135,24 +135,6 @@ namespace PatinaBlazor.Tests
                 Directory.Delete(WebRootPath, recursive: true);
             }
         }
-
-        private sealed class TestWebHostEnvironment : IWebHostEnvironment
-        {
-            public TestWebHostEnvironment(string webRootPath)
-            {
-                WebRootPath = webRootPath;
-                WebRootFileProvider = new PhysicalFileProvider(webRootPath);
-                ContentRootPath = webRootPath;
-                ContentRootFileProvider = new PhysicalFileProvider(webRootPath);
-            }
-
-            public string WebRootPath { get; set; }
-            public IFileProvider WebRootFileProvider { get; set; }
-            public string ApplicationName { get; set; } = "PatinaBlazor.Tests";
-            public IFileProvider ContentRootFileProvider { get; set; }
-            public string ContentRootPath { get; set; }
-            public string EnvironmentName { get; set; } = Environments.Development;
-        }
     }
 
     [CollectionDefinition("Database")]
