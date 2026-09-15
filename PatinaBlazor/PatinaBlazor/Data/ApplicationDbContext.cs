@@ -16,6 +16,7 @@ namespace PatinaBlazor.Data
         public DbSet<StorageRental> StorageRentals { get; set; }
         public DbSet<ImageAttachment> ImageAttachments { get; set; }
         public DbSet<Article> Articles { get; set; }
+        public DbSet<StorageCustomerProfile> StorageCustomerProfiles { get; set; }
 
         // Read-only: maps onto the "Logs" table Serilog's MSSqlServer sink creates and
         // writes to directly (see Program.cs). Never written through EF - see the
@@ -166,6 +167,21 @@ namespace PatinaBlazor.Data
                 entity.HasMany(e => e.Units)
                       .WithOne(e => e.Property)
                       .HasForeignKey(e => e.StoragePropertyId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<StorageCustomerProfile>(entity =>
+            {
+                entity.HasKey(e => e.UserId);
+                entity.Property(e => e.UserId).HasMaxLength(128);
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+
+                // Shared-primary-key 1:1 - UserId is both PK and FK, so this is the only FK
+                // on the table (no multi-cascade-path risk the way StorageProperty/StorageUnit
+                // hit with two audit FKs to the same parent).
+                entity.HasOne(e => e.User)
+                      .WithOne()
+                      .HasForeignKey<StorageCustomerProfile>(e => e.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 

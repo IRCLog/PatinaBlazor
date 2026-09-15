@@ -1,0 +1,169 @@
+@page "/storage/signup"
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IStorageCustomerRegistrationService RegistrationService
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject ILogger<StorageCustomerSignUp> Logger
+
+<PageTitle>Storage Customer Sign Up</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <MudGrid Justify="Justify.Center">
+        <MudItem xs="12" sm="10" md="8">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h5" Class="text-center mb-4">Become a Storage Customer</MudText>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+                }
+
+                <EditForm Model="_input" FormName="storage-customer-signup" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">Account</MudText>
+                    <MudTextField Label="Email" Placeholder="name@example.com" @bind-Value="_input.Email" For="@(() => _input.Email)" Class="mb-3" />
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="First Name" Placeholder="First name" @bind-Value="_input.FirstName" For="@(() => _input.FirstName)" Class="mb-3" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField Label="Last Name" Placeholder="Last name" @bind-Value="_input.LastName" For="@(() => _input.LastName)" Class="mb-3" />
+                        </MudItem>
+                    </MudGrid>
+                    <MudTextField Label="Password" Placeholder="password" @bind-Value="_input.Password" For="@(() => _input.Password)" InputType="InputType.Password" Class="mb-3" />
+                    <MudTextField Label="Confirm Password" Placeholder="confirm password" @bind-Value="_input.ConfirmPassword" For="@(() => _input.ConfirmPassword)" InputType="InputType.Password" Class="mb-3" />
+                    <MudTextField Label="Phone" Placeholder="Phone number" @bind-Value="_input.PhoneNumber" For="@(() => _input.PhoneNumber)" Class="mb-4" />
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">Mailing Address</MudText>
+                    <MudTextField Label="Address Line 1" Placeholder="Address line 1" @bind-Value="_input.AddressLine1" For="@(() => _input.AddressLine1)" Class="mb-3" />
+                    <MudTextField Label="Address Line 2 (optional)" Placeholder="Address line 2" @bind-Value="_input.AddressLine2" Class="mb-3" />
+                    <MudGrid>
+                        <MudItem xs="12" sm="5">
+                            <MudTextField Label="City" Placeholder="City" @bind-Value="_input.City" For="@(() => _input.City)" Class="mb-3" />
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudTextField Label="State" Placeholder="State" @bind-Value="_input.State" For="@(() => _input.State)" Class="mb-3" />
+                        </MudItem>
+                        <MudItem xs="6" sm="4">
+                            <MudTextField Label="Postal Code" Placeholder="Postal code" @bind-Value="_input.PostalCode" For="@(() => _input.PostalCode)" Class="mb-4" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">Emergency Contact</MudText>
+                    <MudTextField Label="Name" Placeholder="Emergency contact name" @bind-Value="_input.EmergencyContactName" For="@(() => _input.EmergencyContactName)" Class="mb-3" />
+                    <MudTextField Label="Phone" Placeholder="Emergency contact phone" @bind-Value="_input.EmergencyContactPhone" For="@(() => _input.EmergencyContactPhone)" Class="mb-4" />
+
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Disabled="_submitting">
+                        Sign Up
+                    </MudButton>
+                </EditForm>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private readonly InputModel _input = new();
+    private string? _errorMessage;
+    private bool _submitting;
+
+    private async Task HandleValidSubmit()
+    {
+        _submitting = true;
+        _errorMessage = null;
+
+        var result = await RegistrationService.RegisterAsync(new StorageCustomerRegistrationRequest(
+            _input.Email, _input.Password, _input.FirstName, _input.LastName, _input.PhoneNumber,
+            _input.AddressLine1, _input.AddressLine2, _input.City, _input.State, _input.PostalCode,
+            _input.EmergencyContactName, _input.EmergencyContactPhone));
+
+        if (!result.Succeeded || result.User is null)
+        {
+            _errorMessage = string.Join(" ", result.Errors);
+            _submitting = false;
+            return;
+        }
+
+        Logger.LogSecurityInformation("Storage customer {Email} ({UserId}) registered a new account.", _input.Email, result.User.Id);
+
+        var token = await UserManager.GenerateEmailConfirmationTokenAsync(result.User);
+        var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+        var callbackUrl = NavigationManager.GetUriWithQueryParameters(
+            NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+            new Dictionary<string, object?> { ["userId"] = result.User.Id, ["code"] = code });
+
+        await EmailSender.SendConfirmationLinkAsync(result.User, _input.Email, callbackUrl);
+
+        // forceLoad: true - RegisterConfirmation.razor is a static-SSR page (needs a real
+        // HttpContext, reached everywhere else in this app via a genuine HTTP redirect from
+        // another static-SSR page) - a plain in-circuit NavigateTo from this interactive page
+        // would try to render it inside the wrong render-mode boundary.
+        NavigationManager.NavigateTo(
+            $"/Account/RegisterConfirmation?email={Uri.EscapeDataString(_input.Email)}",
+            forceLoad: true);
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [StringLength(100, MinimumLength = 1)]
+        public string FirstName { get; set; } = "";
+
+        [Required]
+        [StringLength(100, MinimumLength = 1)]
+        public string LastName { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        public string ConfirmPassword { get; set; } = "";
+
+        [Required]
+        [Phone]
+        public string PhoneNumber { get; set; } = "";
+
+        [Required]
+        [StringLength(200)]
+        public string AddressLine1 { get; set; } = "";
+
+        [StringLength(200)]
+        public string? AddressLine2 { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string City { get; set; } = "";
+
+        [Required]
+        [StringLength(50)]
+        public string State { get; set; } = "";
+
+        [Required]
+        [StringLength(20)]
+        public string PostalCode { get; set; } = "";
+
+        [Required]
+        [StringLength(200)]
+        public string EmergencyContactName { get; set; } = "";
+
+        [Required]
+        [Phone]
+        public string EmergencyContactPhone { get; set; } = "";
+    }
+}

@@ -61,6 +61,7 @@ namespace PatinaBlazor.Tests
             services.AddScoped<IStorageService, StorageService>();
             services.AddScoped<IArticleService, ArticleService>();
             services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+            services.AddScoped<IStorageCustomerRegistrationService, StorageCustomerRegistrationService>();
             services.AddScoped<DatabaseSeeder>();
             services.AddIdentityCore<ApplicationUser>(options =>
                 {
