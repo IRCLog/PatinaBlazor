@@ -241,17 +241,36 @@ namespace PatinaBlazor.Services.PayPal
             var orderId = json!["id"]?.GetValue<string>();
             var status = json["status"]?.GetValue<string>();
 
-            if (status == "COMPLETED")
+            // The order's own top-level status can be "COMPLETED" even when the actual
+            // capture inside it was declined by the card issuer - confirmed live against the
+            // real PayPal sandbox, charging via vault_id (this app's actual real request
+            // shape, not just inline card data): the exact same CCREJECT-* negative-testing
+            // trigger produces this "COMPLETED order / DECLINED capture" shape for one real
+            // test card BIN, and a clean top-level 422 PAYER_CANNOT_PAY error (handled by the
+            // !succeeded branch above) for a different one - so which shape shows up for a
+            // real decline depends on the specific card being charged, and both are genuinely
+            // reachable through this app's production code path. The capture's own status is
+            // the real ground truth for whether money moved; checking only the order-level
+            // status was a real gap that silently treated at least one class of real card
+            // decline as a successful charge.
+            var captureStatus = json["purchase_units"]?.AsArray().FirstOrDefault()
+                ?["payments"]?["captures"]?.AsArray().FirstOrDefault()
+                ?["status"]?.GetValue<string>();
+            var effectiveStatus = captureStatus ?? status;
+
+            if (status == "COMPLETED" && effectiveStatus == "COMPLETED")
             {
                 return new PayPalChargeResult { Succeeded = true, OrderId = orderId };
             }
 
-            _logger.LogWarning("PayPal order {OrderId} did not complete synchronously, status {Status}", orderId, status);
+            _logger.LogWarning("PayPal order {OrderId} did not complete, order status {Status}, capture status {CaptureStatus}", orderId, status, captureStatus);
             return new PayPalChargeResult
             {
                 Succeeded = false,
                 OrderId = orderId,
-                Error = $"Payment did not complete (status: {status})."
+                Error = effectiveStatus == "DECLINED"
+                    ? "The payment was declined by the card issuer."
+                    : $"Payment did not complete (status: {effectiveStatus})."
             };
         }
 

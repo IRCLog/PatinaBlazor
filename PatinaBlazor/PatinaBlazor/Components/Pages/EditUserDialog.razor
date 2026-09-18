@@ -1,9 +1,11 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using PatinaBlazor.Data
+@using PatinaBlazor.Services
 @using System.ComponentModel.DataAnnotations
 @inject UserManager<ApplicationUser> UserManager
 @inject RoleManager<IdentityRole> RoleManager
+@inject IUserDeactivationService UserDeactivationService
 
 <MudDialog @bind-Visible="_isVisible" Options="_dialogOptions">
     <TitleContent>
@@ -35,7 +37,7 @@
                                        OnClick="@(() => _showPassword = !_showPassword)" />
                     </div>
 
-                    <MudSwitch T="bool" @bind-Value="_model.IsLocked" Label="Account Locked" Color="Color.Primary" Class="mb-2" />
+                    <MudSwitch T="bool" @bind-Value="_model.IsActive" Label="Account Active" Color="Color.Primary" Class="mb-2" />
                     <MudSwitch T="bool" @bind-Value="_model.EmailConfirmed" Label="Email Confirmed" Color="Color.Primary" />
                 </MudTabPanel>
 
@@ -108,7 +110,7 @@
             Email = user.Email ?? "",
             UserName = user.UserName ?? "",
             Password = "",
-            IsLocked = user.IsLocked,
+            IsActive = user.LockoutEnd is null || user.LockoutEnd <= DateTimeOffset.UtcNow,
             EmailConfirmed = user.EmailConfirmed,
         };
         _errorMessage = null;
@@ -167,13 +169,19 @@
             _user.UserName = _model.UserName;
             _user.NormalizedEmail = _model.Email.ToUpperInvariant();
             _user.NormalizedUserName = _model.UserName.ToUpperInvariant();
-            _user.IsLocked = _model.IsLocked;
             _user.EmailConfirmed = _model.EmailConfirmed;
 
             var result = await UserManager.UpdateAsync(_user);
             if (!result.Succeeded)
             {
                 _errorMessage = "Error updating user: " + string.Join(", ", result.Errors.Select(e => e.Description));
+                return;
+            }
+
+            var activeResult = await UserDeactivationService.SetActiveAsync(_user, _model.IsActive);
+            if (!activeResult.Succeeded)
+            {
+                _errorMessage = "User updated but account status change failed: " + activeResult.Error;
                 return;
             }
 
@@ -230,7 +238,7 @@
 
         public string Password { get; set; } = "";
 
-        public bool IsLocked { get; set; }
+        public bool IsActive { get; set; } = true;
 
         public bool EmailConfirmed { get; set; }
     }

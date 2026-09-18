@@ -44,7 +44,10 @@
         else
         {
             <MudText Typo="Typo.body1" Class="mb-4">Ending rental for unit @_endingUnitNumber.</MudText>
-            <MudDatePicker Label="End Date" @bind-Date="_endDate" Class="mb-4" />
+            <MudDatePicker Label="End Date" @bind-Date="_endDate" Class="mb-2" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4" Style="display: block;">
+                @GetFinalBillingSummary()
+            </MudText>
         }
     </DialogContent>
     <DialogActions>
@@ -118,6 +121,19 @@
             _ => "every month"
         };
         return $"Customer will be charged {amount:C2} {period}.";
+    }
+
+    private string GetFinalBillingSummary()
+    {
+        if (_rental == null || _endDate == null)
+        {
+            return "";
+        }
+
+        var (finalBillingDate, finalAmount) = _rental.GetFinalBillingPreview(_endDate.Value);
+        return finalBillingDate == null
+            ? $"No further billing - already paid through {_rental.GetNextDueDate():MMMM d, yyyy}."
+            : $"Final billing date: {finalBillingDate:MMMM d, yyyy}, final amount: {finalAmount:C2}.";
     }
 
     public Task ShowEndModal(StorageRental rental, string unitNumber)

@@ -107,5 +107,34 @@ namespace PatinaBlazor.Data
         // otherwise come right back as "the smallest valid cycle date >= asOf".
         public DateTime GetNextDueDate() =>
             GetNextBillingDate(LastBilledDate?.AddDays(1) ?? PaymentDate);
+
+        // Preview of what, if anything, would still be owed if this rental ends on
+        // moveOutDate - used by the admin "End Rental" dialog before actually ending it.
+        // If moveOutDate falls before the next date a charge is already due, nothing more
+        // is owed (the customer has already paid through their current cycle) and this
+        // returns a null FinalBillingDate / zero FinalAmount. Otherwise walks forward one
+        // billing cycle at a time (the same anchor-preserving GetNextBillingDate math
+        // GetNextDueDate uses) to the last cycle on or before moveOutDate, since ending
+        // several cycles out can span more than one due date - no proration exists
+        // anywhere else in this app, so each spanned cycle is a full GetChargeAmount().
+        public (DateTime? FinalBillingDate, decimal FinalAmount) GetFinalBillingPreview(DateTime moveOutDate)
+        {
+            var dueDate = GetNextDueDate();
+            if (moveOutDate.Date < dueDate.Date)
+            {
+                return (null, 0m);
+            }
+
+            DateTime? finalBillingDate = null;
+            var cycles = 0;
+            while (dueDate.Date <= moveOutDate.Date)
+            {
+                finalBillingDate = dueDate;
+                cycles++;
+                dueDate = GetNextBillingDate(dueDate.AddDays(1));
+            }
+
+            return (finalBillingDate, GetChargeAmount() * cycles);
+        }
     }
 }

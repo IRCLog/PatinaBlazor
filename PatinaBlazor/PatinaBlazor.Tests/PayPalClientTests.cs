@@ -310,11 +310,17 @@ namespace PatinaBlazor.Tests
         [Fact]
         public async Task ChargeVaultedPaymentMethodAsync_Declined_ReturnsFriendlyDeclineMessage()
         {
-            // A realistic decline shape per PayPal's documented UNPROCESSABLE_ENTITY /
-            // INSTRUMENT_DECLINED error - representative of the "sandbox negative testing"
-            // decline mechanism this session couldn't reach through the real card-entry UI
-            // (no cardholder-name field exists to trigger PayPal's CCREJECT-* test strings),
-            // not a shape captured live - see the checkpoint entry for why.
+            // PayPal's own documented UNPROCESSABLE_ENTITY / INSTRUMENT_DECLINED shape (real,
+            // confirmed via PayPal's own developer docs - see the JS SDK error-handling
+            // example in their security/sandbox-testing guide). This app's own live sandbox
+            // testing of PayPal's CCREJECT-* negative-testing triggers, charged via vault_id
+            // (this app's actual real request shape), consistently produced a different real
+            // issue code instead - PAYER_CANNOT_PAY, see
+            // ChargeVaultedPaymentMethodAsync_PayerCannotPay_RealCapturedSandboxShape_ReturnsFriendlyDeclineMessage
+            // below for that live-captured case. Both are real, documented PayPal error
+            // codes for the same general "instrument declined" family; kept as two separate
+            // tests since ExtractErrorMessage's `details[0].description` handling is identical
+            // either way and both are worth having on record.
             var handler = new FakeHttpMessageHandler();
             handler.On("/v2/checkout/orders", HttpStatusCode.UnprocessableEntity, """
                 {"name":"UNPROCESSABLE_ENTITY","message":"The requested action could not be performed, semantically incorrect, or failed business validation.",
@@ -326,6 +332,61 @@ namespace PatinaBlazor.Tests
 
             Assert.False(result.Succeeded);
             Assert.Equal("The instrument presented either failed authentication or is invalid.", result.Error);
+        }
+
+        [Fact]
+        public async Task ChargeVaultedPaymentMethodAsync_PayerCannotPay_RealCapturedSandboxShape_ReturnsFriendlyDeclineMessage()
+        {
+            // The REAL response captured live against the actual PayPal sandbox: charging a
+            // card vaulted (via the real /v3/vault/setup-tokens + /v3/vault/payment-tokens
+            // flow) with PayPal's CCREJECT-IF/CCREJECT-REFUSED negative-testing trigger names,
+            // via vault_id (this app's real ChargeVaultedPaymentMethodAsync request shape),
+            // returns this exact 422 PAYER_CANNOT_PAY body - not INSTRUMENT_DECLINED. This is
+            // the decline shape this app's real production charge path actually hits when a
+            // sandbox test card is configured to decline, confirmed by direct curl/HttpClient
+            // testing against the live sandbox (see the dev-only PayPalLiveSandboxTests, which
+            // exercise this same scenario against the real API rather than a canned fixture).
+            var handler = new FakeHttpMessageHandler();
+            handler.On("/v2/checkout/orders", HttpStatusCode.UnprocessableEntity, """
+                {"name":"UNPROCESSABLE_ENTITY","details":[{"location":"body","issue":"PAYER_CANNOT_PAY","description":"Payer cannot pay for this transaction. Please contact the payer to find other ways to pay for this transaction."}],
+                 "message":"The requested action could not be performed, semantically incorrect, or failed business validation.","debug_id":"ca3cde4c80cb2"}
+                """);
+            var client = CreateClient(handler);
+
+            var result = await client.ChargeVaultedPaymentMethodAsync("VAULT-1", PaymentSourceType.Card, 10m);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("Payer cannot pay for this transaction. Please contact the payer to find other ways to pay for this transaction.", result.Error);
+        }
+
+        [Fact]
+        public async Task ChargeVaultedPaymentMethodAsync_OrderCompletedButCaptureDeclined_RealCapturedSandboxShape_TreatedAsAFailureNotASuccess()
+        {
+            // The other real shape captured live: charging with an INLINE card (not vault_id)
+            // carrying a CCREJECT-IF/CCREJECT-REFUSED trigger name returns HTTP 200/201 with
+            // the ORDER's own top-level status:"COMPLETED" - while the actual capture inside
+            // it has status:"DECLINED". This app never charges with inline card data (always
+            // vault_id, which produces the PAYER_CANNOT_PAY shape above instead - confirmed
+            // live, see that test and PayPalClient.cs's own comment on this method), so this
+            // specific shape isn't known to be reachable through this app's real request
+            // pattern today - but the fix (checking the capture's own status, not just the
+            // order's) is real and worth permanently guarding regardless, since relying on
+            // "we've only ever observed the other shape" isn't a hard guarantee for every
+            // decline reason/card network/account configuration.
+            var handler = new FakeHttpMessageHandler();
+            handler.On("/v2/checkout/orders", HttpStatusCode.Created, """
+                {"id":"ORDER-CAPTURE-DECLINED","status":"COMPLETED","purchase_units":[{"reference_id":"default","payments":{"captures":[
+                    {"id":"CAPTURE-1","status":"DECLINED","amount":{"currency_code":"USD","value":"10.00"},
+                     "processor_response":{"avs_code":"G","cvv_code":"P","response_code":"5120"}}
+                ]}}]}
+                """);
+            var client = CreateClient(handler);
+
+            var result = await client.ChargeVaultedPaymentMethodAsync("VAULT-1", PaymentSourceType.Card, 10m);
+
+            Assert.False(result.Succeeded);
+            Assert.Equal("ORDER-CAPTURE-DECLINED", result.OrderId);
+            Assert.Equal("The payment was declined by the card issuer.", result.Error);
         }
 
         [Fact]

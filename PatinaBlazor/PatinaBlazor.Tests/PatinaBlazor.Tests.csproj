@@ -5,10 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Same GUID as PatinaBlazor.csproj's UserSecretsId - user-secrets storage is keyed by
+         this id, not by project path, so this reads the SAME secrets.json the main app uses
+         (its real PayPal sandbox ClientId/ClientSecret). Needed only by the dev-only
+         "RequiresPayPalSandbox"-tagged tests in LiveSandbox/ - see that folder's own README
+         comment for how those are run/excluded. -->
+    <UserSecretsId>aspnet-PatinaBlazor-8ea6241b-0d8c-4e7b-bce5-6ce1da5fae24</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.12" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Testcontainers.MsSql" Version="4.15.0" />
     <PackageReference Include="xunit" Version="2.9.3" />

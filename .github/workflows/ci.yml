@@ -44,8 +44,14 @@ jobs:
       # Docker is preinstalled on GitHub-hosted ubuntu runners - Testcontainers.MsSql (and
       # the raw SQL Server / Mailpit images it and Tier 2 pull) work out of the box, same as
       # on the local dev machine these tests were originally written against.
+      #
+      # Category!=RequiresPayPalSandbox excludes the dev-only PatinaBlazor.Tests/LiveSandbox/
+      # suite - those make real live calls against PayPal's actual sandbox API using real
+      # credentials that only exist in this dev machine's user-secrets, never in CI. Run them
+      # explicitly on a dev machine with those credentials instead (see that folder's own
+      # header comment).
       - name: Run Tier 1 tests
-        run: dotnet test PatinaBlazor.Tests/PatinaBlazor.Tests.csproj --logger "console;verbosity=normal"
+        run: dotnet test PatinaBlazor.Tests/PatinaBlazor.Tests.csproj --filter "Category!=RequiresPayPalSandbox" --logger "console;verbosity=normal"
 
   tier2-e2e-tests:
     name: Tier 2 - Browser E2E Tests
