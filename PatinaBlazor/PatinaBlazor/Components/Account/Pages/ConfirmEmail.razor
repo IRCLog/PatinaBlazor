@@ -9,6 +9,7 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager
 @inject ILogger<ConfirmEmail> Logger
+@inject EmailConfirmationNotifier EmailConfirmationNotifier
 
 <PageTitle>Confirm email</PageTitle>
 
@@ -52,6 +53,7 @@
             if (result.Succeeded)
             {
                 Logger.LogSecurityInformation("Email confirmed for {Email} ({UserId}).", user.Email, user.Id);
+                EmailConfirmationNotifier.Notify(user.Id);
             }
             else
             {

@@ -15,6 +15,12 @@
                 </Authorized>
             </AuthorizeView>
 
+            <AuthorizeView Roles="Storage Customer" Context="storageCustomerContext">
+                <Authorized>
+                    <MudNavLink Href="/storage/account" Icon="@Icons.Material.Filled.Warehouse" OnClick="NotifyNavigate">My Storage Account</MudNavLink>
+                </Authorized>
+            </AuthorizeView>
+
             <AuthorizeView Roles="Admin,Article Publisher" Context="articlePublisherContext">
                 <Authorized>
                     <MudNavLink Href="/articles/admin" Icon="@Icons.Material.Filled.EditNote" OnClick="NotifyNavigate">Manage Articles</MudNavLink>

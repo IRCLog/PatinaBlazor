@@ -7,6 +7,8 @@ using Microsoft.Extensions.Hosting;
 using PatinaBlazor.Data;
 using PatinaBlazor.Interceptors;
 using PatinaBlazor.Services;
+using PatinaBlazor.Services.PayPal;
+using PatinaBlazor.Tests.Fakes;
 using Testcontainers.MsSql;
 using Xunit;
 
@@ -62,6 +64,10 @@ namespace PatinaBlazor.Tests
             services.AddScoped<IArticleService, ArticleService>();
             services.AddScoped<IAdminDashboardService, AdminDashboardService>();
             services.AddScoped<IStorageCustomerRegistrationService, StorageCustomerRegistrationService>();
+            services.AddScoped<FakePayPalClient>();
+            services.AddScoped<IPayPalClient>(sp => sp.GetRequiredService<FakePayPalClient>());
+            services.AddScoped<IStoragePaymentService, StoragePaymentService>();
+            services.AddScoped<IStorageBillingService, StorageBillingService>();
             services.AddScoped<DatabaseSeeder>();
             services.AddIdentityCore<ApplicationUser>(options =>
                 {

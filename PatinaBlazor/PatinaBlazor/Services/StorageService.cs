@@ -269,6 +269,26 @@ namespace PatinaBlazor.Services
                 .FirstOrDefaultAsync();
         }
 
+        public async Task<StorageRental?> GetRentalByIdAsync(int rentalId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.StorageRentals
+                .Include(r => r.Unit)
+                .ThenInclude(u => u!.Property)
+                .FirstOrDefaultAsync(r => r.Id == rentalId);
+        }
+
+        public async Task<List<StorageRental>> GetRentalsForCustomerAsync(string customerUserId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.StorageRentals
+                .Include(r => r.Unit)
+                .ThenInclude(u => u!.Property)
+                .Where(r => r.CustomerUserId == customerUserId)
+                .OrderByDescending(r => r.CreatedDate)
+                .ToListAsync();
+        }
+
         // Dashboard aggregation
 
         public async Task<StorageDashboardSummary> GetDashboardSummaryAsync()

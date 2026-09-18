@@ -1,0 +1,107 @@
+@page "/storage/signup/complete"
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IStoragePaymentService PaymentService
+@inject ILogger<StorageSignUpComplete> Logger
+
+<PageTitle>Completing Sign Up</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <MudPaper Elevation="2" Class="pa-4">
+        @if (_loading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <MudText Typo="Typo.h6">Finishing up...</MudText>
+            </MudStack>
+        }
+        else if (_cancelled)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6">Payment setup was cancelled</MudText>
+                <MudText Typo="Typo.body2" Class="text-center">
+                    Your unit reservation is still held. Contact us if you'd like help finishing your sign up.
+                </MudText>
+            </MudStack>
+        }
+        else if (_chargeSucceeded)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                <MudText Typo="Typo.h6">You're all set!</MudText>
+                <MudText Typo="Typo.body1" Class="text-center">
+                    Your payment method is saved and your first payment of $@_chargeAmount.ToString("0.00") was
+                    processed. Your rental is now active.
+                </MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Error" />
+                <MudText Typo="Typo.h6">We couldn't finish setting up your payment</MudText>
+                <MudText Typo="Typo.body2" Class="text-center">@_errorMessage</MudText>
+                <MudText Typo="Typo.body2" Class="text-center">
+                    Please contact us so we can help complete your rental.
+                </MudText>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "rentalId")]
+    private int? RentalId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "approval_token_id")]
+    private string? ApprovalTokenId { get; set; }
+
+    private bool _loading = true;
+    private bool _cancelled;
+    private bool _chargeSucceeded;
+    private decimal _chargeAmount;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (RentalId is null)
+        {
+            _loading = false;
+            _errorMessage = "We couldn't find your reservation.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(ApprovalTokenId))
+        {
+            _loading = false;
+            _cancelled = true;
+            return;
+        }
+
+        var result = await PaymentService.CompleteVaultSetupAsync(RentalId.Value, ApprovalTokenId);
+
+        if (!result.Succeeded)
+        {
+            Logger.LogSecurityWarning("PayPal vault setup failed to complete for rental {RentalId}: {Error}", RentalId, result.Error);
+            _loading = false;
+            _errorMessage = result.Error ?? "PayPal did not confirm your payment method.";
+            return;
+        }
+
+        if (result.Charge is { Succeeded: true })
+        {
+            _chargeSucceeded = true;
+            _chargeAmount = result.Charge.Amount;
+            Logger.LogSecurityInformation("Rental {RentalId} activated after first PayPal charge of {Amount}.", RentalId, result.Charge.Amount);
+        }
+        else
+        {
+            _errorMessage = result.Charge?.Error ?? "Your first payment could not be processed.";
+            Logger.LogSecurityWarning("Rental {RentalId}'s first PayPal charge failed: {Error}", RentalId, _errorMessage);
+        }
+
+        _loading = false;
+    }
+}

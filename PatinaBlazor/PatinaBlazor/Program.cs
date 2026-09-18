@@ -12,6 +12,8 @@ using PatinaBlazor.Endpoints;
 using PatinaBlazor.Hubs;
 using PatinaBlazor.Interceptors;
 using PatinaBlazor.Services;
+using PatinaBlazor.Services.PayPal;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.MSSqlServer;
@@ -155,7 +157,18 @@ builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IStorageCustomerRegistrationService, StorageCustomerRegistrationService>();
+builder.Services.AddScoped<IStoragePaymentService, StoragePaymentService>();
+builder.Services.Configure<PayPalOptions>(builder.Configuration.GetSection("Paypal"));
+builder.Services.AddSingleton<PayPalTokenCache>();
+builder.Services.AddHttpClient<IPayPalClient, PayPalClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<PayPalOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+});
+builder.Services.AddScoped<IStorageBillingService, StorageBillingService>();
+builder.Services.AddHostedService<StorageBillingHostedService>();
 builder.Services.AddSingleton<IrcChatNotifier>();
+builder.Services.AddSingleton<EmailConfirmationNotifier>();
 builder.Services.AddSingleton<IrcBotService>();
 builder.Services.AddScoped<IIrcEventService, IrcEventService>();
 builder.Services.AddHostedService<IrcBotHeartbeatService>();

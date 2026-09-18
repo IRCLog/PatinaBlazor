@@ -1,0 +1,188 @@
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@implements IAsyncDisposable
+@inject IStoragePaymentService PaymentService
+@inject IJSRuntime JSRuntime
+@inject ILogger<PayPalCardEntry> Logger
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-3">@_errorMessage</MudAlert>
+}
+
+@if (_loading)
+{
+    <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+else if (_ineligible)
+{
+    <MudAlert Severity="Severity.Warning">Card payment isn't available right now - please use PayPal instead.</MudAlert>
+}
+else if (_setupTokenId is not null)
+{
+    <div id="paypal-card-number" style="height: 40px; width: 100%; margin-bottom: 12px;"></div>
+    <div id="paypal-card-expiry" style="height: 40px; width: 100%; margin-bottom: 12px;"></div>
+    <div id="paypal-card-cvv" style="height: 40px; width: 100%; margin-bottom: 16px;"></div>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true"
+               Disabled="!_fieldsReady || _submitting" OnClick="HandleSubmit">
+        @(_submitting ? "Saving card..." : "Save Card")
+    </MudButton>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public int RentalId { get; set; }
+
+    [Parameter, EditorRequired]
+    public BillingFrequency BillingFrequency { get; set; }
+
+    // PayPal's API requires these on the underlying setup token even though the card path
+    // normally completes inline with no redirect - only used if a 3DS/SCA challenge needs
+    // to bounce the buyer away and back. The caller passes the same return page it already
+    // built for the PayPal Wallet flow (e.g. /storage/signup/complete?rentalId=X) - that
+    // page already handles a completed setup token generically, whatever its source.
+    [Parameter, EditorRequired]
+    public string ReturnUrl { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string CancelUrl { get; set; } = "";
+
+    // Fires with the approved setup token id once the customer's card has been accepted -
+    // the caller decides what to do with it (the signup wizard calls CompleteVaultSetupAsync
+    // to finalize + charge the first cycle; the wallet's Replace Payment Method flow calls
+    // FinalizeVaultSetupAsync only, since charging again there would double-bill).
+    [Parameter]
+    public EventCallback<string> OnSetupTokenApproved { get; set; }
+
+    private bool _loading = true;
+    private bool _ineligible;
+    private bool _fieldsReady;
+    private bool _submitting;
+    private bool _jsInitStarted;
+    private string? _setupTokenId;
+    private string? _errorMessage;
+    private DotNetObjectReference<PayPalCardEntry>? _dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await PaymentService.StartCardSetupAsync(RentalId, BillingFrequency, ReturnUrl, CancelUrl);
+
+        if (!result.Succeeded || string.IsNullOrEmpty(result.SetupTokenId) || string.IsNullOrEmpty(result.ClientToken) || string.IsNullOrEmpty(result.SdkScriptUrl))
+        {
+            _loading = false;
+            _errorMessage = "Something went wrong starting card entry. Please try again.";
+            // The underlying REST call failure is already logged in detail by PayPalClient
+            // itself (plain LogError, always visible regardless of the Security filter) -
+            // this Security-tagged line adds the "which rental/customer" business context
+            // that log doesn't have, so both are findable together in the log viewer.
+            Logger.LogSecurityWarning("Card setup failed to start for rental {RentalId}: {Error}", RentalId, result.Error);
+            return;
+        }
+
+        _setupTokenId = result.SetupTokenId;
+        _clientToken = result.ClientToken;
+        _sdkScriptUrl = result.SdkScriptUrl;
+        _loading = false;
+    }
+
+    private string? _clientToken;
+    private string? _sdkScriptUrl;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The #paypal-card-number/expiry/cvv containers only exist in the DOM once
+        // _setupTokenId is set (see the markup above) - JS init has to run after that
+        // render has actually happened, not before, so this is driven from
+        // OnAfterRenderAsync rather than immediately after the service call completes.
+        if (!_jsInitStarted && _setupTokenId is not null && _clientToken is not null && _sdkScriptUrl is not null)
+        {
+            _jsInitStarted = true;
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("paypalCardFields.init", _clientToken, _sdkScriptUrl, _dotNetRef);
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (_setupTokenId is null || _submitting)
+        {
+            return;
+        }
+
+        _submitting = true;
+        _errorMessage = null;
+        await JSRuntime.InvokeVoidAsync("paypalCardFields.submit", _setupTokenId);
+    }
+
+    [JSInvokable]
+    public void OnCardFieldsReady()
+    {
+        _fieldsReady = true;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnCardFieldsIneligible()
+    {
+        _ineligible = true;
+        Logger.LogSecurityWarning("Card Fields reported ineligible (advanced_cards) for rental {RentalId}.", RentalId);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnCardFieldsError(string message, string? rawDetail)
+    {
+        _errorMessage = message;
+        Logger.LogSecurityWarning("Card Fields failed to initialize for rental {RentalId}: {RawDetail}", RentalId, rawDetail ?? message);
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public async Task OnCardSubmitSucceeded()
+    {
+        if (_setupTokenId is not null)
+        {
+            await OnSetupTokenApproved.InvokeAsync(_setupTokenId);
+        }
+    }
+
+    [JSInvokable]
+    public void OnCardSubmitCanceled()
+    {
+        _submitting = false;
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnCardSubmitFailed(string message, string? rawDetail)
+    {
+        _submitting = false;
+        _errorMessage = message;
+        // The one gap this whole change closes: submit() talks directly from the browser to
+        // PayPal (see paypalCardFields.js), so without this call the server would never even
+        // know a card was attempted, let alone why it failed. rawDetail carries whatever
+        // describeError() in JS could dig out of PayPal's real (often deeply-nested) error
+        // shape - logged in full even when the friendly `message` shown to the customer is
+        // necessarily a simplified version of it.
+        Logger.LogSecurityWarning("Card save failed for rental {RentalId}: {RawDetail}", RentalId, rawDetail ?? message);
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dotNetRef is not null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("paypalCardFields.teardown");
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit is already gone (e.g. the customer navigated away) - nothing
+                // to clean up on the JS side in that case.
+            }
+            _dotNetRef.Dispose();
+        }
+    }
+}

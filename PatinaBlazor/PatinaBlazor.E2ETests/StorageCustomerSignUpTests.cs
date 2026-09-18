@@ -6,13 +6,12 @@ using Xunit;
 
 namespace PatinaBlazor.E2ETests
 {
-    // Exercises the real /storage/signup form end to end: fill it out, confirm via the real
-    // Mailpit-delivered email (same MailpitClient used by RegistrationEmailConfirmationTests/
-    // PasswordResetEmailTests, for the same reason - the link only exists once it's gone
-    // through the real EmailTemplateRenderer/IdentitySmtpEmailSender pipeline), then verify
-    // directly against the DB that everything this flow is supposed to do actually happened:
-    // email confirmed, Storage Customer role assigned, profile row persisted with the
-    // submitted values - not just that the UI showed a success message.
+    // Exercises the real /storage/signup 4-step wizard end to end: account info, live
+    // email verification (via the real Mailpit-delivered link, clicked in a *separate*
+    // browser tab - proving the original wizard tab advances on its own over the
+    // EmailConfirmationNotifier/SignalR push, not a page reload), unit picking/reservation,
+    // and the Phase 1 payment placeholder. Verifies against the real DB throughout, not
+    // just what the UI displays.
     [Collection("E2E")]
     public class StorageCustomerSignUpTests
     {
@@ -24,34 +23,52 @@ namespace PatinaBlazor.E2ETests
         }
 
         [Fact]
-        public async Task SignUp_ThenClickRealEmailedLink_ConfirmsAccountAssignsRoleAndPersistsProfile()
+        public async Task FullWizard_AccountInfoThroughUnitReservation_AdvancesLiveAndPersistsCorrectly()
         {
             var email = $"e2e-storagesignup-{Guid.NewGuid():N}@example.com";
             const string password = "E2eTest123!";
 
             await using var context = await _fixture.NewContextAsync();
-            var page = await context.NewPageAsync();
+            var wizardPage = await context.NewPageAsync();
 
-            await page.GotoAsync($"{_fixture.BaseUrl}/storage/signup");
-            await page.GetByPlaceholder("name@example.com").FillAsync(email);
-            await page.GetByPlaceholder("First name").FillAsync("Riley");
-            await page.GetByPlaceholder("Last name").FillAsync($"E2E{Guid.NewGuid():N}"[..10]);
-            await page.GetByPlaceholder("password", new() { Exact = true }).FillAsync(password);
-            await page.GetByPlaceholder("confirm password").FillAsync(password);
-            await page.GetByPlaceholder("Phone number").FillAsync("555-0123");
-            await page.GetByPlaceholder("Address line 1").FillAsync("456 Harbor Way");
-            await page.GetByPlaceholder("City").FillAsync("Bakersfield");
-            await page.GetByPlaceholder("State").FillAsync("CA");
-            await page.GetByPlaceholder("Postal code").FillAsync("93301");
-            await page.GetByPlaceholder("Emergency contact name").FillAsync("Sam Backup");
-            await page.GetByPlaceholder("Emergency contact phone").FillAsync("555-0199");
-            await page.GetByRole(AriaRole.Button, new() { Name = "Sign Up" }).ClickAsync();
+            await wizardPage.GotoAsync($"{_fixture.BaseUrl}/storage/signup");
+            await wizardPage.GetByPlaceholder("name@example.com").FillAsync(email);
+            await wizardPage.GetByPlaceholder("First name").FillAsync("Riley");
+            await wizardPage.GetByPlaceholder("Last name").FillAsync($"E2E{Guid.NewGuid():N}"[..10]);
+            await wizardPage.GetByPlaceholder("password", new() { Exact = true }).FillAsync(password);
+            await wizardPage.GetByPlaceholder("confirm password").FillAsync(password);
+            await wizardPage.GetByPlaceholder("Phone number").FillAsync("555-0123");
+            await wizardPage.GetByPlaceholder("Address line 1").FillAsync("456 Harbor Way");
+            await wizardPage.GetByPlaceholder("City").FillAsync("Bakersfield");
+            await wizardPage.GetByPlaceholder("State").FillAsync("CA");
+            await wizardPage.GetByPlaceholder("Postal code").FillAsync("93301");
+            await wizardPage.GetByPlaceholder("Emergency contact name").FillAsync("Sam Backup");
+            await wizardPage.GetByPlaceholder("Emergency contact phone").FillAsync("555-0199");
+            await wizardPage.GetByRole(AriaRole.Button, new() { Name = "Continue" }).ClickAsync();
 
-            await page.WaitForURLAsync(url => url.Contains("/Account/RegisterConfirmation"), new() { Timeout = 10_000 });
+            // Step 2: still the same page/circuit, no navigation - the wizard advances itself
+            // client-side the instant registration succeeds.
+            await wizardPage.GetByText("Check your email").WaitForAsync(new() { Timeout = 10_000 });
 
             var confirmationLink = await _fixture.Mailpit.GetLatestEmailLinkAsync(email, "ConfirmEmail", TimeSpan.FromSeconds(20));
-            await page.GotoAsync(confirmationLink);
-            await page.GetByText("Thank you for confirming your email").WaitForAsync(new() { Timeout = 10_000 });
+
+            // Deliberately a *second* tab, mirroring how a real customer clicks the link from
+            // their email client rather than the tab the wizard is open in - this is the real
+            // test of the live EmailConfirmationNotifier push, not just that confirmation works.
+            var confirmPage = await context.NewPageAsync();
+            await confirmPage.GotoAsync(confirmationLink);
+            await confirmPage.GetByText("Thank you for confirming your email").WaitForAsync(new() { Timeout = 10_000 });
+            await confirmPage.CloseAsync();
+
+            // Back on the original wizard tab, with no reload of any kind - it should have
+            // advanced to Step 3 on its own the moment the confirmation above completed.
+            await wizardPage.GetByText("Pick a Unit", new() { Exact = false }).First.WaitForAsync(new() { Timeout = 10_000 });
+            var selectButton = wizardPage.GetByRole(AriaRole.Button, new() { Name = "Select" }).First;
+            await selectButton.WaitForAsync(new() { Timeout = 10_000 });
+            await selectButton.ClickAsync();
+
+            // Step 4 - the real billing-frequency picker (Part 2), not a placeholder anymore.
+            await wizardPage.GetByText("Billing Frequency").WaitForAsync(new() { Timeout = 10_000 });
 
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseSqlServer(_fixture.DbConnectionString)
@@ -73,6 +90,19 @@ namespace PatinaBlazor.E2ETests
             Assert.Equal("93301", profile.PostalCode);
             Assert.Equal("Sam Backup", profile.EmergencyContactName);
             Assert.Equal("555-0199", profile.EmergencyContactPhone);
+
+            var rental = await dbContext.StorageRentals
+                .Include(r => r.Unit)
+                .SingleAsync(r => r.CustomerUserId == user.Id);
+            Assert.Equal(StorageRentalStatus.PendingPayment, rental.Status);
+            Assert.NotNull(rental.Unit);
+            Assert.Equal(StorageUnitStatus.Reserved, rental.Unit!.Status);
+            Assert.Equal(rental.Unit.MonthlyRate, rental.MonthlyRateAtSigning);
+
+            // The Payment step's summary text should name the exact unit that got reserved -
+            // ties the UI's own displayed state back to the real DB row, not just "a rental
+            // exists somewhere."
+            await wizardPage.GetByText($"Unit {rental.Unit.UnitNumber}").WaitForAsync(new() { Timeout = 5_000 });
         }
     }
 }

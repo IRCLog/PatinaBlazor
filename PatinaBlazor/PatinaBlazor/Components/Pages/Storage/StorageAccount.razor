@@ -1,0 +1,245 @@
+@page "/storage/account"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize(Roles = "Storage Customer")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IStorageService StorageService
+@inject IStoragePaymentService PaymentService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>My Storage Account</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudText Typo="Typo.h5" Class="mb-4">My Storage Account</MudText>
+
+    @if (!_loaded)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="my-6" />
+    }
+    else if (_rental is null)
+    {
+        <MudAlert Severity="Severity.Info">
+            You don't have a storage rental on file yet. <MudLink Href="/storage/signup">Sign up here</MudLink>.
+        </MudAlert>
+    }
+    else
+    {
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Your Rental</MudText>
+            <MudText Typo="Typo.body1">
+                Unit @_rental.Unit?.UnitNumber at @_rental.Unit?.Property?.Name
+            </MudText>
+            <MudText Typo="Typo.body2" Class="mb-2">
+                $@_rental.GetChargeAmount().ToString("0.00") @GetCadenceLabel(_rental.BillingFrequency)
+            </MudText>
+            <MudChip T="string" Color="@GetStatusColor(_rental.Status)" Size="Size.Small">@_rental.Status</MudChip>
+
+            @if (_rental.Status == StorageRentalStatus.Active || _rental.Status == StorageRentalStatus.PaymentIssue)
+            {
+                <MudText Typo="Typo.body2" Class="mt-3">
+                    Next billing date: @_rental.GetNextDueDate().ToString("MMMM d, yyyy")
+                </MudText>
+            }
+
+            @if (_rental.Status == StorageRentalStatus.PaymentIssue)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mt-3">
+                    Your most recent payment attempt failed. We'll automatically retry each night - you can also
+                    update your payment method below.
+                </MudAlert>
+            }
+        </MudPaper>
+
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Payment Method</MudText>
+            @if (!string.IsNullOrEmpty(_replaceErrorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_replaceErrorMessage</MudAlert>
+            }
+            @if (_replaceSucceeded)
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-3">Payment method updated.</MudAlert>
+            }
+
+            @if (_paymentMethod is not null)
+            {
+                <MudText Typo="Typo.body1" Class="mb-3">@GetPaymentMethodDisplay(_paymentMethod)</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Class="mb-3">No payment method on file.</MudText>
+            }
+
+            @if (_replaceChoice == ReplaceChoice.None)
+            {
+                <MudStack Row="true" Spacing="3">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => _replaceChoice = ReplaceChoice.PayPal)">
+                        @(_paymentMethod is null ? "Add via PayPal" : "Replace via PayPal")
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => _replaceChoice = ReplaceChoice.Card)">
+                        @(_paymentMethod is null ? "Add via Card" : "Replace via Card")
+                    </MudButton>
+                </MudStack>
+            }
+            else if (_replaceChoice == ReplaceChoice.PayPal)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_startingReplace" OnClick="HandleReplaceViaPayPal">
+                    @(_startingReplace ? "Redirecting to PayPal..." : "Continue to PayPal")
+                </MudButton>
+                <MudButton Variant="Variant.Text" Class="ml-2" OnClick="@(() => _replaceChoice = ReplaceChoice.None)">Cancel</MudButton>
+            }
+            else if (_replaceChoice == ReplaceChoice.Card && _rental is not null)
+            {
+                <PayPalCardEntry RentalId="_rental.Id" BillingFrequency="_rental.BillingFrequency"
+                                 ReturnUrl="@GetReturnUrl()" CancelUrl="@GetCancelUrl()"
+                                 OnSetupTokenApproved="HandleCardSetupTokenApproved" />
+                <MudButton Variant="Variant.Text" Class="mt-2" OnClick="@(() => _replaceChoice = ReplaceChoice.None)">Cancel</MudButton>
+            }
+        </MudPaper>
+
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Billing History</MudText>
+            @if (_transactions.Count == 0)
+            {
+                <MudText Typo="Typo.body2">No charges yet.</MudText>
+            }
+            else
+            {
+                <MudTable Items="_transactions" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Date</MudTh>
+                        <MudTh>Amount</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Details</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.OccurredAtUtc.ToString("MMM d, yyyy")</MudTd>
+                        <MudTd>$@context.Amount.ToString("0.00")</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Color="@(context.Succeeded ? Color.Success : Color.Error)" Size="Size.Small">
+                                @(context.Succeeded ? "Paid" : "Failed")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@(context.Succeeded ? context.PayPalOrderId : context.FailureReason)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private bool _loaded;
+    private StorageRental? _rental;
+    private StoragePaymentMethod? _paymentMethod;
+    private List<StoragePaymentTransaction> _transactions = [];
+    private bool _startingReplace;
+    private string? _replaceErrorMessage;
+    private bool _replaceSucceeded;
+    private ReplaceChoice _replaceChoice = ReplaceChoice.None;
+
+    private enum ReplaceChoice { None, PayPal, Card }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userId = UserManager.GetUserId(authState.User);
+        if (string.IsNullOrEmpty(userId))
+        {
+            _loaded = true;
+            return;
+        }
+
+        var rentals = await StorageService.GetRentalsForCustomerAsync(userId);
+        // Prefer whichever rental is actually current (anything but Ended); fall back to the
+        // most recent Ended one so a past customer can still see their own history.
+        _rental = rentals.FirstOrDefault(r => r.Status != StorageRentalStatus.Ended) ?? rentals.FirstOrDefault();
+
+        if (_rental != null)
+        {
+            _paymentMethod = await PaymentService.GetPaymentMethodForCustomerAsync(userId);
+            _transactions = await PaymentService.GetTransactionsForRentalAsync(_rental.Id);
+        }
+
+        _loaded = true;
+    }
+
+    // Shared by both payment paths - the card path only ever uses these if a 3DS/SCA
+    // challenge forces a real redirect (see PayPalCardEntry's own comment).
+    private string GetReturnUrl() => NavigationManager.GetUriWithQueryParameters(
+        NavigationManager.ToAbsoluteUri("storage/account/payment-method-updated").AbsoluteUri,
+        new Dictionary<string, object?> { ["rentalId"] = _rental!.Id });
+
+    private string GetCancelUrl() => NavigationManager.ToAbsoluteUri("storage/account").AbsoluteUri;
+
+    private async Task HandleReplaceViaPayPal()
+    {
+        if (_rental is null || _startingReplace)
+        {
+            return;
+        }
+
+        _startingReplace = true;
+        _replaceErrorMessage = null;
+
+        var result = await PaymentService.StartVaultSetupAsync(_rental.Id, _rental.BillingFrequency, GetReturnUrl(), GetCancelUrl());
+
+        if (!result.Succeeded || string.IsNullOrEmpty(result.ApproveUrl))
+        {
+            _replaceErrorMessage = result.Error ?? "Something went wrong starting PayPal checkout. Please try again.";
+            _startingReplace = false;
+            return;
+        }
+
+        NavigationManager.NavigateTo(result.ApproveUrl, forceLoad: true);
+    }
+
+    // The card path never leaves this page - see StorageCustomerSignUp.razor's identical
+    // reasoning. Calls FinalizeVaultSetupAsync only, never CompleteVaultSetupAsync/
+    // ChargeRentalAsync - charging here would double-bill an already-current cycle.
+    private async Task HandleCardSetupTokenApproved(string setupTokenId)
+    {
+        if (_rental is null)
+        {
+            return;
+        }
+
+        var result = await PaymentService.FinalizeVaultSetupAsync(_rental.Id, setupTokenId);
+
+        if (!result.Succeeded)
+        {
+            _replaceErrorMessage = result.Error ?? "PayPal did not confirm your payment method.";
+            _replaceChoice = ReplaceChoice.None;
+            return;
+        }
+
+        _paymentMethod = await PaymentService.GetPaymentMethodForCustomerAsync(_rental.CustomerUserId);
+        _replaceSucceeded = true;
+        _replaceChoice = ReplaceChoice.None;
+    }
+
+    private static string GetPaymentMethodDisplay(StoragePaymentMethod method) => method.SourceType switch
+    {
+        PaymentSourceType.Card => method.DisplayLabel ?? "Card on file",
+        _ => $"PayPal {method.DisplayLabel ?? "(on file)"}"
+    };
+
+    private static string GetCadenceLabel(BillingFrequency frequency) => frequency switch
+    {
+        BillingFrequency.Quarterly => "every 3 months",
+        BillingFrequency.Annually => "every 12 months",
+        _ => "every month"
+    };
+
+    private static Color GetStatusColor(StorageRentalStatus status) => status switch
+    {
+        StorageRentalStatus.Active => Color.Success,
+        StorageRentalStatus.PaymentIssue => Color.Warning,
+        StorageRentalStatus.PendingPayment => Color.Info,
+        _ => Color.Default
+    };
+}

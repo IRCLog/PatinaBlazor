@@ -6,80 +6,252 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using PatinaBlazor.Data
 @using PatinaBlazor.Services
+@implements IDisposable
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @inject IStorageCustomerRegistrationService RegistrationService
+@inject IStoragePaymentService PaymentService
+@inject IStorageService StorageService
 @inject UserManager<ApplicationUser> UserManager
 @inject IEmailSender<ApplicationUser> EmailSender
+@inject EmailConfirmationNotifier EmailConfirmationNotifier
 @inject NavigationManager NavigationManager
 @inject ILogger<StorageCustomerSignUp> Logger
 
 <PageTitle>Storage Customer Sign Up</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
-    <MudGrid Justify="Justify.Center">
-        <MudItem xs="12" sm="10" md="8">
-            <MudPaper Elevation="2" Class="pa-4">
-                <MudText Typo="Typo.h5" Class="text-center mb-4">Become a Storage Customer</MudText>
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-4">
+    <MudPaper Elevation="2" Class="pa-4">
+        <MudText Typo="Typo.h5" Class="text-center mb-4">Become a Storage Customer</MudText>
 
-                @if (!string.IsNullOrEmpty(_errorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
-                }
+        <MudStepper @bind-ActiveIndex="_activeIndex" ActionsClass="d-none">
+            <MudStep Title="Account Info" Completed="_activeIndex > 0">
+                <ChildContent>
+                    @if (!string.IsNullOrEmpty(_accountErrorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@_accountErrorMessage</MudAlert>
+                    }
 
-                <EditForm Model="_input" FormName="storage-customer-signup" OnValidSubmit="HandleValidSubmit">
-                    <DataAnnotationsValidator />
+                    <EditForm Model="_input" FormName="storage-customer-signup" OnValidSubmit="HandleAccountInfoSubmit">
+                        <DataAnnotationsValidator />
 
-                    <MudText Typo="Typo.subtitle1" Class="mb-2">Account</MudText>
-                    <MudTextField Label="Email" Placeholder="name@example.com" @bind-Value="_input.Email" For="@(() => _input.Email)" Class="mb-3" />
-                    <MudGrid>
-                        <MudItem xs="12" sm="6">
-                            <MudTextField Label="First Name" Placeholder="First name" @bind-Value="_input.FirstName" For="@(() => _input.FirstName)" Class="mb-3" />
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudTextField Label="Last Name" Placeholder="Last name" @bind-Value="_input.LastName" For="@(() => _input.LastName)" Class="mb-3" />
-                        </MudItem>
-                    </MudGrid>
-                    <MudTextField Label="Password" Placeholder="password" @bind-Value="_input.Password" For="@(() => _input.Password)" InputType="InputType.Password" Class="mb-3" />
-                    <MudTextField Label="Confirm Password" Placeholder="confirm password" @bind-Value="_input.ConfirmPassword" For="@(() => _input.ConfirmPassword)" InputType="InputType.Password" Class="mb-3" />
-                    <MudTextField Label="Phone" Placeholder="Phone number" @bind-Value="_input.PhoneNumber" For="@(() => _input.PhoneNumber)" Class="mb-4" />
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Account</MudText>
+                        <MudTextField Label="Email" Placeholder="name@example.com" @bind-Value="_input.Email" For="@(() => _input.Email)" Class="mb-3" />
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="First Name" Placeholder="First name" @bind-Value="_input.FirstName" For="@(() => _input.FirstName)" Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField Label="Last Name" Placeholder="Last name" @bind-Value="_input.LastName" For="@(() => _input.LastName)" Class="mb-3" />
+                            </MudItem>
+                        </MudGrid>
+                        <MudTextField Label="Password" Placeholder="password" @bind-Value="_input.Password" For="@(() => _input.Password)" InputType="InputType.Password" Class="mb-3" />
+                        <MudTextField Label="Confirm Password" Placeholder="confirm password" @bind-Value="_input.ConfirmPassword" For="@(() => _input.ConfirmPassword)" InputType="InputType.Password" Class="mb-3" />
+                        <MudTextField Label="Phone" Placeholder="Phone number" @bind-Value="_input.PhoneNumber" For="@(() => _input.PhoneNumber)" Class="mb-4" />
 
-                    <MudText Typo="Typo.subtitle1" Class="mb-2">Mailing Address</MudText>
-                    <MudTextField Label="Address Line 1" Placeholder="Address line 1" @bind-Value="_input.AddressLine1" For="@(() => _input.AddressLine1)" Class="mb-3" />
-                    <MudTextField Label="Address Line 2 (optional)" Placeholder="Address line 2" @bind-Value="_input.AddressLine2" Class="mb-3" />
-                    <MudGrid>
-                        <MudItem xs="12" sm="5">
-                            <MudTextField Label="City" Placeholder="City" @bind-Value="_input.City" For="@(() => _input.City)" Class="mb-3" />
-                        </MudItem>
-                        <MudItem xs="6" sm="3">
-                            <MudTextField Label="State" Placeholder="State" @bind-Value="_input.State" For="@(() => _input.State)" Class="mb-3" />
-                        </MudItem>
-                        <MudItem xs="6" sm="4">
-                            <MudTextField Label="Postal Code" Placeholder="Postal code" @bind-Value="_input.PostalCode" For="@(() => _input.PostalCode)" Class="mb-4" />
-                        </MudItem>
-                    </MudGrid>
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Mailing Address</MudText>
+                        <MudTextField Label="Address Line 1" Placeholder="Address line 1" @bind-Value="_input.AddressLine1" For="@(() => _input.AddressLine1)" Class="mb-3" />
+                        <MudTextField Label="Address Line 2 (optional)" Placeholder="Address line 2" @bind-Value="_input.AddressLine2" Class="mb-3" />
+                        <MudGrid>
+                            <MudItem xs="12" sm="5">
+                                <MudTextField Label="City" Placeholder="City" @bind-Value="_input.City" For="@(() => _input.City)" Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="6" sm="3">
+                                <MudTextField Label="State" Placeholder="State" @bind-Value="_input.State" For="@(() => _input.State)" Class="mb-3" />
+                            </MudItem>
+                            <MudItem xs="6" sm="4">
+                                <MudTextField Label="Postal Code" Placeholder="Postal code" @bind-Value="_input.PostalCode" For="@(() => _input.PostalCode)" Class="mb-4" />
+                            </MudItem>
+                        </MudGrid>
 
-                    <MudText Typo="Typo.subtitle1" Class="mb-2">Emergency Contact</MudText>
-                    <MudTextField Label="Name" Placeholder="Emergency contact name" @bind-Value="_input.EmergencyContactName" For="@(() => _input.EmergencyContactName)" Class="mb-3" />
-                    <MudTextField Label="Phone" Placeholder="Emergency contact phone" @bind-Value="_input.EmergencyContactPhone" For="@(() => _input.EmergencyContactPhone)" Class="mb-4" />
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">Emergency Contact</MudText>
+                        <MudTextField Label="Name" Placeholder="Emergency contact name" @bind-Value="_input.EmergencyContactName" For="@(() => _input.EmergencyContactName)" Class="mb-3" />
+                        <MudTextField Label="Phone" Placeholder="Emergency contact phone" @bind-Value="_input.EmergencyContactPhone" For="@(() => _input.EmergencyContactPhone)" Class="mb-4" />
 
-                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Disabled="_submitting">
-                        Sign Up
-                    </MudButton>
-                </EditForm>
-            </MudPaper>
-        </MudItem>
-    </MudGrid>
+                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true" Disabled="_accountSubmitting">
+                            Continue
+                        </MudButton>
+                    </EditForm>
+                </ChildContent>
+            </MudStep>
+
+            <MudStep Title="Verify Email" Completed="_activeIndex > 1">
+                <ChildContent>
+                    <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                        <MudText Typo="Typo.h6">Check your email</MudText>
+                        <MudText Typo="Typo.body1" Class="text-center">
+                            We sent a confirmation link to <strong>@_input.Email</strong>. Click the link to verify
+                            your email - this page will continue automatically as soon as it's confirmed.
+                        </MudText>
+                        @if (!string.IsNullOrEmpty(_verifyEmailMessage))
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">@_verifyEmailMessage</MudAlert>
+                        }
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" Disabled="_resendingEmail" OnClick="HandleResendConfirmationEmail">
+                            Resend confirmation email
+                        </MudButton>
+                    </MudStack>
+                </ChildContent>
+            </MudStep>
+
+            <MudStep Title="Pick a Unit" Completed="_activeIndex > 2">
+                <ChildContent>
+                    @if (!string.IsNullOrEmpty(_unitPickErrorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@_unitPickErrorMessage</MudAlert>
+                    }
+
+                    @if (_loadingProperties)
+                    {
+                        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Class="my-6" />
+                    }
+                    else if (_properties.Count == 0 || _properties.All(p => p.Units.Count(u => u.Status == StorageUnitStatus.Available) == 0))
+                    {
+                        <MudAlert Severity="Severity.Warning">No units are currently available. Please check back soon.</MudAlert>
+                    }
+                    else
+                    {
+                        @foreach (var property in _properties)
+                        {
+                            var availableUnits = property.Units.Where(u => u.Status == StorageUnitStatus.Available).OrderBy(u => u.UnitNumber).ToList();
+                            if (availableUnits.Count == 0)
+                            {
+                                continue;
+                            }
+
+                            <MudPaper Elevation="1" Class="pa-3 mb-4">
+                                <MudGrid>
+                                    <MudItem xs="12" sm="4">
+                                        <ResponsiveImage Image="property.GetMainImage()" Alt="@property.Name" Height="160px" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="8">
+                                        <MudText Typo="Typo.h6">@property.Name</MudText>
+                                        <MudText Typo="Typo.body2" Class="mb-3">@property.AddressLine1, @property.City, @property.State</MudText>
+
+                                        @foreach (var unit in availableUnits)
+                                        {
+                                            <MudPaper Outlined="true" Class="pa-3 mb-2 d-flex align-center justify-space-between flex-wrap gap-2">
+                                                <div>
+                                                    <MudText Typo="Typo.subtitle1">Unit @unit.UnitNumber</MudText>
+                                                    <MudText Typo="Typo.body2">@unit.LengthFeet' x @unit.WidthFeet' x @unit.HeightFeet' - $@unit.MonthlyRate.ToString("0.00")/mo</MudText>
+                                                </div>
+                                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_reservingUnitId.HasValue" OnClick="@(() => HandleSelectUnit(property, unit))">
+                                                    @(_reservingUnitId == unit.Id ? "Reserving..." : "Select")
+                                                </MudButton>
+                                            </MudPaper>
+                                        }
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        }
+                    }
+                </ChildContent>
+            </MudStep>
+
+            <MudStep Title="Payment">
+                <ChildContent>
+                    @if (!string.IsNullOrEmpty(_paymentErrorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-4">@_paymentErrorMessage</MudAlert>
+                    }
+
+                    @if (_activationSucceeded)
+                    {
+                        <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                            <MudText Typo="Typo.h6">You're all set!</MudText>
+                            <MudText Typo="Typo.body1" Class="text-center">
+                                Your payment method is saved and your first payment of $@_activationChargeAmount.ToString("0.00")
+                                was processed. Your rental is now active.
+                            </MudText>
+                        </MudStack>
+                    }
+                    else if (_selectedUnit is not null && _selectedProperty is not null)
+                    {
+                        <MudText Typo="Typo.body1" Class="mb-4">
+                            Unit @_selectedUnit.UnitNumber at @_selectedProperty.Name - $@_selectedUnit.MonthlyRate.ToString("0.00")/mo
+                        </MudText>
+
+                        <MudSelect T="BillingFrequency" Label="Billing Frequency" @bind-Value="_billingFrequency" Class="mb-2" Disabled="_paymentChoice != PaymentChoice.None">
+                            <MudSelectItem Value="BillingFrequency.Monthly">Monthly</MudSelectItem>
+                            <MudSelectItem Value="BillingFrequency.Quarterly">Quarterly</MudSelectItem>
+                            <MudSelectItem Value="BillingFrequency.Annually">Annually</MudSelectItem>
+                        </MudSelect>
+                        <MudText Typo="Typo.body2" Class="mb-4">@GetBillingSummary()</MudText>
+
+                        @if (_paymentChoice == PaymentChoice.None)
+                        {
+                            <MudStack Row="true" Spacing="3">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="@(() => _paymentChoice = PaymentChoice.PayPal)">
+                                    Pay with PayPal
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" OnClick="@(() => _paymentChoice = PaymentChoice.Card)">
+                                    Pay with Card
+                                </MudButton>
+                            </MudStack>
+                        }
+                        else if (_paymentChoice == PaymentChoice.PayPal)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" FullWidth="true"
+                                       Disabled="_startingPayPal" OnClick="HandleContinueToPayPal">
+                                @(_startingPayPal ? "Redirecting to PayPal..." : "Continue to PayPal")
+                            </MudButton>
+                            <MudText Typo="Typo.caption" Class="mt-2 d-block text-center">
+                                You'll approve your PayPal payment method on PayPal's site, then come back here to finish.
+                            </MudText>
+                            <MudButton Variant="Variant.Text" Class="mt-2" OnClick="@(() => _paymentChoice = PaymentChoice.None)">Back</MudButton>
+                        }
+                        else if (_paymentChoice == PaymentChoice.Card)
+                        {
+                            <PayPalCardEntry RentalId="_reservedRental!.Id" BillingFrequency="_billingFrequency"
+                                             ReturnUrl="@GetReturnUrl()" CancelUrl="@GetCancelUrl()"
+                                             OnSetupTokenApproved="HandleCardSetupTokenApproved" />
+                            <MudButton Variant="Variant.Text" Class="mt-2" OnClick="@(() => _paymentChoice = PaymentChoice.None)">Back</MudButton>
+                        }
+                    }
+                </ChildContent>
+            </MudStep>
+        </MudStepper>
+    </MudPaper>
 </MudContainer>
 
 @code {
     private readonly InputModel _input = new();
-    private string? _errorMessage;
-    private bool _submitting;
+    private int _activeIndex;
 
-    private async Task HandleValidSubmit()
+    private string? _accountErrorMessage;
+    private bool _accountSubmitting;
+    private ApplicationUser? _registeredUser;
+
+    private string? _verifyEmailMessage;
+    private bool _resendingEmail;
+
+    private bool _loadingProperties;
+    private List<StorageProperty> _properties = [];
+    private string? _unitPickErrorMessage;
+    private int? _reservingUnitId;
+    private StorageProperty? _selectedProperty;
+    private StorageUnit? _selectedUnit;
+    private StorageRental? _reservedRental;
+
+    private BillingFrequency _billingFrequency = BillingFrequency.Monthly;
+    private bool _startingPayPal;
+    private string? _paymentErrorMessage;
+    private PaymentChoice _paymentChoice = PaymentChoice.None;
+    private bool _activationSucceeded;
+    private decimal _activationChargeAmount;
+
+    private enum PaymentChoice { None, PayPal, Card }
+
+    protected override void OnInitialized()
     {
-        _submitting = true;
-        _errorMessage = null;
+        EmailConfirmationNotifier.OnConfirmed += HandleEmailConfirmed;
+    }
+
+    private async Task HandleAccountInfoSubmit()
+    {
+        _accountSubmitting = true;
+        _accountErrorMessage = null;
 
         var result = await RegistrationService.RegisterAsync(new StorageCustomerRegistrationRequest(
             _input.Email, _input.Password, _input.FirstName, _input.LastName, _input.PhoneNumber,
@@ -88,28 +260,186 @@
 
         if (!result.Succeeded || result.User is null)
         {
-            _errorMessage = string.Join(" ", result.Errors);
-            _submitting = false;
+            _accountErrorMessage = string.Join(" ", result.Errors);
+            _accountSubmitting = false;
             return;
         }
 
+        _registeredUser = result.User;
         Logger.LogSecurityInformation("Storage customer {Email} ({UserId}) registered a new account.", _input.Email, result.User.Id);
 
-        var token = await UserManager.GenerateEmailConfirmationTokenAsync(result.User);
+        await SendConfirmationEmailAsync(result.User);
+
+        _accountSubmitting = false;
+        _activeIndex = 1;
+
+        await LoadAvailablePropertiesAsync();
+    }
+
+    private async Task SendConfirmationEmailAsync(ApplicationUser user)
+    {
+        var token = await UserManager.GenerateEmailConfirmationTokenAsync(user);
         var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
         var callbackUrl = NavigationManager.GetUriWithQueryParameters(
             NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
-            new Dictionary<string, object?> { ["userId"] = result.User.Id, ["code"] = code });
+            new Dictionary<string, object?> { ["userId"] = user.Id, ["code"] = code });
 
-        await EmailSender.SendConfirmationLinkAsync(result.User, _input.Email, callbackUrl);
+        await EmailSender.SendConfirmationLinkAsync(user, user.Email!, callbackUrl);
+    }
 
-        // forceLoad: true - RegisterConfirmation.razor is a static-SSR page (needs a real
-        // HttpContext, reached everywhere else in this app via a genuine HTTP redirect from
-        // another static-SSR page) - a plain in-circuit NavigateTo from this interactive page
-        // would try to render it inside the wrong render-mode boundary.
-        NavigationManager.NavigateTo(
-            $"/Account/RegisterConfirmation?email={Uri.EscapeDataString(_input.Email)}",
-            forceLoad: true);
+    private async Task HandleResendConfirmationEmail()
+    {
+        if (_registeredUser is null || _resendingEmail)
+        {
+            return;
+        }
+
+        _resendingEmail = true;
+        await SendConfirmationEmailAsync(_registeredUser);
+        _resendingEmail = false;
+        _verifyEmailMessage = "Confirmation email resent.";
+    }
+
+    private void HandleEmailConfirmed(string userId)
+    {
+        if (_registeredUser is not null && userId == _registeredUser.Id && _activeIndex == 1)
+        {
+            _activeIndex = 2;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadAvailablePropertiesAsync()
+    {
+        _loadingProperties = true;
+        await InvokeAsync(StateHasChanged);
+
+        _properties = await StorageService.GetPropertiesAsync();
+
+        _loadingProperties = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleSelectUnit(StorageProperty property, StorageUnit unit)
+    {
+        if (_registeredUser is null || _reservingUnitId.HasValue)
+        {
+            return;
+        }
+
+        _reservingUnitId = unit.Id;
+        _unitPickErrorMessage = null;
+
+        var result = await PaymentService.ReserveUnitAsync(unit.Id, _registeredUser.Id);
+
+        if (!result.Succeeded)
+        {
+            _unitPickErrorMessage = result.Error;
+            _reservingUnitId = null;
+            await LoadAvailablePropertiesAsync();
+            return;
+        }
+
+        _selectedProperty = property;
+        _selectedUnit = unit;
+        _reservedRental = result.Rental;
+        _reservingUnitId = null;
+        _activeIndex = 3;
+    }
+
+    private string GetBillingSummary()
+    {
+        if (_selectedUnit is null)
+        {
+            return "";
+        }
+
+        var periodMonths = _billingFrequency switch
+        {
+            BillingFrequency.Quarterly => 3,
+            BillingFrequency.Annually => 12,
+            _ => 1
+        };
+        var amount = _selectedUnit.MonthlyRate * periodMonths;
+        var cadence = _billingFrequency switch
+        {
+            BillingFrequency.Quarterly => "every 3 months",
+            BillingFrequency.Annually => "every 12 months",
+            _ => "every month"
+        };
+
+        return $"${amount:0.00} {cadence}";
+    }
+
+    private async Task HandleContinueToPayPal()
+    {
+        if (_reservedRental is null || _startingPayPal)
+        {
+            return;
+        }
+
+        _startingPayPal = true;
+        _paymentErrorMessage = null;
+
+        var returnUrl = GetReturnUrl();
+        var cancelUrl = GetCancelUrl();
+
+        var result = await PaymentService.StartVaultSetupAsync(_reservedRental.Id, _billingFrequency, returnUrl, cancelUrl);
+
+        if (!result.Succeeded || string.IsNullOrEmpty(result.ApproveUrl))
+        {
+            _paymentErrorMessage = result.Error ?? "Something went wrong starting PayPal checkout. Please try again.";
+            _startingPayPal = false;
+            return;
+        }
+
+        NavigationManager.NavigateTo(result.ApproveUrl, forceLoad: true);
+    }
+
+    // Shared by both payment paths - the card path only ever uses these if a 3DS/SCA
+    // challenge forces a real redirect (see PayPalCardEntry's own comment).
+    private string GetReturnUrl() => NavigationManager.GetUriWithQueryParameters(
+        NavigationManager.ToAbsoluteUri("storage/signup/complete").AbsoluteUri,
+        new Dictionary<string, object?> { ["rentalId"] = _reservedRental!.Id });
+
+    private string GetCancelUrl() => NavigationManager.ToAbsoluteUri("storage/signup").AbsoluteUri;
+
+    // The card path never leaves this page - PayPalCardEntry collects the card and finalizes
+    // the setup token entirely client-side, then hands the resulting setup token id back
+    // here. Unlike the PayPal redirect path, there's no separate return page/circuit loss to
+    // deal with, so activation completes inline via the same CompleteVaultSetupAsync call
+    // the signup return page uses for PayPal.
+    private async Task HandleCardSetupTokenApproved(string setupTokenId)
+    {
+        if (_reservedRental is null)
+        {
+            return;
+        }
+
+        var result = await PaymentService.CompleteVaultSetupAsync(_reservedRental.Id, setupTokenId);
+
+        if (!result.Succeeded)
+        {
+            _paymentErrorMessage = result.Error ?? "PayPal did not confirm your payment method.";
+            _paymentChoice = PaymentChoice.None;
+            return;
+        }
+
+        if (result.Charge is { Succeeded: true })
+        {
+            _activationSucceeded = true;
+            _activationChargeAmount = result.Charge.Amount;
+        }
+        else
+        {
+            _paymentErrorMessage = result.Charge?.Error ?? "Your first payment could not be processed.";
+            _paymentChoice = PaymentChoice.None;
+        }
+    }
+
+    public void Dispose()
+    {
+        EmailConfirmationNotifier.OnConfirmed -= HandleEmailConfirmed;
     }
 
     private sealed class InputModel

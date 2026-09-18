@@ -39,6 +39,11 @@ namespace PatinaBlazor.Data
         [Required]
         public DateTime PaymentDate { get; set; }
 
+        // The date the most recent successful charge covered - null until the first charge
+        // succeeds. Distinct from PaymentDate (the fixed anchor) - this is what the nightly
+        // billing job actually advances, via GetNextDueDate() below.
+        public DateTime? LastBilledDate { get; set; }
+
         public DateTime CreatedDate { get; set; }
 
         public DateTime ModifiedDate { get; set; }
@@ -59,14 +64,22 @@ namespace PatinaBlazor.Data
         // stays anchored to the 31st (e.g. Mar 31) instead of permanently drifting to the 28th
         // the first time a short month (Feb) clamps it. DateTime.AddMonths already handles
         // variable month lengths and leap years correctly, so no custom calendar math is needed.
+        // How many months one billing cycle covers - shared by the due-date math below and by
+        // GetChargeAmount(), so the "quarterly means 3 months" mapping only lives in one place.
+        public int GetBillingPeriodMonths() => BillingFrequency switch
+        {
+            BillingFrequency.Quarterly => 3,
+            BillingFrequency.Annually => 12,
+            _ => 1
+        };
+
+        // The amount due for one billing cycle - MonthlyRateAtSigning scaled to the cycle
+        // length, e.g. a $110/mo unit billed Annually charges $1,320 once a year.
+        public decimal GetChargeAmount() => MonthlyRateAtSigning * GetBillingPeriodMonths();
+
         public DateTime GetNextBillingDate(DateTime asOf)
         {
-            var periodMonths = BillingFrequency switch
-            {
-                BillingFrequency.Quarterly => 3,
-                BillingFrequency.Annually => 12,
-                _ => 1
-            };
+            var periodMonths = GetBillingPeriodMonths();
 
             if (asOf <= PaymentDate)
             {
@@ -85,5 +98,14 @@ namespace PatinaBlazor.Data
 
             return candidate;
         }
+
+        // The next date this rental actually still owes a charge for - distinct from
+        // GetNextBillingDate(asOf), which just answers "what's the smallest valid cycle
+        // date on or after asOf" with no memory of what's already been paid. Passing the
+        // day *after* LastBilledDate (not the date itself) as asOf is what makes the
+        // cycle just billed excluded from the result, since that date itself would
+        // otherwise come right back as "the smallest valid cycle date >= asOf".
+        public DateTime GetNextDueDate() =>
+            GetNextBillingDate(LastBilledDate?.AddDays(1) ?? PaymentDate);
     }
 }

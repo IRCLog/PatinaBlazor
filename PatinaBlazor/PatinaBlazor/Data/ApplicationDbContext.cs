@@ -17,6 +17,8 @@ namespace PatinaBlazor.Data
         public DbSet<ImageAttachment> ImageAttachments { get; set; }
         public DbSet<Article> Articles { get; set; }
         public DbSet<StorageCustomerProfile> StorageCustomerProfiles { get; set; }
+        public DbSet<StoragePaymentTransaction> StoragePaymentTransactions { get; set; }
+        public DbSet<StoragePaymentMethod> StoragePaymentMethods { get; set; }
 
         // Read-only: maps onto the "Logs" table Serilog's MSSqlServer sink creates and
         // writes to directly (see Program.cs). Never written through EF - see the
@@ -242,6 +244,33 @@ namespace PatinaBlazor.Data
                 entity.HasOne(e => e.Unit)
                       .WithMany(e => e.Rentals)
                       .HasForeignKey(e => e.StorageUnitId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<StoragePaymentTransaction>(entity =>
+            {
+                entity.Property(e => e.OccurredAtUtc).HasDefaultValueSql("GETUTCDATE()");
+
+                // A rental's payment history is meaningful audit trail even after the
+                // rental ends - cascade delete only follows the rental itself being
+                // removed (which doesn't happen in normal operation; Ended rentals are
+                // kept, not deleted), not any softer lifecycle transition.
+                entity.HasOne(e => e.Rental)
+                      .WithMany()
+                      .HasForeignKey(e => e.StorageRentalId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<StoragePaymentMethod>(entity =>
+            {
+                entity.HasKey(e => e.UserId);
+                entity.Property(e => e.UserId).HasMaxLength(128);
+                entity.Property(e => e.SourceType).HasConversion<string>().HasDefaultValue(PaymentSourceType.PayPal);
+                entity.Property(e => e.CreatedDate).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(e => e.User)
+                      .WithOne()
+                      .HasForeignKey<StoragePaymentMethod>(e => e.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
 

@@ -1,0 +1,113 @@
+@page "/storage/account/payment-method-updated"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize(Roles = "Storage Customer")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IStorageService StorageService
+@inject IStoragePaymentService PaymentService
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject ILogger<StorageAccountPaymentMethodUpdated> Logger
+
+<PageTitle>Payment Method Updated</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-4">
+    <MudPaper Elevation="2" Class="pa-4">
+        @if (_loading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                <MudText Typo="Typo.h6">Saving your payment method...</MudText>
+            </MudStack>
+        }
+        else if (_cancelled)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6">No changes were made</MudText>
+                <MudText Typo="Typo.body2" Class="text-center">Your existing payment method, if any, is unchanged.</MudText>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/storage/account">Back to My Account</MudButton>
+            </MudStack>
+        }
+        else if (_succeeded)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Large" Color="Color.Success" />
+                <MudText Typo="Typo.h6">Payment method updated</MudText>
+                <MudText Typo="Typo.body2" Class="text-center">@_displayLabel is now on file.</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/storage/account">Back to My Account</MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-6" Spacing="3">
+                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Size="Size.Large" Color="Color.Error" />
+                <MudText Typo="Typo.h6">We couldn't update your payment method</MudText>
+                <MudText Typo="Typo.body2" Class="text-center">@_errorMessage</MudText>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/storage/account">Back to My Account</MudButton>
+            </MudStack>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [SupplyParameterFromQuery(Name = "rentalId")]
+    private int? RentalId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "approval_token_id")]
+    private string? ApprovalTokenId { get; set; }
+
+    private bool _loading = true;
+    private bool _cancelled;
+    private bool _succeeded;
+    private string? _displayLabel;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userId = UserManager.GetUserId(authState.User);
+
+        if (RentalId is null || string.IsNullOrEmpty(userId))
+        {
+            _loading = false;
+            _errorMessage = "We couldn't find your reservation.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(ApprovalTokenId))
+        {
+            _loading = false;
+            _cancelled = true;
+            return;
+        }
+
+        // Defense in depth - the rentalId came back through a redirect round trip, so
+        // confirm it actually belongs to whoever is signed in before finalizing anything.
+        var rental = await StorageService.GetRentalByIdAsync(RentalId.Value);
+        if (rental is null || rental.CustomerUserId != userId)
+        {
+            _loading = false;
+            _errorMessage = "We couldn't find your reservation.";
+            return;
+        }
+
+        var result = await PaymentService.FinalizeVaultSetupAsync(RentalId.Value, ApprovalTokenId);
+
+        if (!result.Succeeded)
+        {
+            Logger.LogSecurityWarning("Replace-payment-method failed to finalize for rental {RentalId}: {Error}", RentalId, result.Error);
+            _loading = false;
+            _errorMessage = result.Error ?? "PayPal did not confirm your payment method.";
+            return;
+        }
+
+        Logger.LogSecurityInformation("Payment method replaced for rental {RentalId} ({UserId}).", RentalId, userId);
+        _succeeded = true;
+        _displayLabel = string.IsNullOrEmpty(result.DisplayLabel) ? "Your PayPal account" : $"PayPal ({result.DisplayLabel})";
+        _loading = false;
+    }
+}

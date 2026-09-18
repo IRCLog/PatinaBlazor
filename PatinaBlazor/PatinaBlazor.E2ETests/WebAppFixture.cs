@@ -103,7 +103,18 @@ namespace PatinaBlazor.E2ETests
                         ["EmailSettings__SmtpUser"] = "e2etest",
                         ["EmailSettings__SmtpPassword"] = "e2etest",
                         ["EmailSettings__FromEmail"] = "noreply@e2etest.local",
-                        ["EmailSettings__FromName"] = "PatinaBlazor E2E Test"
+                        ["EmailSettings__FromName"] = "PatinaBlazor E2E Test",
+                        // Deliberately invalid, not absent - ASP.NET Core would otherwise
+                        // auto-load this dev machine's real PayPal sandbox user-secrets
+                        // (Development environment + a UserSecretsId baked into the
+                        // assembly), making these tests pass locally but fail in CI (no
+                        // secrets there) or vice versa. Forcing a real, deterministic PayPal
+                        // auth failure here is intentional - Tier 2 only tests that the app
+                        // degrades gracefully when PayPal rejects a call, never the real
+                        // approval flow itself (that needs a human in a real browser; see
+                        // the 2026-09-16 checkpoint entry's manual sandbox verification).
+                        ["Paypal__ClientId"] = "e2e-test-invalid-client-id",
+                        ["Paypal__ClientSecret"] = "e2e-test-invalid-client-secret"
                     }
                 }
             };
