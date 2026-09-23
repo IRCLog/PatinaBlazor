@@ -157,6 +157,8 @@ builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IUserDeactivationService, UserDeactivationService>();
+builder.Services.Configure<RecaptchaOptions>(builder.Configuration.GetSection("Recaptcha"));
+builder.Services.AddHttpClient<IRecaptchaService, RecaptchaService>();
 builder.Services.AddScoped<IStorageCustomerRegistrationService, StorageCustomerRegistrationService>();
 builder.Services.AddScoped<IStoragePaymentService, StoragePaymentService>();
 builder.Services.Configure<PayPalOptions>(builder.Configuration.GetSection("Paypal"));

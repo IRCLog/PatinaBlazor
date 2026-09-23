@@ -13,6 +13,8 @@
 @inject IStorageService StorageService
 @inject UserManager<ApplicationUser> UserManager
 @inject IEmailSender<ApplicationUser> EmailSender
+@inject IRecaptchaService RecaptchaService
+@inject IJSRuntime JSRuntime
 @inject EmailConfirmationNotifier EmailConfirmationNotifier
 @inject NavigationManager NavigationManager
 @inject ILogger<StorageCustomerSignUp> Logger
@@ -253,6 +255,12 @@
         _accountSubmitting = true;
         _accountErrorMessage = null;
 
+        if (!await VerifyRecaptchaAsync("storage_signup"))
+        {
+            _accountSubmitting = false;
+            return;
+        }
+
         var result = await RegistrationService.RegisterAsync(new StorageCustomerRegistrationRequest(
             _input.Email, _input.Password, _input.FirstName, _input.LastName, _input.PhoneNumber,
             _input.AddressLine1, _input.AddressLine2, _input.City, _input.State, _input.PostalCode,
@@ -274,6 +282,25 @@
         _activeIndex = 1;
 
         await LoadAvailablePropertiesAsync();
+    }
+
+    // Skips entirely (no JS call, no verification) if reCAPTCHA hasn't been configured yet -
+    // RecaptchaService.SiteKey is empty until real keys are added via dotnet user-secrets,
+    // matching RecaptchaService.VerifyAsync's own "not configured yet" fail-open behavior.
+    private async Task<bool> VerifyRecaptchaAsync(string action)
+    {
+        if (string.IsNullOrEmpty(RecaptchaService.SiteKey))
+        {
+            return true;
+        }
+
+        var token = await JSRuntime.InvokeAsync<string?>("recaptchaHelper.execute", RecaptchaService.SiteKey, action);
+        var result = await RecaptchaService.VerifyAsync(token ?? "", action);
+        if (!result.Succeeded)
+        {
+            _accountErrorMessage = result.Error;
+        }
+        return result.Succeeded;
     }
 
     private async Task SendConfirmationEmailAsync(ApplicationUser user)

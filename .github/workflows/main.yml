@@ -65,6 +65,10 @@ jobs:
         sed -i 's/\*\*\*\*PROD_DB_PASSWORD\*\*\*\*/'"${{ secrets.PROD_DB_PASSWORD }}"'/g' ./publish/appsettings.Production.json
         sed -i 's/\*\*\*\*SMTP_USER\*\*\*\*/'"${{ secrets.SMTP_USER }}"'/g' ./publish/appsettings.Production.json
         sed -i 's/\*\*\*\*SMTP_PASSWORD\*\*\*\*/'"${{ secrets.SMTP_PASSWORD }}"'/g' ./publish/appsettings.Production.json
+        sed -i 's/\*\*\*\*PAYPAL_CLIENT_ID\*\*\*\*/'"${{ secrets.PAYPAL_CLIENT_ID }}"'/g' ./publish/appsettings.Production.json
+        sed -i 's/\*\*\*\*PAYPAL_CLIENT_SECRET\*\*\*\*/'"${{ secrets.PAYPAL_CLIENT_SECRET }}"'/g' ./publish/appsettings.Production.json
+        sed -i 's/\*\*\*\*RECAPTCHA_SITE_KEY\*\*\*\*/'"${{ secrets.RECAPTCHA_SITE_KEY }}"'/g' ./publish/appsettings.Production.json
+        sed -i 's/\*\*\*\*RECAPTCHA_SECRET_KEY\*\*\*\*/'"${{ secrets.RECAPTCHA_SECRET_KEY }}"'/g' ./publish/appsettings.Production.json
       shell: bash
     
     - name: Add web.config for IIS

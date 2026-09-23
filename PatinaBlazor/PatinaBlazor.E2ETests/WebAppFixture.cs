@@ -114,7 +114,22 @@ namespace PatinaBlazor.E2ETests
                         // approval flow itself (that needs a human in a real browser; see
                         // the 2026-09-16 checkpoint entry's manual sandbox verification).
                         ["Paypal__ClientId"] = "e2e-test-invalid-client-id",
-                        ["Paypal__ClientSecret"] = "e2e-test-invalid-client-secret"
+                        ["Paypal__ClientSecret"] = "e2e-test-invalid-client-secret",
+                        // Forced empty, not absent - same reasoning as Paypal above: ASP.NET
+                        // Core would otherwise auto-load this dev machine's real reCAPTCHA
+                        // user-secrets once they exist, and a REAL site key would make the
+                        // launched app's client-side JS actually call Google's live reCAPTCHA
+                        // API from inside Playwright's headless Chromium - which Google's own
+                        // bot detection flags as automated traffic (a real "browser-error"
+                        // response, confirmed live), blocking every Register/
+                        // StorageCustomerSignUp E2E test that submits those forms. Forcing
+                        // both empty keeps RecaptchaService.SiteKey empty (the page skips the
+                        // JS call entirely) and VerifyAsync's own "not configured" fail-open
+                        // path active - exactly the behavior every existing Tier 2 test here
+                        // was written and passing against, deterministic regardless of what
+                        // real reCAPTCHA keys this dev machine happens to have configured.
+                        ["Recaptcha__SiteKey"] = "",
+                        ["Recaptcha__SecretKey"] = ""
                     }
                 }
             };
