@@ -181,13 +181,17 @@
                         </MudSelect>
                         <MudText Typo="Typo.body2" Class="mb-4">@GetBillingSummary()</MudText>
 
+                        <MudCheckBox T="bool" @bind-Value="_paymentConsentGiven" Class="mb-4" Disabled="_paymentChoice != PaymentChoice.None">
+                            I authorize recurring charges to my selected payment method for my storage unit rental in the amount and at the frequency shown above, beginning today and continuing automatically until my rental ends or my payment method changes. I understand I am responsible for keeping my payment information current, and that this authorization remains in effect until withdrawn.
+                        </MudCheckBox>
+
                         @if (_paymentChoice == PaymentChoice.None)
                         {
                             <MudStack Row="true" Spacing="3">
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="@(() => _paymentChoice = PaymentChoice.PayPal)">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="!_paymentConsentGiven" OnClick="@(() => _paymentChoice = PaymentChoice.PayPal)">
                                     Pay with PayPal
                                 </MudButton>
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" OnClick="@(() => _paymentChoice = PaymentChoice.Card)">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" Disabled="!_paymentConsentGiven" OnClick="@(() => _paymentChoice = PaymentChoice.Card)">
                                     Pay with Card
                                 </MudButton>
                             </MudStack>
@@ -240,6 +244,7 @@
     private bool _startingPayPal;
     private string? _paymentErrorMessage;
     private PaymentChoice _paymentChoice = PaymentChoice.None;
+    private bool _paymentConsentGiven;
     private bool _activationSucceeded;
     private decimal _activationChargeAmount;
 
@@ -400,7 +405,11 @@
 
     private async Task HandleContinueToPayPal()
     {
-        if (_reservedRental is null || _startingPayPal)
+        // The "Pay with PayPal"/"Pay with Card" buttons are already Disabled="!_paymentConsentGiven"
+        // - Blazor Server enforces a disabled button's OnClick server-side, not just visually,
+        // so this can't normally be bypassed - kept anyway as an explicit, self-documenting
+        // guard at the point money actually moves, not just at the choice screen.
+        if (_reservedRental is null || _startingPayPal || !_paymentConsentGiven)
         {
             return;
         }

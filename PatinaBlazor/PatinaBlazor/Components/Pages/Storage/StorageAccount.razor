@@ -76,11 +76,14 @@
 
             @if (_replaceChoice == ReplaceChoice.None)
             {
+                <MudCheckBox T="bool" @bind-Value="_replaceConsentGiven" Class="mb-3">
+                    I authorize recurring charges to this new payment method for my storage unit rental in the amount and at the frequency shown above, continuing automatically until my rental ends or my payment method changes again. I understand I am responsible for keeping my payment information current, and that this authorization remains in effect until withdrawn.
+                </MudCheckBox>
                 <MudStack Row="true" Spacing="3">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => _replaceChoice = ReplaceChoice.PayPal)">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="!_replaceConsentGiven" OnClick="@(() => _replaceChoice = ReplaceChoice.PayPal)">
                         @(_paymentMethod is null ? "Add via PayPal" : "Replace via PayPal")
                     </MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => _replaceChoice = ReplaceChoice.Card)">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="!_replaceConsentGiven" OnClick="@(() => _replaceChoice = ReplaceChoice.Card)">
                         @(_paymentMethod is null ? "Add via Card" : "Replace via Card")
                     </MudButton>
                 </MudStack>
@@ -141,6 +144,7 @@
     private string? _replaceErrorMessage;
     private bool _replaceSucceeded;
     private ReplaceChoice _replaceChoice = ReplaceChoice.None;
+    private bool _replaceConsentGiven;
 
     private enum ReplaceChoice { None, PayPal, Card }
 
@@ -178,7 +182,11 @@
 
     private async Task HandleReplaceViaPayPal()
     {
-        if (_rental is null || _startingReplace)
+        // The "Add/Replace via PayPal/Card" buttons are already Disabled="!_replaceConsentGiven"
+        // - Blazor Server enforces a disabled button's OnClick server-side, not just visually -
+        // kept anyway as an explicit, self-documenting guard at the point a new payment
+        // method is actually attached, matching StorageCustomerSignUp.razor's same reasoning.
+        if (_rental is null || _startingReplace || !_replaceConsentGiven)
         {
             return;
         }

@@ -36,6 +36,11 @@ namespace PatinaBlazor.E2ETests
             await wizardPage.GetByRole(AriaRole.Button, new() { Name = "Select" }).First.ClickAsync();
             await wizardPage.GetByText("Billing Frequency").WaitForAsync(new() { Timeout = 10_000 });
 
+            // The recurring-charge consent checkbox gates both payment-choice buttons
+            // (Disabled="!_paymentConsentGiven") - must be checked first, or Blazor Server's
+            // real server-side disabled-button enforcement blocks the click entirely.
+            await wizardPage.GetByRole(AriaRole.Checkbox).CheckAsync();
+
             // The Payment step now offers a PayPal-or-Card choice before either flow's own
             // UI appears (the card-entry addition) - "Pay with PayPal" reveals the existing
             // "Continue to PayPal" button rather than that button being immediately visible.
@@ -67,6 +72,11 @@ namespace PatinaBlazor.E2ETests
             await wizardPage.GetByRole(AriaRole.Button, new() { Name = "Select" }).First.ClickAsync();
             await wizardPage.GetByText("Billing Frequency").WaitForAsync(new() { Timeout = 10_000 });
 
+            // The recurring-charge consent checkbox gates both payment-choice buttons
+            // (Disabled="!_paymentConsentGiven") - must be checked first, or Blazor Server's
+            // real server-side disabled-button enforcement blocks the click entirely.
+            await wizardPage.GetByRole(AriaRole.Checkbox).CheckAsync();
+
             // Choosing Card calls StartCardSetupAsync server-side (GetBrowserSafeClientTokenAsync
             // + CreateCardSetupTokenAsync) before any client-side PayPal JS SDK is ever loaded -
             // with these deliberately-invalid credentials it fails at that server call, so this
@@ -78,6 +88,40 @@ namespace PatinaBlazor.E2ETests
             // Still on the wizard page, still interactive - not a dead circuit.
             Assert.Contains("/storage/signup", wizardPage.Url);
             await wizardPage.GetByText("Billing Frequency").WaitForAsync(new() { Timeout = 5_000 });
+        }
+
+        [Fact]
+        public async Task PaymentStep_ConsentCheckboxNotChecked_PaymentChoiceButtonsAreGenuinelyDisabled()
+        {
+            var email = $"e2e-noconsent-{Guid.NewGuid():N}@example.com";
+            const string password = "E2eTest123!";
+
+            await using var context = await _fixture.NewContextAsync();
+            var wizardPage = await context.NewPageAsync();
+            var confirmationLink = await SignUpAndConfirmAsync(context, wizardPage, email, password);
+            await ClickRealConfirmationLinkInASeparateTabAsync(context, confirmationLink);
+
+            await wizardPage.GetByRole(AriaRole.Button, new() { Name = "Select" }).First.ClickAsync();
+            await wizardPage.GetByText("Billing Frequency").WaitForAsync(new() { Timeout = 10_000 });
+
+            // Before checking the recurring-charge consent checkbox, both payment-choice
+            // buttons must be genuinely disabled - not just present - confirming Blazor
+            // Server's real server-side enforcement (Disabled="!_paymentConsentGiven"), the
+            // same guard StorageCustomerSignUp.razor's HandleContinueToPayPal relies on.
+            var payPalButton = wizardPage.GetByRole(AriaRole.Button, new() { Name = "Pay with PayPal" });
+            var cardButton = wizardPage.GetByRole(AriaRole.Button, new() { Name = "Pay with Card" });
+            await payPalButton.WaitForAsync(new() { Timeout = 10_000 });
+            Assert.True(await payPalButton.IsDisabledAsync());
+            Assert.True(await cardButton.IsDisabledAsync());
+
+            // Checking consent enables both - proving this is the actual gate, not some other
+            // condition coincidentally matching an already-disabled state. Uses Playwright's
+            // auto-retrying assertion (not a one-shot IsDisabledAsync) since the button only
+            // becomes enabled after a real Blazor Server round-trip re-renders it - a plain
+            // immediate check races that and was confirmed to flake without this.
+            await wizardPage.GetByRole(AriaRole.Checkbox).CheckAsync();
+            await Assertions.Expect(payPalButton).ToBeEnabledAsync(new() { Timeout = 5_000 });
+            await Assertions.Expect(cardButton).ToBeEnabledAsync(new() { Timeout = 5_000 });
         }
 
         [Fact]
