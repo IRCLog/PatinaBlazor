@@ -16,6 +16,8 @@
 @inject IRecaptchaService RecaptchaService
 @inject IJSRuntime JSRuntime
 @inject EmailConfirmationNotifier EmailConfirmationNotifier
+@inject StorageAutoSignInTokenService AutoSignInTokenService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 @inject ILogger<StorageCustomerSignUp> Logger
 
@@ -166,6 +168,9 @@
                                 Your payment method is saved and your first payment of $@_activationChargeAmount.ToString("0.00")
                                 was processed. Your rental is now active.
                             </MudText>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/storage/account">
+                                Go to My Account
+                            </MudButton>
                         </MudStack>
                     }
                     else if (_selectedUnit is not null && _selectedProperty is not null)
@@ -250,9 +255,40 @@
 
     private enum PaymentChoice { None, PayPal, Card }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         EmailConfirmationNotifier.OnConfirmed += HandleEmailConfirmed;
+
+        // Reached after a real sign-in via /api/storage/auto-signin (see HandleEmailConfirmed
+        // below) - a fresh page load, not a continuation of the anonymous circuit that
+        // registered this account, so the only state worth recovering is "which user is
+        // this," carried by the auth cookie itself rather than any in-memory wizard field.
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated != true)
+        {
+            return;
+        }
+
+        var user = await UserManager.GetUserAsync(authState.User);
+        if (user is null || !await UserManager.IsInRoleAsync(user, PatinaBlazor.Services.StorageService.StorageCustomerRoleName))
+        {
+            // Not a storage customer (e.g. an admin browsing this page while signed in) -
+            // falls through to the normal anonymous Step 1 flow, unaffected.
+            return;
+        }
+
+        var existingRentals = await StorageService.GetRentalsForCustomerAsync(user.Id);
+        if (existingRentals.Any(r => r.Status != StorageRentalStatus.Ended))
+        {
+            // Already has business in progress (or an active rental) - manage it in the
+            // wallet instead of starting a second one here.
+            NavigationManager.NavigateTo("/storage/account", forceLoad: true);
+            return;
+        }
+
+        _registeredUser = user;
+        _activeIndex = 2;
+        await LoadAvailablePropertiesAsync();
     }
 
     private async Task HandleAccountInfoSubmit()
@@ -336,8 +372,13 @@
     {
         if (_registeredUser is not null && userId == _registeredUser.Id && _activeIndex == 1)
         {
-            _activeIndex = 2;
-            InvokeAsync(StateHasChanged);
+            // Signs this tab in for real, not just advancing the step - an already-
+            // interactive circuit has no live HTTP response left to write an auth cookie
+            // onto, so the actual sign-in happens at a real endpoint this navigates to; that
+            // endpoint redirects back here once done, and OnInitializedAsync (above) is what
+            // resumes the wizard at "Pick a Unit" on the resulting fresh, authenticated load.
+            var token = AutoSignInTokenService.CreateToken(userId);
+            InvokeAsync(() => NavigationManager.NavigateTo($"/api/storage/auto-signin?token={Uri.EscapeDataString(token)}", forceLoad: true));
         }
     }
 

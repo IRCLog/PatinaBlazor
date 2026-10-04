@@ -60,9 +60,25 @@ namespace PatinaBlazor.E2ETests
             await confirmPage.GetByText("Thank you for confirming your email").WaitForAsync(new() { Timeout = 10_000 });
             await confirmPage.CloseAsync();
 
-            // Back on the original wizard tab, with no reload of any kind - it should have
-            // advanced to Step 3 on its own the moment the confirmation above completed.
+            // Back on the original wizard tab - it should have advanced to Step 3 on its own
+            // the moment the confirmation above completed. This is now a real top-level
+            // navigation (the wizard's HandleEmailConfirmed redirects this tab through
+            // /api/storage/auto-signin to actually sign the customer in - see CLAUDE.md's
+            // "auto-authenticate the wizard's own tab" work), not an in-place SPA transition -
+            // Playwright's page object follows it transparently either way.
             await wizardPage.GetByText("Pick a Unit", new() { Exact = false }).First.WaitForAsync(new() { Timeout = 10_000 });
+
+            // The real point of this test: confirm the auto-sign-in genuinely set the auth
+            // cookie, not just that the wizard's own in-memory state advanced. A brand new
+            // page in the *same browser context* (so it shares cookies) reaching the
+            // [Authorize(Roles = "Storage Customer")]-gated /storage/account without being
+            // bounced to /Account/Login proves this - an anonymous visitor would redirect.
+            var accountCheckPage = await context.NewPageAsync();
+            await accountCheckPage.GotoAsync($"{_fixture.BaseUrl}/storage/account");
+            await accountCheckPage.GetByText("My Storage Account").WaitForAsync(new() { Timeout = 10_000 });
+            Assert.DoesNotContain("/Account/Login", accountCheckPage.Url);
+            await accountCheckPage.CloseAsync();
+
             var selectButton = wizardPage.GetByRole(AriaRole.Button, new() { Name = "Select" }).First;
             await selectButton.WaitForAsync(new() { Timeout = 10_000 });
             await selectButton.ClickAsync();

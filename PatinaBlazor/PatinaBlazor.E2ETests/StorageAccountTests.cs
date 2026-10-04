@@ -167,6 +167,113 @@ namespace PatinaBlazor.E2ETests
             Assert.Contains("REAL-LOOKING-ORDER-1", bodyText);
         }
 
+        [Fact]
+        public async Task StorageAccount_CancelRental_EndsRentalAndShowsFinalBillingPreviewMatchingRealComputedValue()
+        {
+            var email = $"e2e-cancelwallettest-{Guid.NewGuid():N}@example.com";
+            const string password = "E2eTest123!";
+            await using var setupContext = await _fixture.NewContextAsync();
+            var setupPage = await setupContext.NewPageAsync();
+            await CreateConfirmedStorageCustomerAsync(setupContext, setupPage, email, password);
+
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(_fixture.DbConnectionString).Options;
+            int rentalId;
+            int unitId;
+            StorageRental seededRental;
+            await using (var dbContext = new ApplicationDbContext(options))
+            {
+                var customer = await dbContext.Users.SingleAsync(u => u.Email == email);
+                var admin = await dbContext.Users.SingleAsync(u => u.Email == DevTestAccounts.AdminEmail);
+
+                var property = new StorageProperty
+                {
+                    Name = $"Cancel Wallet Test Property {Guid.NewGuid():N}",
+                    AddressLine1 = "1 Cancel Way",
+                    City = "Testville",
+                    State = "CA",
+                    PostalCode = "90000",
+                    CreatedByUserId = admin.Id,
+                    ModifiedByUserId = admin.Id,
+                    CreatedDate = DateTime.UtcNow,
+                    ModifiedDate = DateTime.UtcNow
+                };
+                dbContext.StorageProperties.Add(property);
+                await dbContext.SaveChangesAsync();
+
+                var unit = new StorageUnit
+                {
+                    StoragePropertyId = property.Id,
+                    UnitNumber = "CXL-01",
+                    LengthFeet = 10,
+                    WidthFeet = 15,
+                    HeightFeet = 8,
+                    MonthlyRate = 200m,
+                    Status = StorageUnitStatus.Occupied,
+                    CreatedByUserId = admin.Id,
+                    ModifiedByUserId = admin.Id,
+                    CreatedDate = DateTime.UtcNow,
+                    ModifiedDate = DateTime.UtcNow
+                };
+                dbContext.StorageUnits.Add(unit);
+                await dbContext.SaveChangesAsync();
+                unitId = unit.Id;
+
+                var now = DateTime.UtcNow;
+                var rental = new StorageRental
+                {
+                    StorageUnitId = unit.Id,
+                    CustomerUserId = customer.Id,
+                    StartDate = now.AddMonths(-2),
+                    PaymentDate = now.AddMonths(-2),
+                    LastBilledDate = now.AddDays(-3),
+                    MonthlyRateAtSigning = 200m,
+                    BillingFrequency = BillingFrequency.Monthly,
+                    Status = StorageRentalStatus.Active,
+                    CreatedByUserId = customer.Id,
+                    ModifiedByUserId = customer.Id,
+                    CreatedDate = now.AddMonths(-2),
+                    ModifiedDate = now
+                };
+                dbContext.StorageRentals.Add(rental);
+                await dbContext.SaveChangesAsync();
+                rentalId = rental.Id;
+                seededRental = rental;
+            }
+
+            // The exact same real computation the page itself calls (StorageRental.
+            // GetFinalBillingPreview) - not a re-derived/hand-calculated value - so this
+            // assertion genuinely proves the UI's preview text matches the real logic
+            // rather than just "some text appeared."
+            var moveOutDate = DateTime.Today;
+            var (expectedFinalBillingDate, expectedFinalAmount) = seededRental.GetFinalBillingPreview(moveOutDate);
+
+            await using var browserContext = await _fixture.NewContextAsync();
+            var page = await browserContext.NewPageAsync();
+
+            await page.LoginAsync(_fixture.BaseUrl, email, password);
+            await page.GotoAsync($"{_fixture.BaseUrl}/storage/account");
+
+            await page.GetByText("Unit CXL-01", new() { Exact = false }).WaitForAsync(new() { Timeout = 10_000 });
+            await page.GetByRole(AriaRole.Button, new() { Name = "Cancel Rental" }).ClickAsync();
+
+            // The date picker defaults to today - the exact moveOutDate used above.
+            var expectedSummary = expectedFinalBillingDate is null
+                ? $"No further billing - already paid through {seededRental.GetNextDueDate():MMMM d, yyyy}."
+                : $"Final billing date: {expectedFinalBillingDate:MMMM d, yyyy}, final amount: {expectedFinalAmount:C2}.";
+            await page.GetByText(expectedSummary, new() { Exact = false }).WaitForAsync(new() { Timeout = 10_000 });
+
+            await page.GetByRole(AriaRole.Button, new() { Name = "Confirm Cancellation" }).ClickAsync();
+            await page.GetByText("Your rental has been cancelled.").WaitForAsync(new() { Timeout = 10_000 });
+
+            await using var verifyContext = new ApplicationDbContext(options);
+            var reloadedRental = await verifyContext.StorageRentals.SingleAsync(r => r.Id == rentalId);
+            Assert.Equal(StorageRentalStatus.Ended, reloadedRental.Status);
+            Assert.Equal(moveOutDate, reloadedRental.EndDate);
+
+            var reloadedUnit = await verifyContext.StorageUnits.SingleAsync(u => u.Id == unitId);
+            Assert.Equal(StorageUnitStatus.Available, reloadedUnit.Status);
+        }
+
         // Registers and confirms a real, throwaway Storage Customer account via the real
         // /storage/signup wizard's first two steps (account info + live email verification),
         // exactly like StorageSignUpPaymentTests - the registration service assigns the

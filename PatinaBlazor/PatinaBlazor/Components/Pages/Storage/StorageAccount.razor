@@ -52,6 +52,39 @@
                     update your payment method below.
                 </MudAlert>
             }
+
+            @if (_cancelSucceeded)
+            {
+                <MudAlert Severity="Severity.Info" Class="mt-3">Your rental has been cancelled.</MudAlert>
+            }
+            else if (_rental.Status == StorageRentalStatus.Active || _rental.Status == StorageRentalStatus.PaymentIssue)
+            {
+                @if (!string.IsNullOrEmpty(_cancelErrorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">@_cancelErrorMessage</MudAlert>
+                }
+
+                @if (!_showCancelFlow)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Error" Class="mt-3" OnClick="@(() => _showCancelFlow = true)">
+                        Cancel Rental
+                    </MudButton>
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Cancel Rental</MudText>
+                    <MudDatePicker Label="Move-Out Date" @bind-Date="_cancelMoveOutDate" Class="mb-2" />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@GetCancelBillingSummary()</MudText>
+                    <MudStack Row="true" Spacing="3">
+                        <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="_cancelling" OnClick="HandleCancelRental">
+                            @(_cancelling ? "Cancelling..." : "Confirm Cancellation")
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Disabled="_cancelling" OnClick="@(() => _showCancelFlow = false)">
+                            Never Mind
+                        </MudButton>
+                    </MudStack>
+                }
+            }
         </MudPaper>
 
         <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -146,6 +179,12 @@
     private ReplaceChoice _replaceChoice = ReplaceChoice.None;
     private bool _replaceConsentGiven;
 
+    private bool _showCancelFlow;
+    private DateTime? _cancelMoveOutDate = DateTime.Today;
+    private bool _cancelling;
+    private string? _cancelErrorMessage;
+    private bool _cancelSucceeded;
+
     private enum ReplaceChoice { None, PayPal, Card }
 
     protected override async Task OnInitializedAsync()
@@ -228,6 +267,57 @@
         _paymentMethod = await PaymentService.GetPaymentMethodForCustomerAsync(_rental.CustomerUserId);
         _replaceSucceeded = true;
         _replaceChoice = ReplaceChoice.None;
+    }
+
+    // Reuses the exact same method already built and tested for the admin End Rental
+    // dialog (StorageRentalDialog.razor) - the customer sees the identical "no further
+    // billing" / "final billing date and amount" preview an admin ending the same rental
+    // would see, computed from the real anchor-preserving billing math.
+    private string GetCancelBillingSummary()
+    {
+        if (_rental is null || _cancelMoveOutDate is null)
+        {
+            return "";
+        }
+
+        var (finalBillingDate, finalAmount) = _rental.GetFinalBillingPreview(_cancelMoveOutDate.Value);
+        return finalBillingDate is null
+            ? $"No further billing - already paid through {_rental.GetNextDueDate():MMMM d, yyyy}."
+            : $"Final billing date: {finalBillingDate:MMMM d, yyyy}, final amount: {finalAmount:C2}.";
+    }
+
+    private async Task HandleCancelRental()
+    {
+        if (_rental is null || _cancelMoveOutDate is null || _cancelling)
+        {
+            return;
+        }
+
+        _cancelling = true;
+        _cancelErrorMessage = null;
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var currentUserId = UserManager.GetUserId(authState.User);
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            _cancelErrorMessage = "Unable to determine the current user. Please refresh and log in again.";
+            _cancelling = false;
+            return;
+        }
+
+        var result = await StorageService.CancelOwnRentalAsync(_rental.Id, _cancelMoveOutDate.Value, currentUserId);
+
+        if (!result.Succeeded)
+        {
+            _cancelErrorMessage = result.Error ?? "Something went wrong cancelling your rental. Please try again.";
+            _cancelling = false;
+            return;
+        }
+
+        _rental = await StorageService.GetRentalByIdAsync(_rental.Id);
+        _cancelSucceeded = true;
+        _showCancelFlow = false;
+        _cancelling = false;
     }
 
     private static string GetPaymentMethodDisplay(StoragePaymentMethod method) => method.SourceType switch

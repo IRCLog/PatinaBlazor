@@ -259,6 +259,50 @@ namespace PatinaBlazor.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task<CancelRentalResult> CancelOwnRentalAsync(int rentalId, DateTime moveOutDate, string customerUserId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var rental = await context.StorageRentals
+                .Include(r => r.Unit)
+                .FirstOrDefaultAsync(r => r.Id == rentalId);
+
+            if (rental is null)
+            {
+                return new CancelRentalResult { Succeeded = false, Error = "Rental not found." };
+            }
+
+            // The real authorization check EndRentalAsync doesn't need (admin-only, trusted
+            // by construction) - this method is reachable directly from an authenticated
+            // customer's own wallet page, so a wrong/guessed rentalId must be refused, not
+            // silently acted on.
+            if (rental.CustomerUserId != customerUserId)
+            {
+                return new CancelRentalResult { Succeeded = false, Error = "This rental does not belong to you." };
+            }
+
+            if (rental.Status == StorageRentalStatus.Ended)
+            {
+                return new CancelRentalResult { Succeeded = false, Error = "This rental has already ended." };
+            }
+
+            rental.EndDate = moveOutDate;
+            rental.Status = StorageRentalStatus.Ended;
+            rental.ModifiedDate = DateTime.UtcNow;
+            rental.ModifiedByUserId = customerUserId;
+
+            if (rental.Unit != null)
+            {
+                rental.Unit.Status = StorageUnitStatus.Available;
+                rental.Unit.ModifiedDate = DateTime.UtcNow;
+                rental.Unit.ModifiedByUserId = customerUserId;
+            }
+
+            await context.SaveChangesAsync();
+
+            return new CancelRentalResult { Succeeded = true };
+        }
+
         public async Task<StorageRental?> GetActiveRentalForUnitAsync(int unitId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();

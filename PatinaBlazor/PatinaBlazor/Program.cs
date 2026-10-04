@@ -157,6 +157,8 @@ builder.Services.AddScoped<IStorageService, StorageService>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
 builder.Services.AddScoped<IUserDeactivationService, UserDeactivationService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<StorageAutoSignInTokenService>();
 builder.Services.Configure<RecaptchaOptions>(builder.Configuration.GetSection("Recaptcha"));
 builder.Services.AddHttpClient<IRecaptchaService, RecaptchaService>();
 builder.Services.AddScoped<IStorageCustomerRegistrationService, StorageCustomerRegistrationService>();
@@ -267,6 +269,7 @@ app.MapAdditionalIdentityEndpoints();
 
 // Add IRC event API endpoints
 app.MapIrcEventEndpoints();
+app.MapStorageAutoSignInEndpoints();
 app.MapHub<IrcBotHub>("/hubs/ircbot");
 
 try
