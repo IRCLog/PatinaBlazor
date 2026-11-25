@@ -63,6 +63,7 @@ namespace PatinaBlazor.Tests
             services.AddScoped<IStorageService, StorageService>();
             services.AddScoped<IArticleService, ArticleService>();
             services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+            services.AddScoped<IIrcStatsService, IrcStatsService>();
             services.AddScoped<IUserDeactivationService, UserDeactivationService>();
             services.AddScoped<IStorageCustomerRegistrationService, StorageCustomerRegistrationService>();
             services.AddScoped<FakePayPalClient>();

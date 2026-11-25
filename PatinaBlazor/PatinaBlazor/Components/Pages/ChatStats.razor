@@ -1,0 +1,189 @@
+@page "/chat/stats"
+@using Microsoft.AspNetCore.Authorization
+@using PatinaBlazor.Data
+@using PatinaBlazor.Services
+@attribute [Authorize(Roles = "Admin")]
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@inject IIrcStatsService StatsService
+@inject IIrcEventService IrcEventService
+
+<PageTitle>IRC Stats</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h4">IRC Stats</MudText>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/chat">Back to Chat</MudButton>
+    </div>
+
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" md="5">
+            <MudDateRangePicker Label="Date Range (Central)" @bind-DateRange="_dateRange" DateFormat="MM/dd/yyyy" />
+        </MudItem>
+        <MudItem xs="12" md="5">
+            <MudSelect T="string" Label="Network" @bind-Value="_network" Clearable="true" Placeholder="All networks">
+                @foreach (var n in _networks)
+                {
+                    <MudSelectItem T="string" Value="@n">@n</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="2" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="LoadAsync">Apply</MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (_summary is null)
+    {
+        <MudText>Loading...</MudText>
+    }
+    else if (_summary.TotalEvents == 0)
+    {
+        <MudText Color="Color.Secondary">No IRC activity in the selected range.</MudText>
+    }
+    else
+    {
+        <MudGrid Class="mb-6">
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Total Events</MudText>
+                    <MudText Typo="Typo.h4" id="stat-events">@_summary.TotalEvents.ToString("N0")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Messages</MudText>
+                    <MudText Typo="Typo.h4" id="stat-messages">@_summary.TotalMessages.ToString("N0")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Users</MudText>
+                    <MudText Typo="Typo.h4" id="stat-users">@_summary.DistinctUsers.ToString("N0")</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudPaper Elevation="2" Class="pa-4">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Channels</MudText>
+                    <MudText Typo="Typo.h4" id="stat-channels">@_summary.DistinctChannels.ToString("N0")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Elevation="2" Class="pa-4 mb-6">
+            <MudText Typo="Typo.h6" Class="mb-2">Events per Day (UTC)</MudText>
+            <MudChart T="double"
+                      ChartType="ChartType.Bar"
+                      ChartSeries="@_daySeries"
+                      ChartLabels="@_dayLabels"
+                      ChartOptions="@_barOptions"
+                      Width="100%"
+                      Height="280px" />
+        </MudPaper>
+
+        <MudPaper Elevation="2" Class="pa-4 mb-6">
+            <MudText Typo="Typo.h6" Class="mb-2">By Network</MudText>
+            <MudTable Items="_summary.Networks" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcNetworkStat, object>(x => x.Network)">Network</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcNetworkStat, object>(x => x.Events)">Events</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcNetworkStat, object>(x => x.Messages)">Messages</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcNetworkStat, object>(x => x.Users)">Users</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcNetworkStat, object>(x => x.Channels)">Channels</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Network</MudTd>
+                    <MudTd>@context.Events.ToString("N0")</MudTd>
+                    <MudTd>@context.Messages.ToString("N0")</MudTd>
+                    <MudTd>@context.Users.ToString("N0")</MudTd>
+                    <MudTd>@context.Channels.ToString("N0")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+
+        <MudPaper Elevation="2" Class="pa-4 mb-6">
+            <MudText Typo="Typo.h6" Class="mb-2">Top Channels</MudText>
+            <MudTable Items="_summary.Channels" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcChannelStat, object>(x => x.Channel)">Channel</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcChannelStat, object>(x => x.Network)">Network</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcChannelStat, object>(x => x.Events)">Events</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcChannelStat, object>(x => x.Messages)">Messages</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcChannelStat, object>(x => x.Users)">Users</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcChannelStat, object>(x => x.LastActivity)">Last Activity</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Channel</MudTd>
+                    <MudTd>@context.Network</MudTd>
+                    <MudTd>@context.Events.ToString("N0")</MudTd>
+                    <MudTd>@context.Messages.ToString("N0")</MudTd>
+                    <MudTd>@context.Users.ToString("N0")</MudTd>
+                    <MudTd Style="white-space: nowrap;">@ToCentral(context.LastActivity)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+
+        <MudPaper Elevation="2" Class="pa-4 mb-6">
+            <MudText Typo="Typo.h6" Class="mb-2">Top Users</MudText>
+            <MudTable Items="_summary.Users" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcUserStat, object>(x => x.Sender)">User</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcUserStat, object>(x => x.Events)">Events</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcUserStat, object>(x => x.Messages)">Messages</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcUserStat, object>(x => x.Channels)">Channels</MudTableSortLabel></MudTh>
+                    <MudTh><MudTableSortLabel SortBy="new Func<IrcUserStat, object>(x => x.LastSeen)">Last Seen</MudTableSortLabel></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Sender</MudTd>
+                    <MudTd>@context.Events.ToString("N0")</MudTd>
+                    <MudTd>@context.Messages.ToString("N0")</MudTd>
+                    <MudTd>@context.Channels.ToString("N0")</MudTd>
+                    <MudTd Style="white-space: nowrap;">@ToCentral(context.LastSeen)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    private IrcStatsSummary? _summary;
+    private List<string> _networks = new();
+    private string? _network;
+    private DateRange? _dateRange = new(DateTime.Today.AddDays(-30), DateTime.Today);
+
+    private List<ChartSeries<double>> _daySeries = new();
+    private string[] _dayLabels = Array.Empty<string>();
+    private readonly BarChartOptions _barOptions = new() { ChartPalette = new[] { "#1f6feb" } };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _networks = (await IrcEventService.GetNetworksAsync()).ToList();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var start = _dateRange?.Start ?? DateTime.Today.AddDays(-30);
+            var end = _dateRange?.End ?? DateTime.Today;
+            var fromUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(start.Date, DateTimeKind.Unspecified), AppLogEntry.CentralZone);
+            var toUtc = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(end.Date.AddDays(1), DateTimeKind.Unspecified), AppLogEntry.CentralZone);
+
+            var summary = await StatsService.GetStatsAsync(fromUtc, toUtc, _network);
+
+            _dayLabels = summary.Days.Select(d => d.Day.ToString("MMM d")).ToArray();
+            _daySeries = new List<ChartSeries<double>>
+            {
+                new() { Name = "Events", Data = summary.Days.Select(d => (double)d.Events).ToArray() }
+            };
+            _summary = summary;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static string ToCentral(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), AppLogEntry.CentralZone)
+            .ToString("M/d/yy h:mm tt");
+}

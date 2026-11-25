@@ -176,6 +176,7 @@ builder.Services.AddSingleton<IrcChatNotifier>();
 builder.Services.AddSingleton<EmailConfirmationNotifier>();
 builder.Services.AddSingleton<IrcBotService>();
 builder.Services.AddScoped<IIrcEventService, IrcEventService>();
+builder.Services.AddScoped<IIrcStatsService, IrcStatsService>();
 builder.Services.AddHostedService<IrcBotHeartbeatService>();
 builder.Services.AddSignalR();
 

@@ -29,7 +29,10 @@
 
             <AuthorizeView Roles="Admin" Context="adminContext">
                 <Authorized>
-                    <MudNavLink Href="/chat" Icon="@Icons.Material.Filled.Chat" OnClick="NotifyNavigate">Chat</MudNavLink>
+                    <MudNavGroup Title="Chat" Icon="@Icons.Material.Filled.Chat">
+                        <MudNavLink Href="/chat" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Forum" OnClick="NotifyNavigate">Live Chat</MudNavLink>
+                        <MudNavLink Href="/chat/stats" Icon="@Icons.Material.Filled.BarChart" OnClick="NotifyNavigate">Stats</MudNavLink>
+                    </MudNavGroup>
                     <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.Settings" OnClick="NotifyNavigate">Admin</MudNavLink>
                 </Authorized>
             </AuthorizeView>
